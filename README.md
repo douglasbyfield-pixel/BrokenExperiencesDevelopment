@@ -1,5 +1,5 @@
 # BrokenExperiences
-
+See Link - https://docs.google.com/document/d/153r162G8cySUiv5S7BfsZQdG2O8hiFTE7s2VbKya3ic/edit?usp=sharing
 A React Native app for reporting and tracking infrastructure issues in your community.
 
 ## What it does
