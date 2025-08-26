@@ -1,13 +1,57 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated } from 'react-native';
 import { supabase } from '../services/supabase';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    // Parallel animations for smooth entrance
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handleButtonPress = () => {
+    // Animate button press
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.98,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const handleAuth = async () => {
+    handleButtonPress();
+    
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
@@ -29,7 +73,18 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Animated.View 
+      style={[
+        styles.container, 
+        { 
+          opacity: fadeAnim,
+          transform: [
+            { translateY: slideAnim },
+            { scale: scaleAnim }
+          ]
+        }
+      ]}
+    >
       <Text style={styles.title}>BrokenExperiences</Text>
       <Text style={styles.subtitle}>Report issues in your community</Text>
 
@@ -61,54 +116,72 @@ export default function LoginScreen() {
           {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
         </Text>
       </TouchableOpacity>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 30,
     justifyContent: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '900',
     textAlign: 'center',
-    marginBottom: 10,
-    color: '#333',
+    marginBottom: 8,
+    color: '#000',
+    letterSpacing: -1,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 50,
     color: '#666',
+    fontWeight: '500',
+    lineHeight: 24,
   },
   input: {
     backgroundColor: 'white',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
+    padding: 18,
+    borderRadius: 12,
+    marginBottom: 20,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    borderWidth: 2,
+    borderColor: '#000',
+    fontWeight: '500',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
   button: {
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 10,
+    backgroundColor: '#000',
+    paddingVertical: 18,
+    paddingHorizontal: 40,
+    borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
   },
   buttonText: {
     color: 'white',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   switchText: {
     textAlign: 'center',
-    color: '#007AFF',
+    color: '#000',
     fontSize: 16,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });
