@@ -1,7 +1,4 @@
 # BrokenExperiences
-See Link - https://docs.google.com/document/d/153r162G8cySUiv5S7BfsZQdG2O8hiFTE7s2VbKya3ic/edit?usp=sharing
-
-
 
 A React Native app for reporting and tracking infrastructure issues in your community.
 
@@ -22,14 +19,14 @@ Report broken stuff in your area - potholes, broken streetlights, damaged signs,
 git clone https://github.com/[username]/BrokenExperiences.git
 cd BrokenExperiences
 
-# Install
+# Install dependencies
 npm install
 
-# Add your Supabase keys to .env
+# Add your Supabase keys to mobile/.env
 EXPO_PUBLIC_SUPABASE_URL=your_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_key
 
-# Run
+# Run the app
 npm start
 ```
 
@@ -45,6 +42,12 @@ npm start
 
 ```
 /mobile          # React Native app
+  /src
+    /screens     # App screens
+    /navigation  # Navigation setup
+    /components  # Reusable components
+    /services    # Supabase client
+    /types       # TypeScript types
 /supabase        # Database & backend functions
 ```
 

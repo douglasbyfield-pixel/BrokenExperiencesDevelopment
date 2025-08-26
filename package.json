@@ -1,0 +1,27 @@
+{
+  "name": "broken-experiences",
+  "version": "1.0.0",
+  "description": "A React Native app for reporting and tracking infrastructure issues in your community",
+  "main": "index.js",
+  "scripts": {
+    "install": "cd mobile && npm install",
+    "start": "cd mobile && npm start",
+    "android": "cd mobile && npm run android",
+    "ios": "cd mobile && npm run ios",
+    "web": "cd mobile && npm run web"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/BrokenExperiences.git"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "supabase",
+    "community",
+    "infrastructure",
+    "reporting"
+  ],
+  "author": "",
+  "license": "MIT"
+}
