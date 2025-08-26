@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, Dimensions } from 'react-native';
+import { Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, Dimensions, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
 
 const { width, height } = Dimensions.get('window');
@@ -13,98 +14,28 @@ export default function LoginScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
-  const glitchAnim = useRef(new Animated.Value(0)).current;
-  const floatAnim1 = useRef(new Animated.Value(0)).current;
-  const floatAnim2 = useRef(new Animated.Value(0)).current;
-  const floatAnim3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Parallel animations for smooth entrance
+    // Smooth entrance animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 1000,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 600,
+        duration: 800,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
-        duration: 700,
+        duration: 900,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // Floating animations for decorative elements
-    const startFloatingAnimations = () => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(floatAnim1, {
-            toValue: 1,
-            duration: 3000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(floatAnim1, {
-            toValue: 0,
-            duration: 3000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
 
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(floatAnim2, {
-            toValue: 1,
-            duration: 4000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(floatAnim2, {
-            toValue: 0,
-            duration: 4000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(floatAnim3, {
-            toValue: 1,
-            duration: 5000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(floatAnim3, {
-            toValue: 0,
-            duration: 5000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    };
-
-    setTimeout(startFloatingAnimations, 1000);
-
-    // Subtle glitch effect every 8 seconds
-    const glitchInterval = setInterval(() => {
-      Animated.sequence([
-        Animated.timing(glitchAnim, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glitchAnim, {
-          toValue: 0,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, 8000);
-
-    return () => clearInterval(glitchInterval);
   }, []);
 
   const handleButtonPress = () => {
@@ -159,120 +90,11 @@ export default function LoginScreen() {
         }
       ]}
     >
-      {/* Floating decorative elements */}
-      <Animated.View
-        style={[
-          styles.floatingElement1,
-          {
-            transform: [
-              {
-                translateY: floatAnim1.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, -15],
-                }),
-              },
-              {
-                rotate: floatAnim1.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', '5deg'],
-                }),
-              },
-            ],
-            opacity: fadeAnim,
-          },
-        ]}
-      >
-        <Text style={styles.floatingIcon}>🔒</Text>
-      </Animated.View>
 
-      <Animated.View
-        style={[
-          styles.floatingElement2,
-          {
-            transform: [
-              {
-                translateY: floatAnim2.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 12],
-                }),
-              },
-              {
-                rotate: floatAnim2.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', '-3deg'],
-                }),
-              },
-            ],
-            opacity: fadeAnim,
-          },
-        ]}
-      >
-        <Text style={styles.floatingIcon}>📧</Text>
-      </Animated.View>
 
-      <Animated.View
-        style={[
-          styles.floatingElement3,
-          {
-            transform: [
-              {
-                translateY: floatAnim3.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, -8],
-                }),
-              },
-              {
-                scale: floatAnim3.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [1, 1.1],
-                }),
-              },
-            ],
-            opacity: fadeAnim,
-          },
-        ]}
-      >
-        <Text style={styles.floatingIcon}>✨</Text>
-      </Animated.View>
-
-      {/* Crack line decorative elements */}
-      <Animated.View style={[styles.crackLine1, { opacity: fadeAnim }]} />
-      <Animated.View style={[styles.crackLine2, { opacity: fadeAnim }]} />
-
-      <Animated.Text 
-        style={[
-          styles.title,
-          {
-            transform: [
-              {
-                translateX: glitchAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 2],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        BROKEN
-      </Animated.Text>
-      <Animated.Text 
-        style={[
-          styles.titleSecondary,
-          {
-            transform: [
-              {
-                translateX: glitchAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, -1],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        EXPERIENCES
-      </Animated.Text>
+      {/* Clean title text */}
+      <Text style={styles.title}>BROKEN</Text>
+      <Text style={styles.titleSecondary}>EXPERIENCES</Text>
       <Text style={styles.subtitle}>Report issues in your community</Text>
 
       <TextInput
@@ -315,6 +137,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     overflow: 'hidden',
   },
+  glitchOverlay: {
+    position: 'absolute',
+    inset: 0,
+    pointerEvents: 'none',
+  },
+  glitchRed: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: '#dc2626',
+    mixBlendMode: 'screen',
+    opacity: 0.3,
+  },
+  glitchBlue: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: '#2563eb',
+    mixBlendMode: 'screen',
+    opacity: 0.3,
+  },
+  titleContainer: {
+    alignItems: 'center',
+  },
   title: {
     fontSize: 42,
     fontWeight: '900',
@@ -322,10 +166,16 @@ const styles = StyleSheet.create({
     marginBottom: -2,
     color: '#000',
     letterSpacing: -2,
-    textShadowColor: '#00000020',
+    textShadowColor: '#00000040',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
   },
+  letterB: {},
+  letterR: {},
+  letterO: {},
+  letterK: {},
+  letterE1: {},
+  letterN: {},
   titleSecondary: {
     fontSize: 42,
     fontWeight: '900',
@@ -333,7 +183,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#000',
     letterSpacing: -2,
-    textShadowColor: '#00000020',
+    textShadowColor: '#00000040',
     textShadowOffset: { width: -1, height: 1 },
     textShadowRadius: 4,
   },
@@ -345,28 +195,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 24,
   },
-  floatingElement1: {
-    position: 'absolute',
-    top: height * 0.15,
-    left: width * 0.15,
-    zIndex: 1,
-  },
-  floatingElement2: {
-    position: 'absolute',
-    top: height * 0.25,
-    right: width * 0.15,
-    zIndex: 1,
-  },
-  floatingElement3: {
-    position: 'absolute',
-    bottom: height * 0.2,
-    left: width * 0.2,
-    zIndex: 1,
-  },
-  floatingIcon: {
-    fontSize: 24,
-    opacity: 0.6,
-  },
+
   crackLine1: {
     position: 'absolute',
     top: height * 0.3,
@@ -432,5 +261,59 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textDecorationLine: 'underline',
     letterSpacing: 0.5,
+  },
+  debris1: {
+    position: 'absolute',
+    top: height * 0.25,
+    left: width * 0.33,
+    width: 8,
+    height: 8,
+    backgroundColor: '#6b7280',
+    borderRadius: 4,
+  },
+  debris2: {
+    position: 'absolute',
+    top: height * 0.33,
+    right: width * 0.25,
+    width: 4,
+    height: 4,
+    backgroundColor: '#9ca3af',
+    borderRadius: 2,
+  },
+  debris3: {
+    position: 'absolute',
+    bottom: height * 0.33,
+    left: width * 0.25,
+    width: 12,
+    height: 4,
+    backgroundColor: '#d1d5db',
+    borderRadius: 2,
+  },
+  debris4: {
+    position: 'absolute',
+    bottom: height * 0.25,
+    right: width * 0.33,
+    width: 4,
+    height: 8,
+    backgroundColor: '#4b5563',
+    borderRadius: 2,
+  },
+  debris5: {
+    position: 'absolute',
+    top: height * 0.67,
+    left: width * 0.67,
+    width: 8,
+    height: 4,
+    backgroundColor: '#6b7280',
+    borderRadius: 2,
+  },
+  debris6: {
+    position: 'absolute',
+    top: height * 0.5,
+    right: width * 0.5,
+    width: 4,
+    height: 4,
+    backgroundColor: '#9ca3af',
+    borderRadius: 2,
   },
 });
