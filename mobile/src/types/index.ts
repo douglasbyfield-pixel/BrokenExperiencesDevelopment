@@ -2,16 +2,26 @@ export interface Issue {
   id: string;
   title: string;
   description: string;
+  status: 'pending' | 'in_progress' | 'resolved';
+  priority: 'low' | 'medium' | 'high' | 'critical';
   location: {
     latitude: number;
     longitude: number;
-    address?: string;
+    address: string;
   };
-  photos: string[];
-  status: 'reported' | 'in_progress' | 'resolved';
-  userId: string;
+  reportedBy: string;
+  reportedAt: string;
+  category: 'infrastructure' | 'safety' | 'environment' | 'maintenance' | 'accessibility';
+  imageUrl?: string;
+  upvotes: number;
+  comments: Comment[];
+}
+
+export interface Comment {
+  id: string;
+  text: string;
+  author: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface User {
@@ -19,4 +29,24 @@ export interface User {
   email: string;
   displayName?: string;
   createdAt: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  avatar?: string;
+  issuesReported: number;
+  issuesResolved: number;
+  reputation: number;
+  joinedAt: string;
+  badges: Badge[];
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  earnedAt: string;
 }

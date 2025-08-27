@@ -1,19 +1,53 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, Dimensions, View } from 'react-native';
+import { Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, Dimensions, View, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
+import { useAuth } from '../context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
+type UserRole = 'reporter' | 'fixer' | 'sponsor' | 'organization';
+
+const roleOptions = [
+  { 
+    value: 'reporter' as UserRole, 
+    label: 'Reporter', 
+    icon: 'location-outline',
+    description: 'Identify and report community issues'
+  },
+  { 
+    value: 'fixer' as UserRole, 
+    label: 'Fixer', 
+    icon: 'construct-outline',
+    description: 'Solve problems and implement solutions'
+  },
+  { 
+    value: 'sponsor' as UserRole, 
+    label: 'Sponsor', 
+    icon: 'heart-outline',
+    description: 'Provide resources and funding for fixes'
+  },
+  { 
+    value: 'organization' as UserRole, 
+    label: 'Organization', 
+    icon: 'business-outline',
+    description: 'Coordinate large-scale community initiatives'
+  },
+];
+
 export default function LoginScreen() {
+  const { setIsAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<UserRole>('reporter');
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Smooth entrance animations
@@ -35,7 +69,32 @@ export default function LoginScreen() {
       }),
     ]).start();
 
+    // Continuous pulse animation for the explore button
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseAnimation.start();
 
+    // Continuous rotation for the compass icon
+    const rotateAnimation = Animated.loop(
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 15000,
+        useNativeDriver: true,
+      })
+    );
+    rotateAnimation.start();
   }, []);
 
   const handleButtonPress = () => {
@@ -77,6 +136,30 @@ export default function LoginScreen() {
     }
   };
 
+  const handleExploreApp = () => {
+    // Animate button press
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Set authentication to true to show main app
+      setIsAuthenticated(true);
+    });
+  };
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   return (
     <Animated.View 
       style={[
@@ -90,7 +173,12 @@ export default function LoginScreen() {
         }
       ]}
     >
-
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      
+      {/* Animated background elements */}
+      <Animated.View style={[styles.compassContainer, { transform: [{ rotate: spin }] }]}>
+        <Ionicons name="compass-outline" size={80} color="#000" />
+      </Animated.View>
 
       {/* Clean title text */}
       <Text style={styles.title}>BROKEN</Text>
@@ -114,6 +202,44 @@ export default function LoginScreen() {
         secureTextEntry
       />
 
+      {isSignUp && (
+        <Animated.View style={[styles.roleSection, { opacity: fadeAnim }]}>
+          <Text style={styles.roleTitle}>Choose Your Role</Text>
+          <Text style={styles.roleSubtitle}>How would you like to contribute?</Text>
+          
+          <View style={styles.roleGrid}>
+            {roleOptions.map((role) => (
+              <TouchableOpacity
+                key={role.value}
+                style={[
+                  styles.roleCard,
+                  selectedRole === role.value && styles.roleCardActive
+                ]}
+                onPress={() => setSelectedRole(role.value)}
+              >
+                <Ionicons 
+                  name={role.icon as any} 
+                  size={32} 
+                  color={selectedRole === role.value ? '#fff' : '#000'} 
+                />
+                <Text style={[
+                  styles.roleLabel, 
+                  selectedRole === role.value && styles.roleLabelActive
+                ]}>
+                  {role.label}
+                </Text>
+                <Text style={[
+                  styles.roleDescription, 
+                  selectedRole === role.value && styles.roleDescriptionActive
+                ]}>
+                  {role.description}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Animated.View>
+      )}
+
       <TouchableOpacity style={styles.button} onPress={handleAuth}>
         <Text style={styles.buttonText}>
           {isSignUp ? 'Sign Up' : 'Sign In'}
@@ -125,6 +251,14 @@ export default function LoginScreen() {
           {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
         </Text>
       </TouchableOpacity>
+
+      {/* Explore App Button */}
+      <Animated.View style={[styles.exploreContainer, { transform: [{ scale: pulseAnim }] }]}>
+        <TouchableOpacity style={styles.exploreButton} onPress={handleExploreApp}>
+          <Ionicons name="arrow-forward-outline" size={24} color="#000" />
+          <Text style={styles.exploreText}>Explore App</Text>
+        </TouchableOpacity>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -134,8 +268,15 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 30,
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8f9fa',
     overflow: 'hidden',
+    position: 'relative',
+  },
+  compassContainer: {
+    position: 'absolute',
+    top: 100,
+    right: 30,
+    opacity: 0.1,
   },
   glitchOverlay: {
     position: 'absolute',
@@ -262,6 +403,36 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     letterSpacing: 0.5,
   },
+  exploreContainer: {
+    position: 'absolute',
+    bottom: 50,
+    right: 30,
+  },
+  exploreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#000',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  exploreText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+    letterSpacing: 0.5,
+  },
   debris1: {
     position: 'absolute',
     top: height * 0.25,
@@ -315,5 +486,69 @@ const styles = StyleSheet.create({
     height: 4,
     backgroundColor: '#9ca3af',
     borderRadius: 2,
+  },
+  roleSection: {
+    marginBottom: 30,
+  },
+  roleTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  roleSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    fontWeight: '500',
+  },
+  roleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  roleCard: {
+    width: (width - 90) / 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#000',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
+    minHeight: 140,
+  },
+  roleCardActive: {
+    backgroundColor: '#000',
+    borderColor: '#000',
+  },
+  roleLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#000',
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  roleLabelActive: {
+    color: '#fff',
+  },
+  roleDescription: {
+    fontSize: 11,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 14,
+    fontWeight: '500',
+  },
+  roleDescriptionActive: {
+    color: '#ccc',
   },
 });
