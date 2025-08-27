@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, StatusBar, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, StatusBar, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { Issue } from '../data/mockData';
 
-const { width } = Dimensions.get('window');
 
 type Priority = 'low' | 'medium' | 'high' | 'critical';
 type Category = 'infrastructure' | 'safety' | 'environment' | 'maintenance' | 'accessibility';
@@ -32,30 +31,7 @@ export default function ReportScreen() {
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<string>('');
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 700,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
     getCurrentLocation();
   }, []);
 
@@ -85,14 +61,6 @@ export default function ReportScreen() {
     }
   };
 
-  const animateProgress = (value: number) => {
-    Animated.timing(progressAnim, {
-      toValue: value,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  };
-
   const calculateProgress = () => {
     let progress = 0;
     if (title.trim()) progress += 0.25;
@@ -101,11 +69,6 @@ export default function ReportScreen() {
     if (priority) progress += 0.25;
     return progress;
   };
-
-  useEffect(() => {
-    const progress = calculateProgress();
-    animateProgress(progress);
-  }, [title, description, category, priority]);
 
   const handleSubmit = async () => {
     if (!title.trim() || !description.trim()) {
@@ -122,19 +85,6 @@ export default function ReportScreen() {
         setLoading(false);
         return;
       }
-
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 0.95,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]).start();
 
       await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -196,44 +146,28 @@ export default function ReportScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       
-      <Animated.View 
-        style={[
-          styles.header, 
-          { 
-            opacity: fadeAnim, 
-            transform: [
-              { translateY: slideAnim },
-              { scale: scaleAnim }
-            ]
-          }
-        ]}
-      >
+      <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Ionicons name="add-circle" size={32} color="#000" style={styles.titleIcon} />
+          <Ionicons name="add-circle" size={24} color="#000" style={styles.titleIcon} />
           <Text style={styles.title}>Report Issue</Text>
         </View>
         <Text style={styles.subtitle}>Help improve your community</Text>
         
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <Animated.View 
+            <View 
               style={[
                 styles.progressFill, 
-                { 
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  })
-                }
+                { width: `${Math.round(progress * 100)}%` }
               ]} 
             />
           </View>
           <Text style={styles.progressText}>{Math.round(progress * 100)}% complete</Text>
         </View>
-      </Animated.View>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Animated.View style={[styles.formContainer, { opacity: fadeAnim }]}>
+        <View style={styles.formContainer}>
           <View style={styles.formSection}>
             <Text style={styles.sectionTitle}>Issue Details</Text>
             
@@ -286,7 +220,7 @@ export default function ReportScreen() {
             </View>
           </View>
 
-          <Animated.View style={[styles.submitContainer, { transform: [{ scale: scaleAnim }] }]}>
+          <View style={styles.submitContainer}>
             <TouchableOpacity 
               style={[styles.submitButton, loading && styles.submitButtonDisabled]} 
               onPress={handleSubmit}
@@ -294,10 +228,10 @@ export default function ReportScreen() {
               activeOpacity={0.8}
             >
               {loading ? (
-                <Animated.View style={styles.loadingContainer}>
+                <View style={styles.loadingContainer}>
                   <Ionicons name="hourglass-outline" size={20} color="#fff" />
                   <Text style={styles.submitButtonText}>Submitting...</Text>
-                </Animated.View>
+                </View>
               ) : (
                 <>
                   <Ionicons name="send-outline" size={20} color="#fff" />
@@ -305,8 +239,8 @@ export default function ReportScreen() {
                 </>
               )}
             </TouchableOpacity>
-          </Animated.View>
-        </Animated.View>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -315,15 +249,13 @@ export default function ReportScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
   },
   header: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    backgroundColor: '#ffffff',
   },
   titleContainer: {
     flexDirection: 'row',
@@ -334,20 +266,19 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '900',
+    fontSize: 24,
+    fontWeight: '600',
     color: '#000',
-    letterSpacing: -1,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
-    fontWeight: '500',
-    paddingLeft: 44,
+    fontWeight: '400',
+    paddingLeft: 36,
     marginBottom: 16,
   },
   progressContainer: {
-    paddingLeft: 44,
+    paddingLeft: 36,
   },
   progressBar: {
     height: 4,
@@ -372,27 +303,19 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#000',
     marginBottom: 16,
-    letterSpacing: -0.5,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#000',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
   },
   inputIcon: {
     marginTop: 4,
@@ -402,7 +325,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#000',
-    fontWeight: '600',
+    fontWeight: '400',
     padding: 0,
     minHeight: 24,
   },
@@ -418,21 +341,13 @@ const styles = StyleSheet.create({
   optionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 4,
   },
   optionButtonActive: {
     backgroundColor: '#000',
-    borderColor: '#000',
   },
   optionText: {
     fontSize: 14,
@@ -451,21 +366,15 @@ const styles = StyleSheet.create({
   priorityButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 4,
   },
   priorityButtonActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderWidth: 3,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#000',
   },
   priorityDot: {
     width: 12,
@@ -480,21 +389,14 @@ const styles = StyleSheet.create({
   },
   priorityTextActive: {
     color: '#000',
-    fontWeight: '800',
+    fontWeight: '600',
   },
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
     padding: 16,
-    borderWidth: 2,
-    borderColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
   },
   locationInfo: {
     marginLeft: 12,
@@ -517,29 +419,20 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: '#000',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 8,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 12,
   },
   submitButtonDisabled: {
     backgroundColor: '#666',
-    borderColor: '#666',
   },
   submitButtonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '600',
     marginLeft: 8,
-    letterSpacing: 0.5,
   },
   loadingContainer: {
     flexDirection: 'row',

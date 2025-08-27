@@ -47,120 +47,144 @@ export interface Badge {
 export const mockIssues: Issue[] = [
   {
     id: '1',
-    title: 'Massive Pothole on Oak Street',
-    description: 'Large pothole near intersection causing damage to vehicles. Water collects here during rain making it even more dangerous.',
+    title: 'Major Pothole on Spanish Town Road',
+    description: 'Huge pothole near Half Way Tree causing vehicle damage. Water pools during heavy rain making it extremely dangerous.',
     status: 'pending',
     priority: 'critical',
     location: {
-      latitude: 40.7128,
-      longitude: -74.0060,
-      address: '123 Oak Street, Downtown'
+      latitude: 18.0179,
+      longitude: -76.8099,
+      address: 'Spanish Town Road, Half Way Tree, Kingston'
     },
-    reportedBy: 'Sarah M.',
+    reportedBy: 'Marcia Campbell',
     reportedAt: '2025-01-20T14:30:00Z',
     category: 'infrastructure',
-    upvotes: 23,
+    upvotes: 47,
     comments: [
       {
         id: 'c1',
-        text: 'I hit this yesterday! Damaged my tire.',
-        author: 'Mike R.',
+        text: 'Mi car tire buss yah so yesterday! This need fix asap.',
+        author: 'Devon Blake',
         createdAt: '2025-01-21T09:15:00Z'
       },
       {
         id: 'c2',
-        text: 'City should prioritize this immediately.',
-        author: 'Jennifer L.',
+        text: 'KMC need to address this urgently before someone get hurt.',
+        author: 'Keisha Morgan',
         createdAt: '2025-01-21T11:22:00Z'
       }
     ]
   },
   {
     id: '2',
-    title: 'Broken Streetlight - Safety Concern',
-    description: 'Street light has been out for 3 weeks. Area is very dark at night making it unsafe for pedestrians.',
+    title: 'Street Light Out on Hope Road',
+    description: 'Street light near Devon House been out for over a month. Very dark and unsafe at night, especially for women walking alone.',
     status: 'in_progress',
     priority: 'high',
     location: {
-      latitude: 40.7589,
-      longitude: -73.9851,
-      address: '456 Pine Avenue, Midtown'
+      latitude: 18.0134,
+      longitude: -76.7906,
+      address: 'Hope Road, near Devon House, Kingston'
     },
-    reportedBy: 'Robert K.',
+    reportedBy: 'Shanique Wright',
     reportedAt: '2025-01-18T20:45:00Z',
     category: 'safety',
-    upvotes: 15,
+    upvotes: 31,
     comments: [
       {
         id: 'c3',
-        text: 'City maintenance team is aware and working on it.',
-        author: 'City Rep',
+        text: 'JPS acknowledge the issue and working on it.',
+        author: 'JPS Customer Service',
         createdAt: '2025-01-22T13:00:00Z'
       }
     ]
   },
   {
     id: '3',
-    title: 'Overflowing Trash Bins',
-    description: 'Multiple garbage bins overflowing for days. Attracting rats and creating unsanitary conditions.',
+    title: 'Garbage Piling Up on Orange Street',
+    description: 'Skip bins overflowing for weeks on Orange Street downtown. Creating smell and attracting stray animals.',
     status: 'resolved',
     priority: 'medium',
     location: {
-      latitude: 40.7505,
-      longitude: -73.9934,
-      address: '789 Elm Street, West Side'
+      latitude: 17.9673,
+      longitude: -76.7936,
+      address: 'Orange Street, Downtown Kingston'
     },
-    reportedBy: 'Lisa P.',
+    reportedBy: 'Junior Thompson',
     reportedAt: '2025-01-15T16:20:00Z',
     category: 'environment',
-    upvotes: 8,
+    upvotes: 23,
     comments: [
       {
         id: 'c4',
-        text: 'Thank you for reporting! Cleaned up today.',
-        author: 'Sanitation Dept',
+        text: 'NSWMA clear it up this morning. Big up!',
+        author: 'Community Member',
         createdAt: '2025-01-23T08:30:00Z'
       }
     ]
   },
   {
     id: '4',
-    title: 'Damaged Sidewalk - Trip Hazard',
-    description: 'Large crack in sidewalk creating a dangerous trip hazard. Several people have stumbled here.',
+    title: 'Broken Sidewalk on Knutsford Boulevard',
+    description: 'Concrete sidewalk completely broken up near New Kingston. Very dangerous for pedestrians, especially elderly people.',
     status: 'pending',
     priority: 'medium',
     location: {
-      latitude: 40.7282,
-      longitude: -74.0776,
-      address: '321 Maple Drive, South District'
+      latitude: 18.0080,
+      longitude: -76.7837,
+      address: 'Knutsford Boulevard, New Kingston'
     },
-    reportedBy: 'David C.',
+    reportedBy: 'Patricia Green',
     reportedAt: '2025-01-19T12:15:00Z',
     category: 'accessibility',
-    upvotes: 12,
+    upvotes: 19,
     comments: []
   },
   {
     id: '5',
-    title: 'Graffiti on Community Center',
-    description: 'Offensive graffiti spray painted on the side of the community center building.',
+    title: 'Vandalism at Emancipation Park',
+    description: 'Graffiti sprayed on the monument and benches damaged. Need community cleanup and better security.',
     status: 'in_progress',
     priority: 'low',
     location: {
-      latitude: 40.7614,
-      longitude: -73.9776,
-      address: '555 Community Way, North End'
+      latitude: 18.0099,
+      longitude: -76.7845,
+      address: 'Emancipation Park, New Kingston'
     },
-    reportedBy: 'Maria G.',
+    reportedBy: 'Michael Brown',
     reportedAt: '2025-01-17T10:00:00Z',
     category: 'maintenance',
-    upvotes: 6,
+    upvotes: 15,
     comments: [
       {
         id: 'c5',
-        text: 'Volunteer cleanup scheduled for this weekend.',
-        author: 'Community Volunteer',
+        text: 'Community group organizing cleanup this Saturday.',
+        author: 'Kingston Community',
         createdAt: '2025-01-21T16:45:00Z'
+      }
+    ]
+  },
+  {
+    id: '6',
+    title: 'Water Main Break on Constant Spring Road',
+    description: 'Major water leak flooding the road near Tropical Plaza. Traffic backing up and water going to waste.',
+    status: 'in_progress',
+    priority: 'critical',
+    location: {
+      latitude: 18.0244,
+      longitude: -76.7972,
+      address: 'Constant Spring Road, near Tropical Plaza'
+    },
+    reportedBy: 'Andre Campbell',
+    reportedAt: '2025-01-22T07:30:00Z',
+    category: 'infrastructure',
+    upvotes: 38,
+    comments: [
+      {
+        id: 'c6',
+        text: 'NWC crew on site working on the leak.',
+        author: 'NWC Representative',
+        createdAt: '2025-01-22T14:20:00Z'
       }
     ]
   }
@@ -168,13 +192,13 @@ export const mockIssues: Issue[] = [
 
 export const mockUserProfile: UserProfile = {
   id: 'user123',
-  email: 'john.doe@example.com',
-  name: 'John Doe',
+  email: 'marcus.johnson@gmail.com',
+  name: 'Marcus Johnson',
   avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-  issuesReported: 7,
-  issuesResolved: 3,
-  reputation: 145,
-  joinedAt: '2024-09-15T12:00:00Z',
+  issuesReported: 12,
+  issuesResolved: 5,
+  reputation: 245,
+  joinedAt: '2024-08-15T12:00:00Z',
   badges: [
     {
       id: 'b1',

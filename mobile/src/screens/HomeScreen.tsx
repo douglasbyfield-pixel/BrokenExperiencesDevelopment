@@ -1,19 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Animated, StatusBar, Dimensions, RefreshControl, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, RefreshControl, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { mockIssues, Issue, getCategoryIcon, getPriorityColor, getStatusColor, formatTimeAgo, mockUserProfile } from '../data/mockData';
 
-const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const [issues, setIssues] = useState<Issue[]>(mockIssues);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
-  
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const headerScaleAnim = useRef(new Animated.Value(0.95)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Community stats
   const communityStats = {
@@ -24,45 +18,6 @@ export default function HomeScreen() {
   };
 
   const trendingIssues = issues.slice(0, 3).sort((a, b) => b.upvotes - a.upvotes);
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(headerScaleAnim, {
-        toValue: 1,
-        duration: 700,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Pulse animation for trending badges
-    const pulseAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.05,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    pulseAnimation.start();
-
-    return () => pulseAnimation.stop();
-  }, []);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -87,67 +42,43 @@ export default function HomeScreen() {
 
   const renderIssue = ({ item }: { item: Issue }) => {
     const priorityColor = getPriorityColor(item.priority);
-    const statusColor = getStatusColor(item.status);
     const categoryIcon = getCategoryIcon(item.category);
 
     return (
-      <Animated.View
-        style={[
-          styles.issueCard,
-          {
-            opacity: fadeAnim,
-            transform: [{
-              translateY: slideAnim,
-            }],
-          },
-        ]}
-      >
-        <TouchableOpacity style={styles.cardContent} activeOpacity={0.8}>
-          <View style={styles.cardHeader}>
-            <View style={styles.categoryContainer}>
-              <Ionicons name={categoryIcon as any} size={20} color="#000" />
-              <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
-            </View>
-            <View style={styles.statusContainer}>
-              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-              <Text style={styles.statusText}>{item.status.replace('_', ' ')}</Text>
-            </View>
+      <TouchableOpacity style={styles.issueCard} activeOpacity={0.7}>
+        <View style={styles.cardHeader}>
+          <View style={styles.categoryContainer}>
+            <Ionicons name={categoryIcon as any} size={18} color="#000" />
+            <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
           </View>
-
-          <Text style={styles.issueTitle} numberOfLines={2}>
-            {item.title}
+          <Text style={[styles.statusText, { color: priorityColor }]}>
+            {item.priority}
           </Text>
-          
-          <Text style={styles.issueDescription} numberOfLines={3}>
-            {item.description}
-          </Text>
+        </View>
 
-          <View style={styles.cardFooter}>
-            <View style={styles.locationContainer}>
-              <Ionicons name="location-outline" size={14} color="#666" />
-              <Text style={styles.locationText} numberOfLines={1}>
-                {item.location.address}
-              </Text>
-            </View>
-            
-            <View style={styles.metaContainer}>
-              <View style={styles.upvoteContainer}>
-                <Ionicons name="chevron-up-outline" size={16} color="#666" />
-                <Text style={styles.metaText}>{item.upvotes}</Text>
-              </View>
-              <Text style={styles.timeText}>{formatTimeAgo(item.reportedAt)}</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
+        <Text style={styles.issueTitle} numberOfLines={2}>
+          {item.title}
+        </Text>
+        
+        <Text style={styles.issueDescription} numberOfLines={2}>
+          {item.description}
+        </Text>
+
+        <View style={styles.cardFooter}>
+          <Text style={styles.locationText} numberOfLines={1}>
+            {item.location.address}
+          </Text>
+          <Text style={styles.upvotesText}>↑ {item.upvotes}</Text>
+        </View>
+      </TouchableOpacity>
     );
   };
 
   const renderEmptyState = () => (
-    <Animated.View style={[styles.emptyState, { opacity: fadeAnim }]}>
-      <Animated.View style={[styles.emptyIconContainer, { transform: [{ scale: headerScaleAnim }] }]}>
+    <View style={styles.emptyState}>
+      <View style={styles.emptyIconContainer}>
         <Ionicons name="document-text-outline" size={80} color="#ccc" />
-      </Animated.View>
+      </View>
       <Text style={styles.emptyText}>
         {selectedFilter === 'all' ? 'No issues reported yet' : `No ${selectedFilter.replace('_', ' ')} issues`}
       </Text>
@@ -157,7 +88,7 @@ export default function HomeScreen() {
           : 'Try switching to another filter'
         }
       </Text>
-    </Animated.View>
+    </View>
   );
 
   const pendingCount = issues.filter(i => i.status === 'pending').length;
@@ -168,32 +99,21 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       
-      <Animated.View 
-        style={[
-          styles.header, 
-          { 
-            opacity: fadeAnim, 
-            transform: [
-              { translateY: slideAnim },
-              { scale: headerScaleAnim }
-            ]
-          }
-        ]}
-      >
+      <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Ionicons name="home" size={32} color="#000" style={styles.titleIcon} />
           <Text style={styles.title}>Community Issues</Text>
         </View>
         <Text style={styles.subtitle}>Stay informed about your neighborhood</Text>
-      </Animated.View>
+      </View>
 
       {/* Community Stats */}
-      <Animated.View style={[styles.statsSection, { opacity: fadeAnim }]}>
+      <View style={styles.statsSection}>
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Animated.View style={[styles.statIconContainer, { transform: [{ scale: pulseAnim }] }]}>
+            <View style={styles.statIconContainer}>
               <Ionicons name="pulse-outline" size={24} color="#000" />
-            </Animated.View>
+            </View>
             <Text style={styles.statNumber}>{communityStats.impactScore}</Text>
             <Text style={styles.statLabel}>Impact Score</Text>
           </View>
@@ -214,16 +134,16 @@ export default function HomeScreen() {
             <Text style={styles.statLabel}>Resolved This Week</Text>
           </View>
         </View>
-      </Animated.View>
+      </View>
 
       {/* Trending Issues */}
-      <Animated.View style={[styles.trendingSection, { opacity: fadeAnim }]}>
+      <View style={styles.trendingSection}>
         <View style={styles.sectionHeader}>
           <Ionicons name="trending-up" size={24} color="#000" />
           <Text style={styles.sectionTitle}>Trending Issues</Text>
-          <Animated.View style={[styles.trendingBadge, { transform: [{ scale: pulseAnim }] }]}>
+          <View style={styles.trendingBadge}>
             <Text style={styles.trendingBadgeText}>HOT</Text>
-          </Animated.View>
+          </View>
         </View>
         
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trendingList}>
@@ -243,9 +163,9 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </Animated.View>
+      </View>
 
-      <Animated.View style={[styles.filterContainer, { opacity: fadeAnim }]}>
+      <View style={styles.filterContainer}>
         <View style={styles.filterHeader}>
           <Text style={styles.filterTitle}>Community Issues</Text>
           <Text style={styles.filterSubtitle}>Filter by status</Text>
@@ -256,12 +176,12 @@ export default function HomeScreen() {
           {renderFilterButton('in_progress', 'Active', inProgressCount)}
           {renderFilterButton('resolved', 'Resolved', resolvedCount)}
         </View>
-      </Animated.View>
+      </View>
 
       {filteredIssues.length === 0 ? (
         renderEmptyState()
       ) : (
-        <Animated.View style={[styles.listContainer, { opacity: fadeAnim }]}>
+        <View style={styles.listContainer}>
           <FlatList
             data={filteredIssues}
             renderItem={renderIssue}
@@ -272,7 +192,7 @@ export default function HomeScreen() {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />
             }
           />
-        </Animated.View>
+        </View>
       )}
     </View>
   );
@@ -281,15 +201,13 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
   },
   header: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    backgroundColor: '#ffffff',
   },
   titleContainer: {
     flexDirection: 'row',
@@ -300,23 +218,20 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '900',
+    fontSize: 24,
+    fontWeight: '600',
     color: '#000',
-    letterSpacing: -1,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
-    fontWeight: '500',
+    fontWeight: '400',
     paddingLeft: 44,
   },
   statsSection: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    backgroundColor: '#ffffff',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -325,38 +240,29 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
     padding: 16,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
   },
   statIconContainer: {
     marginBottom: 8,
   },
   statNumber: {
-    fontSize: 20,
-    fontWeight: '900',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#000',
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#666',
     textAlign: 'center',
-    fontWeight: '600',
+    fontWeight: '400',
   },
   trendingSection: {
     paddingVertical: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    backgroundColor: '#ffffff',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -365,23 +271,22 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#000',
     marginLeft: 8,
     flex: 1,
   },
   trendingBadge: {
-    backgroundColor: '#000',
+    backgroundColor: '#f8f9fa',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   trendingBadgeText: {
-    color: '#fff',
+    color: '#666',
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontWeight: '600',
   },
   trendingList: {
     paddingHorizontal: 20,
@@ -389,16 +294,9 @@ const styles = StyleSheet.create({
   },
   trendingCard: {
     width: 160,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
     padding: 16,
-    borderWidth: 2,
-    borderColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
   },
   trendingHeader: {
     flexDirection: 'row',
@@ -413,7 +311,7 @@ const styles = StyleSheet.create({
   },
   trendingTitle: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#000',
     marginBottom: 12,
     lineHeight: 16,
@@ -425,7 +323,7 @@ const styles = StyleSheet.create({
   },
   trendingUpvotes: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
     color: '#000',
   },
   trendingTime: {
@@ -436,23 +334,21 @@ const styles = StyleSheet.create({
   filterContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    backgroundColor: '#ffffff',
   },
   filterHeader: {
     marginBottom: 12,
   },
   filterTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#000',
     marginBottom: 4,
   },
   filterSubtitle: {
     fontSize: 14,
     color: '#666',
-    fontWeight: '500',
+    fontWeight: '400',
   },
   filterButtons: {
     flexDirection: 'row',
@@ -461,15 +357,12 @@ const styles = StyleSheet.create({
   filterButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 16,
+    backgroundColor: '#f8f9fa',
     marginRight: 12,
-    borderWidth: 1,
-    borderColor: 'transparent',
   },
   filterButtonActive: {
     backgroundColor: '#000',
-    borderColor: '#000',
   },
   filterText: {
     fontSize: 14,
@@ -488,16 +381,12 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   issueCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
     marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   cardContent: {
     padding: 20,
@@ -535,11 +424,11 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   issueTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '600',
     marginBottom: 8,
     color: '#000',
-    lineHeight: 24,
+    lineHeight: 20,
   },
   issueDescription: {
     fontSize: 14,
@@ -584,6 +473,11 @@ const styles = StyleSheet.create({
     color: '#999',
     fontWeight: '500',
   },
+  upvotesText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#000',
+  },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -594,8 +488,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   emptyText: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#000',
     textAlign: 'center',
     marginBottom: 8,

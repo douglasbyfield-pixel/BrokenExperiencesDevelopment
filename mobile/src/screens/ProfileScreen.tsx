@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Animated, StatusBar, ScrollView, Dimensions } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
 import { mockUserProfile } from '../data/mockData';
@@ -7,44 +7,8 @@ import { mockUserProfile } from '../data/mockData';
 const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 700,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
 
   const handleSignOut = async () => {
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -63,22 +27,11 @@ export default function ProfileScreen() {
 
   const renderBadge = (badge: typeof mockUserProfile.badges[0]) => {
     return (
-      <Animated.View
-        key={badge.id}
-        style={[
-          styles.badge,
-          {
-            opacity: fadeAnim,
-            transform: [{
-              scale: scaleAnim,
-            }],
-          },
-        ]}
-      >
+      <View key={badge.id} style={styles.badge}>
         <Ionicons name={badge.icon as any} size={24} color="#000" />
         <Text style={styles.badgeName}>{badge.name}</Text>
         <Text style={styles.badgeDescription}>{badge.description}</Text>
-      </Animated.View>
+      </View>
     );
   };
 
@@ -87,26 +40,15 @@ export default function ProfileScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Animated.View 
-          style={[
-            styles.header, 
-            { 
-              opacity: fadeAnim, 
-              transform: [
-                { translateY: slideAnim },
-                { scale: scaleAnim }
-              ]
-            }
-          ]}
-        >
+        <View style={styles.header}>
           <View style={styles.titleContainer}>
-            <Ionicons name="person" size={32} color="#000" style={styles.titleIcon} />
+            <Ionicons name="person" size={24} color="#000" style={styles.titleIcon} />
             <Text style={styles.title}>Profile</Text>
           </View>
           <Text style={styles.subtitle}>Manage your account and track your impact</Text>
-        </Animated.View>
+        </View>
 
-        <Animated.View style={[styles.profileCard, { opacity: fadeAnim }]}>
+        <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <Ionicons name="person" size={60} color="#000" />
@@ -124,9 +66,9 @@ export default function ProfileScreen() {
               year: 'numeric' 
             })}
           </Text>
-        </Animated.View>
+        </View>
 
-        <Animated.View style={[styles.statsContainer, { opacity: fadeAnim }]}>
+        <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Ionicons name="alert-circle" size={24} color="#000" />
             <Text style={styles.statNumber}>{mockUserProfile.issuesReported}</Text>
@@ -144,16 +86,16 @@ export default function ProfileScreen() {
             <Text style={styles.statNumber}>{mockUserProfile.reputation}</Text>
             <Text style={styles.statLabel}>Reputation</Text>
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View style={[styles.badgesSection, { opacity: fadeAnim }]}>
+        <View style={styles.badgesSection}>
           <Text style={styles.sectionTitle}>Achievements</Text>
           <View style={styles.badgesContainer}>
             {mockUserProfile.badges.map((badge) => renderBadge(badge))}
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View style={[styles.actionsSection, { opacity: fadeAnim }]}>
+        <View style={styles.actionsSection}>
           <TouchableOpacity style={styles.actionButton} onPress={handleEditProfile}>
             <Ionicons name="create-outline" size={20} color="#000" />
             <Text style={styles.actionButtonText}>Edit Profile</Text>
@@ -171,9 +113,9 @@ export default function ProfileScreen() {
             <Text style={styles.actionButtonText}>Help & Support</Text>
             <Ionicons name="chevron-forward" size={16} color="#666" />
           </TouchableOpacity>
-        </Animated.View>
+        </View>
 
-        <Animated.View style={[styles.signOutContainer, { opacity: fadeAnim }]}>
+        <View style={styles.signOutContainer}>
           <TouchableOpacity 
             style={styles.signOutButton} 
             onPress={handleSignOut}
@@ -182,7 +124,7 @@ export default function ProfileScreen() {
             <Ionicons name="log-out-outline" size={20} color="#fff" />
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -191,15 +133,13 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
   },
   header: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    backgroundColor: '#ffffff',
   },
   titleContainer: {
     flexDirection: 'row',
@@ -210,62 +150,50 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '900',
+    fontSize: 24,
+    fontWeight: '600',
     color: '#000',
-    letterSpacing: -1,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
-    fontWeight: '500',
-    paddingLeft: 44,
+    fontWeight: '400',
+    paddingLeft: 36,
   },
   profileCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: '#f8f9fa',
     margin: 20,
     marginTop: 20,
-    borderRadius: 16,
+    borderRadius: 8,
     padding: 24,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 12,
   },
   avatarContainer: {
     position: 'relative',
     marginBottom: 16,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: 'rgba(0, 0, 0, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#000',
   },
   editAvatarButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
   },
   userName: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '600',
     color: '#000',
     marginBottom: 4,
   },
@@ -287,22 +215,15 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginHorizontal: 4,
-    borderWidth: 2,
-    borderColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#000',
     marginTop: 8,
     marginBottom: 4,
@@ -311,18 +232,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     textAlign: 'center',
-    fontWeight: '600',
+    fontWeight: '400',
   },
   badgesSection: {
     paddingHorizontal: 20,
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#000',
     marginBottom: 16,
-    letterSpacing: -0.5,
   },
   badgesContainer: {
     flexDirection: 'row',
@@ -330,22 +250,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   badge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     width: (width - 64) / 2,
-    borderWidth: 2,
-    borderColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
   },
   badgeName: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#000',
     marginTop: 8,
     marginBottom: 4,
@@ -362,23 +275,16 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   actionButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
-    borderWidth: 2,
-    borderColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
   },
   actionButtonText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '500',
     color: '#000',
     flex: 1,
     marginLeft: 12,
@@ -389,24 +295,16 @@ const styles = StyleSheet.create({
   },
   signOutButton: {
     backgroundColor: '#000',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 8,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 12,
   },
   signOutText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '600',
     marginLeft: 8,
-    letterSpacing: 0.5,
   },
 });

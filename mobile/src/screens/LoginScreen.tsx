@@ -182,8 +182,8 @@ export default function LoginScreen() {
 
       {/* Clean title text */}
       <Text style={styles.title}>BROKEN</Text>
-      <Text style={styles.titleSecondary}>EXPERIENCES</Text>
-      <Text style={styles.subtitle}>Report issues in your community</Text>
+      <Text style={styles.titleSecondary}>JAMAICA</Text>
+      <Text style={styles.subtitle}>Report and fix issues across the island</Text>
 
       <TextInput
         style={styles.input}

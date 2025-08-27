@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Dimensions, StatusBar, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as Location from 'expo-location';
 import { mockIssues, getPriorityColor, getCategoryIcon } from '../data/mockData';
 
-const { width, height } = Dimensions.get('window');
 
 type RootStackParamList = {
   Home: undefined;
@@ -19,83 +18,16 @@ type MapScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Map'>;
 
 export default function MapScreen() {
   const navigation = useNavigation<MapScreenNavigationProp>();
-  const [isExpanded, setIsExpanded] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
-  const [currentLocation, setCurrentLocation] = useState<string>('Getting location...');
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
-  
-  // Animation values
-  const fadeAnim = new Animated.Value(0);
-  const slideAnim = new Animated.Value(50);
-  const scaleAnim = new Animated.Value(0.8);
-  const rotateAnim = new Animated.Value(0);
-  const pulseAnim = new Animated.Value(1);
-  const mapMoveAnim = new Animated.Value(0);
+  const [region, setRegion] = useState({
+    latitude: 18.0179, // Kingston, Jamaica
+    longitude: -76.8099,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  });
+  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
 
   useEffect(() => {
-    // Initial animations
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Continuous pulse animation for the main button
-    const pulseAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    pulseAnimation.start();
-
-    // Continuous rotation for the compass icon
-    const rotateAnimation = Animated.loop(
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: 10000,
-        useNativeDriver: true,
-      })
-    );
-    rotateAnimation.start();
-
-    // Floating map animation
-    const mapAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(mapMoveAnim, {
-          toValue: 1,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(mapMoveAnim, {
-          toValue: 0,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    mapAnimation.start();
-
     getCurrentLocation();
   }, []);
 
@@ -103,290 +35,112 @@ export default function MapScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setCurrentLocation('Location access denied');
+        Alert.alert('Location Permission', 'Location access is needed to show your position on the map.');
         return;
       }
 
       const location = await Location.getCurrentPositionAsync({});
-      const address = await Location.reverseGeocodeAsync({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-
-      if (address.length > 0) {
-        const addr = address[0];
-        setCurrentLocation(`${addr.city || 'Unknown'}, ${addr.region || 'Unknown'}`);
+      setUserLocation(location);
+      
+      // Center map on user's location if they're in Jamaica
+      if (location.coords.latitude > 17.5 && location.coords.latitude < 18.8 &&
+          location.coords.longitude > -78.5 && location.coords.longitude < -76.0) {
+        setRegion({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        });
       }
     } catch (error) {
-      setCurrentLocation('Unable to get location');
+      console.log('Location error:', error);
     }
   };
 
-  const toggleExpanded = () => {
-    setIsExpanded(!isExpanded);
-    Animated.spring(scaleAnim, {
-      toValue: isExpanded ? 1 : 1.1,
-      useNativeDriver: true,
-    }).start();
-  };
-
   const navigateToScreen = (screenName: keyof RootStackParamList) => {
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      navigation.navigate(screenName);
-    });
+    navigation.navigate(screenName);
   };
 
-  const spin = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  const handleMarkerPress = (issueId: string) => {
+    setSelectedIssue(selectedIssue === issueId ? null : issueId);
+  };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       
-      {/* Interactive Map Interface */}
-      <View style={styles.mapContainer}>
-        <Animated.View style={[
-          styles.mapBackground,
-          {
-            transform: [{
-              translateY: mapMoveAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -5],
-              }),
-            }],
-          }
-        ]}>
-          <View style={styles.mapGrid}>
-            {Array.from({ length: 20 }, (_, i) => (
-              <View key={i} style={styles.gridLine} />
-            ))}
-          </View>
-          
-          {/* Map Markers for Issues */}
-          {mockIssues.map((issue, index) => {
-            const markerStyle = {
-              position: 'absolute' as const,
-              top: 50 + (index * 60) + Math.sin(index) * 30,
-              left: 30 + (index * 40) + Math.cos(index) * 50,
-            };
-            
-            return (
-              <TouchableOpacity
-                key={issue.id}
-                style={[styles.mapMarker, markerStyle]}
-                onPress={() => setSelectedIssue(selectedIssue === issue.id ? null : issue.id)}
-              >
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.titleContainer}>
+          <Ionicons name="map" size={32} color="#000" style={styles.titleIcon} />
+          <Text style={styles.title}>Issue Locations</Text>
+        </View>
+        <Text style={styles.subtitle}>Issues near Kingston, Jamaica</Text>
+        {userLocation && (
+          <Text style={styles.locationText}>
+            📍 Your Location: {userLocation.coords.latitude.toFixed(4)}, {userLocation.coords.longitude.toFixed(4)}
+          </Text>
+        )}
+      </View>
+
+      {/* Issues List */}
+      <ScrollView style={styles.issuesList} showsVerticalScrollIndicator={false}>
+        {mockIssues.map((issue) => (
+          <TouchableOpacity
+            key={issue.id}
+            style={[
+              styles.issueCard,
+              selectedIssue === issue.id && styles.selectedCard
+            ]}
+            onPress={() => handleMarkerPress(issue.id)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.cardHeader}>
+              <View style={styles.categoryContainer}>
                 <View style={[
-                  styles.markerContainer,
-                  { borderColor: getPriorityColor(issue.priority) },
-                  selectedIssue === issue.id && styles.markerSelected
+                  styles.customMarker,
+                  { backgroundColor: getPriorityColor(issue.priority) }
                 ]}>
                   <Ionicons 
                     name={getCategoryIcon(issue.category) as any}
                     size={16} 
-                    color={getPriorityColor(issue.priority)} 
+                    color="white"
                   />
                 </View>
-                <Animated.View style={[
-                  styles.markerPulse,
-                  { 
-                    backgroundColor: getPriorityColor(issue.priority),
-                    transform: [{ scale: pulseAnim }],
-                    opacity: pulseAnim.interpolate({
-                      inputRange: [1, 1.1],
-                      outputRange: [0.3, 0.1],
-                    }),
-                  }
-                ]} />
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* User Location Indicator */}
-          <View style={styles.userLocationContainer}>
-            <Animated.View style={[
-              styles.userLocation,
-              { transform: [{ scale: pulseAnim }] }
-            ]}>
-              <Ionicons name="person" size={16} color="#007AFF" />
-            </Animated.View>
-          </View>
-
-          {/* Compass */}
-          <Animated.View style={[styles.compass, { transform: [{ rotate: spin }] }]}>
-            <Ionicons name="compass-outline" size={40} color="#000" />
-          </Animated.View>
-        </Animated.View>
-
-        {/* Issue Details Overlay */}
-        {selectedIssue && (
-          <Animated.View style={[styles.issueOverlay, { opacity: fadeAnim }]}>
-            {(() => {
-              const issue = mockIssues.find(i => i.id === selectedIssue);
-              if (!issue) return null;
-              
-              return (
-                <View style={styles.issueCard}>
-                  <TouchableOpacity 
-                    style={styles.closeButton}
-                    onPress={() => setSelectedIssue(null)}
-                  >
-                    <Ionicons name="close" size={20} color="#666" />
-                  </TouchableOpacity>
-                  
-                  <View style={styles.issueHeader}>
-                    <Ionicons name={getCategoryIcon(issue.category) as any} size={24} color="#000" />
-                    <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(issue.priority) }]}>
-                      <Text style={styles.priorityText}>{issue.priority.toUpperCase()}</Text>
-                    </View>
-                  </View>
-                  
-                  <Text style={styles.issueTitle}>{issue.title}</Text>
-                  <Text style={styles.issueDescription}>{issue.description}</Text>
-                  
-                  <View style={styles.issueMeta}>
-                    <View style={styles.issueMetaItem}>
-                      <Ionicons name="location-outline" size={16} color="#666" />
-                      <Text style={styles.issueMetaText}>{issue.location.address}</Text>
-                    </View>
-                    <View style={styles.issueMetaItem}>
-                      <Ionicons name="chevron-up-outline" size={16} color="#666" />
-                      <Text style={styles.issueMetaText}>{issue.upvotes} upvotes</Text>
-                    </View>
-                  </View>
+                <View style={styles.cardHeaderText}>
+                  <Text style={styles.priorityLabel}>{issue.priority}</Text>
+                  <Text style={styles.categoryLabel}>{issue.category}</Text>
                 </View>
-              );
-            })()}
-          </Animated.View>
-        )}
-      </View>
-
-      {/* Floating Action Buttons */}
-      <View style={styles.floatingContainer}>
-        {/* Main FAB */}
-        <Animated.View style={[
-          styles.mainFab,
-          {
-            transform: [
-              { scale: Animated.multiply(scaleAnim, pulseAnim) }
-            ]
-          }
-        ]}>
-          <TouchableOpacity
-            style={styles.fabButton}
-            onPress={toggleExpanded}
-            activeOpacity={0.8}
-          >
-            <Ionicons 
-              name={isExpanded ? "close" : "add"} 
-              size={30} 
-              color="#000" 
-            />
+              </View>
+              <Text style={styles.upvotesText}>↑ {issue.upvotes}</Text>
+            </View>
+            
+            <Text style={styles.issueTitle}>{issue.title}</Text>
+            <Text style={styles.issueDescription}>{issue.description}</Text>
+            
+            <View style={styles.locationInfo}>
+              <Ionicons name="location-outline" size={16} color="#666" />
+              <Text style={styles.addressText}>{issue.location.address}</Text>
+            </View>
+            
+            <View style={styles.coordinatesContainer}>
+              <Text style={styles.coordinatesText}>
+                📍 {issue.location.latitude.toFixed(4)}, {issue.location.longitude.toFixed(4)}
+              </Text>
+            </View>
           </TouchableOpacity>
-        </Animated.View>
+        ))}
+      </ScrollView>
 
-        {/* Navigation FABs */}
-        <Animated.View style={[
-          styles.navFab,
-          styles.homeFab,
-          {
-            opacity: isExpanded ? 1 : 0,
-            transform: [
-              { translateY: isExpanded ? 0 : 20 },
-              { scale: isExpanded ? 1 : 0.8 }
-            ]
-          }
-        ]}>
-          <TouchableOpacity
-            style={styles.fabButton}
-            onPress={() => navigateToScreen('Home')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="home-outline" size={24} color="#000" />
-          </TouchableOpacity>
-        </Animated.View>
 
-        <Animated.View style={[
-          styles.navFab,
-          styles.reportFab,
-          {
-            opacity: isExpanded ? 1 : 0,
-            transform: [
-              { translateY: isExpanded ? 0 : 20 },
-              { scale: isExpanded ? 1 : 0.8 }
-            ]
-          }
-        ]}>
-          <TouchableOpacity
-            style={styles.fabButton}
-            onPress={() => navigateToScreen('Report')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add-circle-outline" size={24} color="#000" />
-          </TouchableOpacity>
-        </Animated.View>
-
-        <Animated.View style={[
-          styles.navFab,
-          styles.profileFab,
-          {
-            opacity: isExpanded ? 1 : 0,
-            transform: [
-              { translateY: isExpanded ? 0 : 20 },
-              { scale: isExpanded ? 1 : 0.8 }
-            ]
-          }
-        ]}>
-          <TouchableOpacity
-            style={styles.fabButton}
-            onPress={() => navigateToScreen('Profile')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="person-outline" size={24} color="#000" />
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-
-      {/* Top Info Bar */}
-      <Animated.View style={[styles.infoBar, { transform: [{ translateY: slideAnim }] }]}>
-        <View style={styles.infoItem}>
-          <Ionicons name="location-outline" size={20} color="#000" />
-          <Text style={styles.infoText}>{currentLocation}</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Ionicons name="alert-circle-outline" size={20} color="#000" />
-          <Text style={styles.infoText}>{mockIssues.length} Issues Nearby</Text>
-        </View>
-      </Animated.View>
-
-      {/* Bottom Legend */}
-      <Animated.View style={[styles.legend, { opacity: fadeAnim }]}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#ff6b6b' }]} />
-          <Text style={styles.legendText}>Critical</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#ffd93d' }]} />
-          <Text style={styles.legendText}>Warning</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#6bcf7f' }]} />
-          <Text style={styles.legendText}>Resolved</Text>
-        </View>
-      </Animated.View>
+      {/* Minimalistic FAB */}
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => navigateToScreen('Report')}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={24} color="white" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -394,265 +148,179 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
   },
-  mapContainer: {
-    flex: 1,
-    position: 'relative',
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  mapBackground: {
-    flex: 1,
-    backgroundColor: '#e9ecef',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  mapGrid: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  titleContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  gridLine: {
-    width: width / 10,
-    height: height / 15,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
-    borderWidth: 0.5,
+  titleIcon: {
+    marginRight: 12,
   },
-  mapMarker: {
-    position: 'absolute',
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#000',
   },
-  markerContainer: {
-    backgroundColor: '#fff',
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '400',
+    paddingLeft: 44,
+    marginBottom: 8,
+  },
+  locationText: {
+    fontSize: 12,
+    color: '#999',
+    paddingLeft: 44,
+  },
+  issuesList: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  customMarker: {
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    padding: 8,
-    borderWidth: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 10,
-  },
-  markerSelected: {
-    transform: [{ scale: 1.2 }],
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-  },
-  markerPulse: {
-    position: 'absolute',
-    top: -4,
-    left: -4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 20,
-    zIndex: 5,
-  },
-  userLocationContainer: {
-    position: 'absolute',
-    bottom: '40%',
-    left: '50%',
-    marginLeft: -20,
-    marginBottom: -20,
-  },
-  userLocation: {
-    backgroundColor: '#007AFF',
-    borderRadius: 20,
-    padding: 12,
-    borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  compass: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 25,
-    padding: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ffffff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
-  },
-  issueOverlay: {
-    position: 'absolute',
-    bottom: 100,
-    left: 20,
-    right: 20,
-    zIndex: 1000,
+    marginRight: 12,
   },
   issueCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#000',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
-  closeButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    padding: 8,
-    zIndex: 10,
+  selectedCard: {
+    borderColor: '#000',
+    borderWidth: 2,
   },
-  issueHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
-    paddingRight: 40,
   },
-  priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+  categoryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  priorityText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+  cardHeaderText: {
+    flex: 1,
+  },
+  categoryLabel: {
+    fontSize: 12,
+    color: '#999',
+    textTransform: 'capitalize',
+    marginTop: 2,
+  },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  priorityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  priorityLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    textTransform: 'capitalize',
+  },
+  closeButton: {
+    padding: 4,
   },
   issueTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#000',
     marginBottom: 8,
-    lineHeight: 24,
+    lineHeight: 22,
   },
   issueDescription: {
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  issueMeta: {
-    gap: 8,
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  issueMetaItem: {
+  locationText: {
+    fontSize: 12,
+    color: '#999',
+    flex: 1,
+    marginRight: 8,
+  },
+  upvotesText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#000',
+  },
+  locationInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginTop: 12,
+    marginBottom: 8,
   },
-  issueMetaText: {
-    fontSize: 12,
+  addressText: {
+    fontSize: 14,
     color: '#666',
-    fontWeight: '600',
     marginLeft: 6,
+    flex: 1,
   },
-  floatingContainer: {
+  coordinatesContainer: {
+    marginTop: 8,
+  },
+  coordinatesText: {
+    fontSize: 11,
+    color: '#999',
+    fontFamily: 'monospace',
+  },
+  fab: {
     position: 'absolute',
-    bottom: 100,
-    right: 20,
-    alignItems: 'center',
-  },
-  mainFab: {
-    marginBottom: 20,
-  },
-  navFab: {
-    marginBottom: 15,
-  },
-  homeFab: {
-    transform: [{ translateX: -60 }],
-  },
-  reportFab: {
-    transform: [{ translateX: -30 }],
-  },
-  profileFab: {
-    transform: [{ translateX: 0 }],
-  },
-  fabButton: {
+    bottom: 32,
+    right: 16,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
-    borderWidth: 2,
-    borderColor: '#000',
-  },
-  infoBar: {
-    position: 'absolute',
-    top: 60,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  infoText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-  },
-  legend: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  legendText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#000',
   },
 });
