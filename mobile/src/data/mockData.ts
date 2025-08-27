@@ -54,7 +54,7 @@ export const mockIssues: Issue[] = [
     location: {
       latitude: 18.0179,
       longitude: -76.8099,
-      address: 'Spanish Town Road, Half Way Tree, Kingston'
+      address: 'Spanish Town Road, Half Way Tree, Kingston, Jamaica'
     },
     reportedBy: 'Marcia Campbell',
     reportedAt: '2025-01-20T14:30:00Z',
@@ -84,7 +84,7 @@ export const mockIssues: Issue[] = [
     location: {
       latitude: 18.0134,
       longitude: -76.7906,
-      address: 'Hope Road, near Devon House, Kingston'
+      address: 'Hope Road, near Devon House, Kingston, Jamaica'
     },
     reportedBy: 'Shanique Wright',
     reportedAt: '2025-01-18T20:45:00Z',
@@ -108,7 +108,7 @@ export const mockIssues: Issue[] = [
     location: {
       latitude: 17.9673,
       longitude: -76.7936,
-      address: 'Orange Street, Downtown Kingston'
+      address: 'Orange Street, Downtown Kingston, Jamaica'
     },
     reportedBy: 'Junior Thompson',
     reportedAt: '2025-01-15T16:20:00Z',
@@ -132,7 +132,7 @@ export const mockIssues: Issue[] = [
     location: {
       latitude: 18.0080,
       longitude: -76.7837,
-      address: 'Knutsford Boulevard, New Kingston'
+      address: 'Knutsford Boulevard, New Kingston, Jamaica'
     },
     reportedBy: 'Patricia Green',
     reportedAt: '2025-01-19T12:15:00Z',
@@ -149,7 +149,7 @@ export const mockIssues: Issue[] = [
     location: {
       latitude: 18.0099,
       longitude: -76.7845,
-      address: 'Emancipation Park, New Kingston'
+      address: 'Emancipation Park, New Kingston, Jamaica'
     },
     reportedBy: 'Michael Brown',
     reportedAt: '2025-01-17T10:00:00Z',
@@ -173,7 +173,7 @@ export const mockIssues: Issue[] = [
     location: {
       latitude: 18.0244,
       longitude: -76.7972,
-      address: 'Constant Spring Road, near Tropical Plaza'
+      address: 'Constant Spring Road, near Tropical Plaza, Jamaica'
     },
     reportedBy: 'Andre Campbell',
     reportedAt: '2025-01-22T07:30:00Z',

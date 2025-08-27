@@ -13,7 +13,7 @@ const roleOptions = [
     value: 'reporter' as UserRole, 
     label: 'Reporter', 
     icon: 'location-outline',
-    description: 'Identify and report community issues'
+    description: 'Identify and report issues in Jamaica'
   },
   { 
     value: 'fixer' as UserRole, 
@@ -31,7 +31,7 @@ const roleOptions = [
     value: 'organization' as UserRole, 
     label: 'Organization', 
     icon: 'business-outline',
-    description: 'Coordinate large-scale community initiatives'
+    description: 'Coordinate large-scale initiatives across Jamaica'
   },
 ];
 

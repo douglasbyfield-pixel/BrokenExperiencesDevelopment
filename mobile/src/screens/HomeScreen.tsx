@@ -9,7 +9,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
 
-  // Community stats
+  // Jamaica stats
   const communityStats = {
     totalIssues: issues.length,
     resolvedThisWeek: issues.filter(i => i.status === 'resolved').length,
@@ -84,7 +84,7 @@ export default function HomeScreen() {
       </Text>
       <Text style={styles.emptySubtext}>
         {selectedFilter === 'all' 
-          ? 'Be the first to report an issue in your community'
+          ? 'Be the first to report an issue in Jamaica'
           : 'Try switching to another filter'
         }
       </Text>
@@ -102,12 +102,12 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Ionicons name="home" size={32} color="#000" style={styles.titleIcon} />
-          <Text style={styles.title}>Community Issues</Text>
+          <Text style={styles.title}>Jamaica Issues</Text>
         </View>
-        <Text style={styles.subtitle}>Stay informed about your neighborhood</Text>
+        <Text style={styles.subtitle}>Stay informed about Jamaica</Text>
       </View>
 
-      {/* Community Stats */}
+      {/* Jamaica Stats */}
       <View style={styles.statsSection}>
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
@@ -167,7 +167,7 @@ export default function HomeScreen() {
 
       <View style={styles.filterContainer}>
         <View style={styles.filterHeader}>
-          <Text style={styles.filterTitle}>Community Issues</Text>
+          <Text style={styles.filterTitle}>Jamaica Issues</Text>
           <Text style={styles.filterSubtitle}>Filter by status</Text>
         </View>
         <View style={styles.filterButtons}>

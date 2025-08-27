@@ -88,7 +88,7 @@ export default function ReportScreen() {
 
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      Alert.alert('Success!', 'Issue reported successfully! Thank you for helping improve your community.', [
+              Alert.alert('Success!', 'Issue reported successfully! Thank you for helping improve Jamaica.', [
         {
           text: 'Report Another',
           onPress: () => {
@@ -151,7 +151,7 @@ export default function ReportScreen() {
           <Ionicons name="add-circle" size={24} color="#000" style={styles.titleIcon} />
           <Text style={styles.title}>Report Issue</Text>
         </View>
-        <Text style={styles.subtitle}>Help improve your community</Text>
+        <Text style={styles.subtitle}>Help improve Jamaica</Text>
         
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
