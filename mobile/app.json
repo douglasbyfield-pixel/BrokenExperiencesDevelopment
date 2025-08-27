@@ -31,7 +31,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "This app uses location to show your position on the map."
         }
-      ]
+      ],
+      "expo-maps"
     ]
   }
 }

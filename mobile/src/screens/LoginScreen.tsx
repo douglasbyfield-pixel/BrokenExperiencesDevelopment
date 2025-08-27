@@ -39,6 +39,7 @@ export default function LoginScreen() {
   const { setIsAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole>('reporter');
   
@@ -118,6 +119,18 @@ export default function LoginScreen() {
     
     try {
       if (isSignUp) {
+        // Validate passwords match
+        if (password !== confirmPassword) {
+          Alert.alert('Error', 'Passwords do not match');
+          return;
+        }
+        
+        // Validate password length
+        if (password.length < 6) {
+          Alert.alert('Error', 'Password must be at least 6 characters long');
+          return;
+        }
+        
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -201,6 +214,16 @@ export default function LoginScreen() {
         onChangeText={setPassword}
         secureTextEntry
       />
+      
+      {isSignUp && (
+        <TextInput
+          style={styles.input}
+          placeholder="Confirm Password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+        />
+      )}
 
       {isSignUp && (
         <Animated.View style={[styles.roleSection, { opacity: fadeAnim }]}>
@@ -246,7 +269,11 @@ export default function LoginScreen() {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
+      <TouchableOpacity onPress={() => {
+        setIsSignUp(!isSignUp);
+        // Clear confirm password when switching modes
+        setConfirmPassword('');
+      }}>
         <Text style={styles.switchText}>
           {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
         </Text>
