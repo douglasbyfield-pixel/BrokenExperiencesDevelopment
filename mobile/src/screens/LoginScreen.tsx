@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, Dimensions, View, StatusBar } from 'react-native';
+import { Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, Dimensions, View, StatusBar, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +13,7 @@ const roleOptions = [
     value: 'reporter' as UserRole, 
     label: 'Reporter', 
     icon: 'location-outline',
-    description: 'Identify and report issues in Jamaica'
+    description: 'Identify and report community issues'
   },
   { 
     value: 'fixer' as UserRole, 
@@ -31,7 +31,7 @@ const roleOptions = [
     value: 'organization' as UserRole, 
     label: 'Organization', 
     icon: 'business-outline',
-    description: 'Coordinate large-scale initiatives across Jamaica'
+    description: 'Coordinate large-scale community initiatives'
   },
 ];
 
@@ -49,6 +49,8 @@ export default function LoginScreen() {
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Smooth entrance animations
@@ -96,7 +98,43 @@ export default function LoginScreen() {
       })
     );
     rotateAnimation.start();
-  }, []);
+
+    // Floating animation for decorative elements
+    const floatAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration: 3000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 3000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    floatAnimation.start();
+
+    // Glow animation for sign-in mode
+    if (!isSignUp) {
+      const glowAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: false,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0,
+            duration: 2000,
+            useNativeDriver: false,
+          }),
+        ])
+      );
+      glowAnimation.start();
+    }
+  }, [isSignUp]);
 
   const handleButtonPress = () => {
     // Animate button press
@@ -173,19 +211,18 @@ export default function LoginScreen() {
     outputRange: ['0deg', '360deg'],
   });
 
+  const float = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 10],
+  });
+
+  const glow = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
   return (
-    <Animated.View 
-      style={[
-        styles.container, 
-        { 
-          opacity: fadeAnim,
-          transform: [
-            { translateY: slideAnim },
-            { scale: scaleAnim }
-          ]
-        }
-      ]}
-    >
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       
       {/* Animated background elements */}
@@ -193,91 +230,137 @@ export default function LoginScreen() {
         <Ionicons name="compass-outline" size={80} color="#000" />
       </Animated.View>
 
-      {/* Clean title text */}
-      <Text style={styles.title}>BROKEN</Text>
-      <Text style={styles.titleSecondary}>EXPERIENCES</Text>
-      <Text style={styles.subtitle}>Report and fix issues across the island</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      
-      {isSignUp && (
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-        />
+      {/* Decorative floating elements for sign-in */}
+      {!isSignUp && (
+        <>
+          <Animated.View style={[styles.floatingElement1, { transform: [{ translateY: float }] }]}>
+            <Ionicons name="location" size={24} color="#000" />
+          </Animated.View>
+          <Animated.View style={[styles.floatingElement2, { transform: [{ translateY: float }] }]}>
+            <Ionicons name="construct" size={20} color="#000" />
+          </Animated.View>
+          <Animated.View style={[styles.floatingElement3, { transform: [{ translateY: float }] }]}>
+            <Ionicons name="heart" size={18} color="#000" />
+          </Animated.View>
+        </>
       )}
 
-      {isSignUp && (
-        <Animated.View style={[styles.roleSection, { opacity: fadeAnim }]}>
-          <Text style={styles.roleTitle}>Choose Your Role</Text>
-          <Text style={styles.roleSubtitle}>How would you like to contribute?</Text>
-          
-          <View style={styles.roleGrid}>
-            {roleOptions.map((role) => (
-              <TouchableOpacity
-                key={role.value}
-                style={[
-                  styles.roleCard,
-                  selectedRole === role.value && styles.roleCardActive
-                ]}
-                onPress={() => setSelectedRole(role.value)}
-              >
-                <Ionicons 
-                  name={role.icon as any} 
-                  size={32} 
-                  color={selectedRole === role.value ? '#fff' : '#000'} 
-                />
-                <Text style={[
-                  styles.roleLabel, 
-                  selectedRole === role.value && styles.roleLabelActive
-                ]}>
-                  {role.label}
-                </Text>
-                <Text style={[
-                  styles.roleDescription, 
-                  selectedRole === role.value && styles.roleDescriptionActive
-                ]}>
-                  {role.description}
-                </Text>
-              </TouchableOpacity>
-            ))}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+      >
+        <Animated.View 
+          style={[
+            styles.contentContainer, 
+            { 
+              opacity: fadeAnim,
+              transform: [
+                { translateY: slideAnim },
+                { scale: scaleAnim }
+              ]
+            }
+          ]}
+        >
+          {/* Clean title text */}
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>BROKEN</Text>
+            <Text style={styles.titleSecondary}>EXPERIENCES</Text>
+            <Text style={styles.subtitle}>Report and fix issues in your community</Text>
+            
+            {/* Welcome message for sign-in */}
+            {!isSignUp && (
+              <Animated.View style={[styles.welcomeContainer, { opacity: glow }]}>
+                <Text style={styles.welcomeText}>Welcome back! 👋</Text>
+                <Text style={styles.welcomeSubtext}>Ready to make your community better?</Text>
+              </Animated.View>
+            )}
+          </View>
+
+          <View style={styles.formSection}>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            
+            {isSignUp && (
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+              />
+            )}
+
+            {isSignUp && (
+              <Animated.View style={[styles.roleSection, { opacity: fadeAnim }]}>
+                <Text style={styles.roleTitle}>Choose Your Role</Text>
+                <Text style={styles.roleSubtitle}>How would you like to contribute?</Text>
+                
+                <View style={styles.roleGrid}>
+                  {roleOptions.map((role) => (
+                    <TouchableOpacity
+                      key={role.value}
+                      style={[
+                        styles.roleCard,
+                        selectedRole === role.value && styles.roleCardActive
+                      ]}
+                      onPress={() => setSelectedRole(role.value)}
+                    >
+                      <Ionicons 
+                        name={role.icon as any} 
+                        size={32} 
+                        color={selectedRole === role.value ? '#fff' : '#000'} 
+                      />
+                      <Text style={[
+                        styles.roleLabel, 
+                        selectedRole === role.value && styles.roleLabelActive
+                      ]}>
+                        {role.label}
+                      </Text>
+                      <Text style={[
+                        styles.roleDescription, 
+                        selectedRole === role.value && styles.roleDescriptionActive
+                      ]}>
+                        {role.description}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Animated.View>
+            )}
+
+            <TouchableOpacity style={styles.button} onPress={handleAuth}>
+              <Text style={styles.buttonText}>
+                {isSignUp ? 'Sign Up' : 'Sign In'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => {
+              setIsSignUp(!isSignUp);
+              // Clear confirm password when switching modes
+              setConfirmPassword('');
+            }}>
+              <Text style={styles.switchText}>
+                {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+              </Text>
+            </TouchableOpacity>
           </View>
         </Animated.View>
-      )}
-
-      <TouchableOpacity style={styles.button} onPress={handleAuth}>
-        <Text style={styles.buttonText}>
-          {isSignUp ? 'Sign Up' : 'Sign In'}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => {
-        setIsSignUp(!isSignUp);
-        // Clear confirm password when switching modes
-        setConfirmPassword('');
-      }}>
-        <Text style={styles.switchText}>
-          {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
-        </Text>
-      </TouchableOpacity>
+      </ScrollView>
 
       {/* Explore App Button */}
       <Animated.View style={[styles.exploreContainer, { transform: [{ scale: pulseAnim }] }]}>
@@ -286,18 +369,32 @@ export default function LoginScreen() {
           <Text style={styles.exploreText}>Explore App</Text>
         </TouchableOpacity>
       </Animated.View>
-    </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 30,
-    justifyContent: 'center',
     backgroundColor: '#f8f9fa',
-    overflow: 'hidden',
     position: 'relative',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingHorizontal: 30,
+    paddingTop: 60,
+    paddingBottom: 120,
+  },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  titleSection: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  formSection: {
+    flex: 1,
   },
   compassContainer: {
     position: 'absolute',
@@ -305,27 +402,43 @@ const styles = StyleSheet.create({
     right: 30,
     opacity: 0.1,
   },
-  glitchOverlay: {
+  floatingElement1: {
     position: 'absolute',
-    inset: 0,
-    pointerEvents: 'none',
-  },
-  glitchRed: {
-    position: 'absolute',
-    inset: 0,
-    backgroundColor: '#dc2626',
-    mixBlendMode: 'screen',
+    top: height * 0.2,
+    left: 20,
     opacity: 0.3,
   },
-  glitchBlue: {
+  floatingElement2: {
     position: 'absolute',
-    inset: 0,
-    backgroundColor: '#2563eb',
-    mixBlendMode: 'screen',
-    opacity: 0.3,
+    top: height * 0.4,
+    right: 40,
+    opacity: 0.2,
   },
-  titleContainer: {
+  floatingElement3: {
+    position: 'absolute',
+    top: height * 0.6,
+    left: 50,
+    opacity: 0.25,
+  },
+  welcomeContainer: {
     alignItems: 'center',
+    marginTop: 20,
+    padding: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#000',
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#000',
+    marginBottom: 8,
+  },
+  welcomeSubtext: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '600',
   },
   title: {
     fontSize: 42,
@@ -338,12 +451,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
   },
-  letterB: {},
-  letterR: {},
-  letterO: {},
-  letterK: {},
-  letterE1: {},
-  letterN: {},
   titleSecondary: {
     fontSize: 42,
     fontWeight: '900',
@@ -358,37 +465,16 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 18,
     textAlign: 'center',
-    marginBottom: 50,
+    marginBottom: 20,
     color: '#666',
     fontWeight: '500',
     lineHeight: 24,
-  },
-
-  crackLine1: {
-    position: 'absolute',
-    top: height * 0.3,
-    left: -20,
-    width: width * 0.4,
-    height: 2,
-    backgroundColor: '#000',
-    opacity: 0.1,
-    transform: [{ rotate: '15deg' }],
-  },
-  crackLine2: {
-    position: 'absolute',
-    bottom: height * 0.35,
-    right: -30,
-    width: width * 0.35,
-    height: 1,
-    backgroundColor: '#000',
-    opacity: 0.08,
-    transform: [{ rotate: '-25deg' }],
   },
   input: {
     backgroundColor: 'white',
     padding: 20,
     borderRadius: 16,
-    marginBottom: 24,
+    marginBottom: 20,
     fontSize: 17,
     borderWidth: 3,
     borderColor: '#000',
@@ -406,7 +492,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 50,
     borderRadius: 16,
     alignItems: 'center',
-    marginBottom: 35,
+    marginBottom: 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.4,
@@ -459,60 +545,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
     letterSpacing: 0.5,
-  },
-  debris1: {
-    position: 'absolute',
-    top: height * 0.25,
-    left: width * 0.33,
-    width: 8,
-    height: 8,
-    backgroundColor: '#6b7280',
-    borderRadius: 4,
-  },
-  debris2: {
-    position: 'absolute',
-    top: height * 0.33,
-    right: width * 0.25,
-    width: 4,
-    height: 4,
-    backgroundColor: '#9ca3af',
-    borderRadius: 2,
-  },
-  debris3: {
-    position: 'absolute',
-    bottom: height * 0.33,
-    left: width * 0.25,
-    width: 12,
-    height: 4,
-    backgroundColor: '#d1d5db',
-    borderRadius: 2,
-  },
-  debris4: {
-    position: 'absolute',
-    bottom: height * 0.25,
-    right: width * 0.33,
-    width: 4,
-    height: 8,
-    backgroundColor: '#4b5563',
-    borderRadius: 2,
-  },
-  debris5: {
-    position: 'absolute',
-    top: height * 0.67,
-    left: width * 0.67,
-    width: 8,
-    height: 4,
-    backgroundColor: '#6b7280',
-    borderRadius: 2,
-  },
-  debris6: {
-    position: 'absolute',
-    top: height * 0.5,
-    right: width * 0.5,
-    width: 4,
-    height: 4,
-    backgroundColor: '#9ca3af',
-    borderRadius: 2,
   },
   roleSection: {
     marginBottom: 30,
