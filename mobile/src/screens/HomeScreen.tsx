@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, RefreshControl, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, RefreshControl, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { mockIssues, Issue, getCategoryIcon, getPriorityColor, getStatusColor, formatTimeAgo, mockUserProfile } from '../data/mockData';
+
+const { width } = Dimensions.get('window');
 
 
 export default function HomeScreen() {
   const [issues, setIssues] = useState<Issue[]>(mockIssues);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
+  const scrollViewRef = React.useRef<ScrollView>(null);
 
   // Jamaica stats
   const communityStats = {
@@ -29,16 +32,25 @@ export default function HomeScreen() {
 
   const filteredIssues = selectedFilter === 'all' ? issues : issues.filter(issue => issue.status === selectedFilter);
 
-  const renderFilterButton = (filter: typeof selectedFilter, label: string, count: number) => (
-    <TouchableOpacity
-      style={[styles.filterButton, selectedFilter === filter && styles.filterButtonActive]}
-      onPress={() => setSelectedFilter(filter)}
-    >
-      <Text style={[styles.filterText, selectedFilter === filter && styles.filterTextActive]}>
-        {label} ({count})
-      </Text>
-    </TouchableOpacity>
-  );
+  const renderFilterButton = (filter: typeof selectedFilter, label: string, count: number) => {
+    const isActive = selectedFilter === filter;
+    return (
+      <TouchableOpacity
+        style={[styles.filterButton, isActive && styles.filterButtonActive]}
+        onPress={() => {
+          setSelectedFilter(filter);
+          if (scrollViewRef.current && !isActive) {
+            scrollViewRef.current.scrollTo({ x: 0, animated: true });
+          }
+        }}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+          {label} ({count})
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   const renderIssue = ({ item }: { item: Issue }) => {
     const priorityColor = getPriorityColor(item.priority);
@@ -65,9 +77,12 @@ export default function HomeScreen() {
         </Text>
 
         <View style={styles.cardFooter}>
-          <Text style={styles.locationText} numberOfLines={1}>
-            {item.location.address}
-          </Text>
+          <View style={styles.locationContainer}>
+            <Ionicons name="location-outline" size={14} color="#666" />
+            <Text style={styles.locationText} numberOfLines={1}>
+              {item.location.address}
+            </Text>
+          </View>
           <Text style={styles.upvotesText}>↑ {item.upvotes}</Text>
         </View>
       </TouchableOpacity>
@@ -126,7 +141,7 @@ export default function HomeScreen() {
             <Text style={styles.statLabel}>Active Members</Text>
           </View>
           
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, styles.resolvedStatCard]}>
             <View style={styles.statIconContainer}>
               <Ionicons name="checkmark-done-outline" size={24} color="#16a34a" />
             </View>
@@ -146,9 +161,13 @@ export default function HomeScreen() {
           </View>
         </View>
         
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trendingList}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.trendingList}
+        >
           {trendingIssues.map((issue) => (
-            <TouchableOpacity key={issue.id} style={styles.trendingCard}>
+            <TouchableOpacity key={issue.id} style={styles.trendingCard} activeOpacity={0.7}>
               <View style={styles.trendingHeader}>
                 <Ionicons name={getCategoryIcon(issue.category) as any} size={20} color="#000" />
                 <View style={[styles.trendingPriority, { backgroundColor: getPriorityColor(issue.priority) }]} />
@@ -170,12 +189,18 @@ export default function HomeScreen() {
           <Text style={styles.filterTitle}>Jamaica Issues</Text>
           <Text style={styles.filterSubtitle}>Filter by status</Text>
         </View>
-        <View style={styles.filterButtons}>
+        <ScrollView 
+          ref={scrollViewRef}
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScrollContent}
+          style={styles.filterButtons}
+        >
           {renderFilterButton('all', 'All', issues.length)}
           {renderFilterButton('pending', 'Pending', pendingCount)}
           {renderFilterButton('in_progress', 'Active', inProgressCount)}
           {renderFilterButton('resolved', 'Resolved', resolvedCount)}
-        </View>
+        </ScrollView>
       </View>
 
       {filteredIssues.length === 0 ? (
@@ -244,6 +269,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  resolvedStatCard: {
+    backgroundColor: '#f0fdf4',
   },
   statIconContainer: {
     marginBottom: 8,
@@ -297,6 +326,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
     padding: 16,
+    marginRight: 12,
   },
   trendingHeader: {
     flexDirection: 'row',
@@ -351,8 +381,11 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   filterButtons: {
-    flexDirection: 'row',
-    gap: 12,
+    maxHeight: 50,
+  },
+  filterScrollContent: {
+    paddingRight: 20,
+    alignItems: 'center',
   },
   filterButton: {
     paddingHorizontal: 16,
@@ -447,11 +480,18 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
   locationText: {
     fontSize: 12,
     color: '#666',
     marginLeft: 4,
     fontWeight: '500',
+    flex: 1,
   },
   metaContainer: {
     flexDirection: 'row',
