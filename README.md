@@ -1,10 +1,10 @@
 # BrokenExperiences
 
-A React Native app for reporting and tracking infrastructure issues in your community.
+A React Native app for reporting and tracking infrastructure issues in Jamaica.
 
 ## What it does
 
-Report broken stuff in your area - potholes, broken streetlights, damaged signs, etc. Connect with people who can fix them.
+Report broken stuff in Jamaica - potholes, broken streetlights, damaged signs, etc. Connect with people who can fix them.
 
 ## Tech Stack
 
