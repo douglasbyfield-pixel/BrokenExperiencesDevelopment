@@ -8,6 +8,7 @@ import IssueDetailScreen from './IssueDetailScreen';
 interface BookmarksScreenProps {
   navigation: any;
 }
+// grngnhfhf
 
 export default function BookmarksScreen({ navigation }: BookmarksScreenProps) {
   const { getBookmarkedIssues, isBookmarked, toggleBookmark } = useBookmark();
