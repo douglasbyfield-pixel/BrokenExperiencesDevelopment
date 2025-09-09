@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Dimensions, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Issue, getCategoryIcon, getPriorityColor, formatTimeAgo } from '../data/mockData';
+import { useComment } from '../context/CommentContext';
+import CommentInput from '../components/CommentInput';
+import CommentItem from '../components/CommentItem';
+import IssueReactions from '../components/IssueReactions';
 
 const { width, height } = Dimensions.get('window');
 
@@ -14,7 +18,12 @@ interface IssueDetailScreenProps {
 }
 
 export default function IssueDetailScreen({ issue, visible, onClose, onNavigateToIssue, allIssues }: IssueDetailScreenProps) {
+  const { getCommentsForIssue } = useComment();
+  const [showCommentInput, setShowCommentInput] = useState(false);
+  
   if (!issue) return null;
+
+  const comments = getCommentsForIssue(issue.id);
 
   const currentIndex = allIssues.findIndex(i => i.id === issue.id);
   const hasPrevious = currentIndex > 0;
@@ -54,7 +63,7 @@ export default function IssueDetailScreen({ issue, visible, onClose, onNavigateT
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Issue Card */}
           <View style={styles.issueCard}>
             <View style={styles.cardHeader}>
@@ -110,38 +119,45 @@ export default function IssueDetailScreen({ issue, visible, onClose, onNavigateT
 
           {/* Comments Section */}
           <View style={styles.commentsSection}>
-            <Text style={styles.commentsTitle}>Comments ({issue.comments.length})</Text>
+            <View style={styles.commentsHeader}>
+              <Text style={styles.commentsTitle}>Comments ({comments.length})</Text>
+              <TouchableOpacity 
+                style={styles.addCommentButton}
+                onPress={() => setShowCommentInput(!showCommentInput)}
+              >
+                <Ionicons name="add" size={20} color="#1DA1F2" />
+                <Text style={styles.addCommentButtonText}>Add Comment</Text>
+              </TouchableOpacity>
+            </View>
             
-            {issue.comments.length === 0 ? (
+            {showCommentInput && (
+              <CommentInput
+                issueId={issue.id}
+                placeholder="Share your thoughts on this issue..."
+                onCommentAdded={() => setShowCommentInput(false)}
+              />
+            )}
+            
+            {comments.length === 0 ? (
               <View style={styles.noComments}>
                 <Ionicons name="chatbubbles-outline" size={48} color="#ccc" />
                 <Text style={styles.noCommentsText}>No comments yet</Text>
                 <Text style={styles.noCommentsSubtext}>Be the first to comment on this issue</Text>
               </View>
             ) : (
-              issue.comments.map((comment) => (
-                <View key={comment.id} style={styles.commentCard}>
-                  <View style={styles.commentHeader}>
-                    <Text style={styles.commentAuthor}>{comment.author}</Text>
-                    <Text style={styles.commentTime}>{formatTimeAgo(comment.createdAt)}</Text>
-                  </View>
-                  <Text style={styles.commentText}>{comment.text}</Text>
-                </View>
+              comments.map((comment) => (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  issueId={issue.id}
+                />
               ))
             )}
           </View>
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="thumbs-up-outline" size={20} color="#000" />
-              <Text style={styles.actionButtonText}>Upvote</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="chatbubble-outline" size={20} color="#000" />
-              <Text style={styles.actionButtonText}>Comment</Text>
-            </TouchableOpacity>
+            <IssueReactions issueId={issue.id} />
             
             <TouchableOpacity style={styles.actionButton}>
               <Ionicons name="share-outline" size={20} color="#000" />
@@ -210,6 +226,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   issueCard: {
     backgroundColor: '#ffffff',
@@ -312,11 +331,32 @@ const styles = StyleSheet.create({
     margin: 20,
     marginTop: 0,
   },
+  commentsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   commentsTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#000',
-    marginBottom: 16,
+  },
+  addCommentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f8ff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1DA1F2',
+  },
+  addCommentButtonText: {
+    fontSize: 14,
+    color: '#1DA1F2',
+    fontWeight: '600',
+    marginLeft: 4,
   },
   noComments: {
     alignItems: 'center',
@@ -332,32 +372,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ccc',
     marginTop: 4,
-  },
-  commentCard: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-  },
-  commentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  commentAuthor: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-  },
-  commentTime: {
-    fontSize: 12,
-    color: '#999',
-  },
-  commentText: {
-    fontSize: 14,
-    color: '#333',
-    lineHeight: 20,
   },
   actionButtons: {
     flexDirection: 'row',

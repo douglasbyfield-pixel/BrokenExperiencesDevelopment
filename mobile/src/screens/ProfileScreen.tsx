@@ -33,6 +33,10 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
     navigation.navigate('Bookmarks');
   };
 
+  const handleComments = () => {
+    navigation.navigate('UserComments');
+  };
+
   const renderBadge = (badge: typeof mockUserProfile.badges[0]) => {
     return (
       <View key={badge.id} style={styles.badge}>
@@ -114,6 +118,12 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
           <TouchableOpacity style={styles.actionButton} onPress={handleEditProfile}>
             <Ionicons name="create-outline" size={20} color="#000" />
             <Text style={styles.actionButtonText}>Edit Profile</Text>
+            <Ionicons name="chevron-forward" size={16} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionButton} onPress={handleComments}>
+            <Ionicons name="chatbubbles-outline" size={20} color="#000" />
+            <Text style={styles.actionButtonText}>Comments</Text>
             <Ionicons name="chevron-forward" size={16} color="#666" />
           </TouchableOpacity>
 
