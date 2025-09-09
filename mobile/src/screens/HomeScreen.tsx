@@ -4,23 +4,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { mockIssues, Issue, getCategoryIcon, getPriorityColor, getStatusColor, formatTimeAgo, mockUserProfile } from '../data/mockData';
 import IssueDetailScreen from './IssueDetailScreen';
 
+interface HomeScreenProps {
+  navigation: any;
+}
+
 const { width } = Dimensions.get('window');
 
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [issues, setIssues] = useState<Issue[]>(mockIssues);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
   const [selectedPriorityFilter, setSelectedPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high' | 'critical'>('all');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [currentTrendingIndex, setCurrentTrendingIndex] = useState(0);
   const scrollViewRef = React.useRef<ScrollView>(null);
-  const trendingScrollRef = useRef<ScrollView>(null);
-  const trendingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Jamaica stats
   const communityStats = {
@@ -30,7 +29,6 @@ export default function HomeScreen() {
     impactScore: 342
   };
 
-  const trendingIssues = issues.slice(0, 3).sort((a, b) => b.upvotes - a.upvotes);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -67,29 +65,6 @@ export default function HomeScreen() {
     }
   };
 
-  // Slideshow functionality
-  useEffect(() => {
-    if (trendingIssues.length > 1) {
-      trendingIntervalRef.current = setInterval(() => {
-        setCurrentTrendingIndex((prevIndex) => {
-          const nextIndex = (prevIndex + 1) % trendingIssues.length;
-          if (trendingScrollRef.current) {
-            trendingScrollRef.current.scrollTo({
-              x: nextIndex * (width * 0.8 + 12), // card width + margin
-              animated: true,
-            });
-          }
-          return nextIndex;
-        });
-      }, 3000); // Change slide every 3 seconds
-    }
-
-    return () => {
-      if (trendingIntervalRef.current) {
-        clearInterval(trendingIntervalRef.current);
-      }
-    };
-  }, [trendingIssues.length]);
 
   const filteredIssues = issues.filter(issue => {
     const statusMatch = selectedStatusFilter === 'all' || issue.status === selectedStatusFilter;
@@ -97,18 +72,9 @@ export default function HomeScreen() {
     return statusMatch && priorityMatch;
   });
 
-  const searchResults = issues.filter(issue => {
-    if (!searchQuery.trim()) return false;
-    const query = searchQuery.toLowerCase();
-    return (
-      issue.title.toLowerCase().includes(query) ||
-      issue.description.toLowerCase().includes(query) ||
-      issue.postContent.postText.toLowerCase().includes(query) ||
-      issue.location.address.toLowerCase().includes(query) ||
-      issue.author.name.toLowerCase().includes(query) ||
-      issue.postContent.hashtags.some(tag => tag.toLowerCase().includes(query))
-    );
-  });
+  const handleSearchPress = () => {
+    navigation.navigate('SearchResults', { searchQuery: '' });
+  };
 
   const renderStatusFilterButton = (filter: typeof selectedStatusFilter, label: string, count: number) => {
     const isActive = selectedStatusFilter === filter;
@@ -292,7 +258,7 @@ export default function HomeScreen() {
             <View style={styles.headerButtons}>
               <TouchableOpacity 
                 style={styles.searchButton} 
-                onPress={() => setShowSearch(true)}
+                onPress={handleSearchPress}
                 activeOpacity={0.7}
               >
                 <Ionicons name="search-outline" size={24} color="#000" />
@@ -331,59 +297,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Trending Issues Slideshow */}
-        <View style={styles.trendingSection}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="trending-up" size={24} color="#000" />
-            <Text style={styles.sectionTitle}>Trending Issues</Text>
-            <View style={styles.trendingBadge}>
-              <Text style={styles.trendingBadgeText}>HOT</Text>
-            </View>
-          </View>
-          
-          <ScrollView 
-            ref={trendingScrollRef}
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            contentContainerStyle={styles.trendingList}
-            scrollEnabled={false}
-            pagingEnabled={false}
-          >
-            {trendingIssues.map((issue, index) => (
-              <TouchableOpacity 
-                key={issue.id} 
-                style={styles.trendingCard} 
-                activeOpacity={0.7}
-                onPress={() => handleIssuePress(issue)}
-              >
-                <View style={styles.trendingHeader}>
-                  <Ionicons name={getCategoryIcon(issue.category) as any} size={20} color="#000" />
-                  <View style={[styles.trendingPriority, { backgroundColor: getPriorityColor(issue.priority) }]} />
-                </View>
-                <Text style={styles.trendingTitle} numberOfLines={2}>
-                  {issue.title}
-                </Text>
-                <View style={styles.trendingMeta}>
-                  <Text style={styles.trendingUpvotes}>↑ {issue.upvotes}</Text>
-                  <Text style={styles.trendingTime}>{formatTimeAgo(issue.reportedAt)}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          
-          {/* Slideshow Indicators */}
-          <View style={styles.slideshowIndicators}>
-            {trendingIssues.map((_, index) => (
-              <View 
-                key={index} 
-                style={[
-                  styles.indicator, 
-                  index === currentTrendingIndex && styles.activeIndicator
-                ]} 
-              />
-            ))}
-          </View>
-        </View>
 
 
         {/* Active Filters Summary */}
@@ -466,100 +379,6 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Search Modal */}
-      <Modal
-        visible={showSearch}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowSearch(false)}
-      >
-        <View style={styles.searchContainer}>
-          <View style={styles.searchHeader}>
-            <View style={styles.searchBarContainer}>
-              <Ionicons name="search-outline" size={20} color="#666" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search issues, locations, hashtags..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoFocus={true}
-                returnKeyType="search"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearSearchButton}>
-                  <Ionicons name="close-circle" size={20} color="#666" />
-                </TouchableOpacity>
-              )}
-            </View>
-            <TouchableOpacity 
-              onPress={() => setShowSearch(false)} 
-              style={styles.cancelSearchButton}
-            >
-              <Text style={styles.cancelSearchText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.searchContent} showsVerticalScrollIndicator={false}>
-            {searchQuery.length === 0 ? (
-              // Show trending issues when no search query
-              <View>
-                <View style={styles.searchSectionHeader}>
-                  <Ionicons name="trending-up" size={20} color="#000" />
-                  <Text style={styles.searchSectionTitle}>Trending Issues</Text>
-                </View>
-                <View style={styles.trendingSearchList}>
-                  {trendingIssues.map((issue) => (
-                    <TouchableOpacity 
-                      key={issue.id} 
-                      style={styles.trendingSearchCard} 
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        setSelectedIssue(issue);
-                        setShowDetailModal(true);
-                        setShowSearch(false);
-                      }}
-                    >
-                      <View style={styles.trendingSearchHeader}>
-                        <Ionicons name={getCategoryIcon(issue.category) as any} size={18} color="#000" />
-                        <View style={[styles.trendingSearchPriority, { backgroundColor: getPriorityColor(issue.priority) }]} />
-                      </View>
-                      <Text style={styles.trendingSearchTitle} numberOfLines={2}>
-                        {issue.title}
-                      </Text>
-                      <View style={styles.trendingSearchMeta}>
-                        <Text style={styles.trendingSearchUpvotes}>↑ {issue.upvotes}</Text>
-                        <Text style={styles.trendingSearchTime}>{formatTimeAgo(issue.timestamp)}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            ) : searchResults.length === 0 ? (
-              // No results found
-              <View style={styles.noResultsContainer}>
-                <Ionicons name="search-outline" size={60} color="#ccc" />
-                <Text style={styles.noResultsText}>No issues found</Text>
-                <Text style={styles.noResultsSubtext}>
-                  Try searching for different keywords or check your spelling
-                </Text>
-              </View>
-            ) : (
-              // Search results
-              <View>
-                <View style={styles.searchSectionHeader}>
-                  <Ionicons name="search-outline" size={20} color="#000" />
-                  <Text style={styles.searchSectionTitle}>
-                    {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
-                  </Text>
-                </View>
-                <View style={styles.searchResultsList}>
-                  {searchResults.map((issue) => renderIssue(issue))}
-                </View>
-              </View>
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -649,96 +468,6 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     fontWeight: '400',
-  },
-  trendingSection: {
-    paddingVertical: 16,
-    backgroundColor: '#ffffff',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginLeft: 8,
-    flex: 1,
-  },
-  trendingBadge: {
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  trendingBadgeText: {
-    color: '#666',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  trendingList: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  trendingCard: {
-    width: 160,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 16,
-    marginRight: 12,
-  },
-  trendingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  trendingPriority: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  trendingTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 12,
-    lineHeight: 16,
-  },
-  trendingMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  trendingUpvotes: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#000',
-  },
-  trendingTime: {
-    fontSize: 10,
-    color: '#666',
-    fontWeight: '500',
-  },
-  slideshowIndicators: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 16,
-    paddingHorizontal: 20,
-  },
-  indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#e0e0e0',
-    marginHorizontal: 4,
-  },
-  activeIndicator: {
-    backgroundColor: '#000',
-    width: 20,
   },
   emptyState: {
     justifyContent: 'center',
@@ -1059,134 +788,5 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 4,
     flex: 1,
-  },
-  // Search Modal Styles
-  searchContainer: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  searchHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  searchBarContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginRight: 12,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#000',
-  },
-  clearSearchButton: {
-    marginLeft: 8,
-  },
-  cancelSearchButton: {
-    paddingVertical: 8,
-  },
-  cancelSearchText: {
-    fontSize: 16,
-    color: '#1DA1F2',
-    fontWeight: '500',
-  },
-  searchContent: {
-    flex: 1,
-  },
-  searchSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#f8f9fa',
-  },
-  searchSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginLeft: 8,
-  },
-  trendingSearchList: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  trendingSearchCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  trendingSearchHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  trendingSearchPriority: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  trendingSearchTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  trendingSearchMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  trendingSearchUpvotes: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#000',
-  },
-  trendingSearchTime: {
-    fontSize: 10,
-    color: '#666',
-    fontWeight: '500',
-  },
-  noResultsContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 60,
-  },
-  noResultsText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-    textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  noResultsSubtext: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  searchResultsList: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
   },
 });
