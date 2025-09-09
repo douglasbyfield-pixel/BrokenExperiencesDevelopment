@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, RefreshControl, ScrollView, Dimensions, Image, TextInput, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { mockIssues, Issue, getCategoryIcon, getPriorityColor, getStatusColor, formatTimeAgo, mockUserProfile } from '../data/mockData';
+import { useBookmark } from '../context/BookmarkContext';
 import IssueDetailScreen from './IssueDetailScreen';
 
 interface HomeScreenProps {
@@ -12,6 +13,7 @@ const { width } = Dimensions.get('window');
 
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
+  const { isBookmarked, toggleBookmark } = useBookmark();
   const [issues, setIssues] = useState<Issue[]>(mockIssues);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
@@ -76,6 +78,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     navigation.navigate('SearchResults', { searchQuery: '' });
   };
 
+  const handleBookmarkPress = (issueId: string) => {
+    toggleBookmark(issueId);
+  };
+
   const renderStatusFilterButton = (filter: typeof selectedStatusFilter, label: string, count: number) => {
     const isActive = selectedStatusFilter === filter;
     return (
@@ -138,9 +144,22 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               <Text style={styles.postTime}>{formatTimeAgo(item.timestamp)}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.moreButton}>
-            <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.bookmarkButton}
+              onPress={() => handleBookmarkPress(item.id)}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name={isBookmarked(item.id) ? "bookmark" : "bookmark-outline"} 
+                size={24} 
+                color={isBookmarked(item.id) ? "#FFD700" : "#000"} 
+              />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.moreButton}>
+              <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Post Content */}
@@ -702,6 +721,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bookmarkButton: {
+    padding: 8,
+    marginRight: 8,
   },
   moreButton: {
     padding: 8,

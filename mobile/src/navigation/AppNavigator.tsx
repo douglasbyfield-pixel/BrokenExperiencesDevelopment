@@ -10,12 +10,15 @@ import MapScreen from '../screens/MapScreen';
 import ReportScreen from '../screens/ReportScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SearchResultsScreen from '../screens/SearchResultsScreen';
+import BookmarksScreen from '../screens/BookmarksScreen';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { BookmarkProvider } from '../context/BookmarkContext';
 
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
   SearchResults: { searchQuery?: string };
+  Bookmarks: undefined;
 };
 
 export type MainTabParamList = {
@@ -80,6 +83,7 @@ function AppNavigatorInner() {
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
+            <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={LoginScreen} />
@@ -92,7 +96,9 @@ function AppNavigatorInner() {
 export default function AppNavigator() {
   return (
     <AuthProvider>
-      <AppNavigatorInner />
+      <BookmarkProvider>
+        <AppNavigatorInner />
+      </BookmarkProvider>
     </AuthProvider>
   );
 }

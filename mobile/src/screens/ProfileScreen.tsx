@@ -4,9 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
 import { mockUserProfile } from '../data/mockData';
 
+interface ProfileScreenProps {
+  navigation: any;
+}
+
 const { width } = Dimensions.get('window');
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }: ProfileScreenProps) {
 
   const handleSignOut = async () => {
     try {
@@ -23,6 +27,10 @@ export default function ProfileScreen() {
 
   const handleSettings = () => {
     Alert.alert('Settings', 'Settings page coming soon!');
+  };
+
+  const handleBookmarks = () => {
+    navigation.navigate('Bookmarks');
   };
 
   const renderBadge = (badge: typeof mockUserProfile.badges[0]) => {
@@ -44,6 +52,13 @@ export default function ProfileScreen() {
           <View style={styles.titleContainer}>
             <Ionicons name="person" size={24} color="#000" style={styles.titleIcon} />
             <Text style={styles.title}>Profile</Text>
+            <TouchableOpacity 
+              style={styles.bookmarkButton}
+              onPress={handleBookmarks}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="bookmark-outline" size={24} color="#000" />
+            </TouchableOpacity>
           </View>
           <Text style={styles.subtitle}>Manage your account and track your impact</Text>
         </View>
@@ -144,6 +159,7 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 8,
   },
   titleIcon: {
@@ -153,6 +169,10 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     color: '#000',
+    flex: 1,
+  },
+  bookmarkButton: {
+    padding: 8,
   },
   subtitle: {
     fontSize: 14,
