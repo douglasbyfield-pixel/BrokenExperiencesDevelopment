@@ -1,7 +1,7 @@
 {
   "name": "broken-experiences",
   "version": "1.0.0",
-  "description": "A React Native app for reporting and tracking infrastructure issues in your community",
+  "description": "A React Native app for reporting and tracking infrastructure issues in Jamaica",
   "main": "index.js",
   "scripts": {
     "install": "cd mobile && npm install",
@@ -18,7 +18,7 @@
     "react-native",
     "expo",
     "supabase",
-    "community",
+    "jamaica",
     "infrastructure",
     "reporting"
   ],
