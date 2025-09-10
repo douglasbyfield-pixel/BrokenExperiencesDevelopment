@@ -119,6 +119,8 @@ coverage
 # next.js build output
 .next
 
+.env
+
 # nuxt.js build output
 .nuxt
 
