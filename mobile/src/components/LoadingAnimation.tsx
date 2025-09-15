@@ -1,11 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Dimensions } from 'react-native';
 import { AnimationUtils } from '../utils/animations';
+import AnimatedLogo from './AnimatedLogo';
 
 interface LoadingAnimationProps {
   visible: boolean;
   size?: 'small' | 'medium' | 'large';
   color?: string;
+  useCustomLoader?: boolean;
+  animationType?: 'rotate' | 'pulse' | 'bounce' | 'fade' | 'breathe';
 }
 
 const { width } = Dimensions.get('window');
@@ -13,7 +16,9 @@ const { width } = Dimensions.get('window');
 export default function LoadingAnimation({ 
   visible, 
   size = 'medium', 
-  color = '#000' 
+  color = '#000',
+  useCustomLoader = false,
+  animationType = 'pulse'
 }: LoadingAnimationProps) {
   const scaleValue = useRef(new Animated.Value(0)).current;
   const rotateValue = useRef(new Animated.Value(0)).current;
@@ -38,9 +43,9 @@ export default function LoadingAnimation({
 
   const getSize = () => {
     switch (size) {
-      case 'small': return 20;
-      case 'large': return 60;
-      default: return 40;
+      case 'small': return useCustomLoader ? 30 : 20;
+      case 'large': return useCustomLoader ? 80 : 60;
+      default: return useCustomLoader ? 50 : 40;
     }
   };
 
@@ -54,6 +59,22 @@ export default function LoadingAnimation({
 
   if (!visible) return null;
 
+  // Use custom SVG logo loader
+  if (useCustomLoader) {
+    return (
+      <View style={styles.container}>
+        <AnimatedLogo
+          size={getSize()}
+          color={color}
+          animationType={animationType}
+          visible={visible}
+          duration={2000}
+        />
+      </View>
+    );
+  }
+
+  // Use default circular loader
   return (
     <Animated.View 
       style={[

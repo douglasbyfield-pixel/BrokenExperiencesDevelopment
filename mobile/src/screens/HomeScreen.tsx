@@ -79,6 +79,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const scrollViewRef = React.useRef<ScrollView>(null);
+  
+  // Animation values for interactions
+  const animationRefs = useRef<{[key: string]: {
+    upvote: Animated.Value;
+    bookmark: Animated.Value;
+  }}>({}).current;
 
   // Load data functions
   const loadIssues = async () => {
@@ -448,6 +454,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     );
   };
 
+  const getAnimationValues = (issueId: string) => {
+    if (!animationRefs[issueId]) {
+      animationRefs[issueId] = {
+        upvote: new Animated.Value(1),
+        bookmark: new Animated.Value(1)
+      };
+    }
+    return animationRefs[issueId];
+  };
+
   const renderIssue = (item: any) => {
     const priorityColor = getPriorityColor(item.priority);
     const statusColor = getStatusColor(item.status);
@@ -463,9 +479,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     const authorName = item.profiles?.name || 'Unknown User';
     const authorAvatar = item.profiles?.avatar;
     
-    // Animation values for this specific issue
-    const upvoteScaleValue = useRef(new Animated.Value(1)).current;
-    const bookmarkScaleValue = useRef(new Animated.Value(1)).current;
+    // Get animation values for this specific issue
+    const { upvote: upvoteScaleValue, bookmark: bookmarkScaleValue } = getAnimationValues(item.id);
 
     return (
       <View key={item.id} style={styles.postCard}>
@@ -773,7 +788,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         {/* Loading State */}
         {loading && (
           <View style={styles.loadingContainer}>
-            <LoadingAnimation visible={loading} size="large" />
+            <LoadingAnimation 
+              visible={loading} 
+              size="large" 
+              useCustomLoader={true}
+              animationType="breathe"
+              color="#000"
+            />
             <Text style={styles.loadingText}>Loading issues...</Text>
           </View>
         )}

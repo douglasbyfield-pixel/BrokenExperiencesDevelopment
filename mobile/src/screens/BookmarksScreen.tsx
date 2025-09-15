@@ -23,6 +23,11 @@ export default function BookmarksScreen({ navigation }: BookmarksScreenProps) {
   const [bookmarkedIssues, setBookmarkedIssues] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  
+  // Animation values for interactions
+  const animationRefs = useRef<{[key: string]: {
+    bookmark: Animated.Value;
+  }}>({}).current;
 
   useEffect(() => {
     loadBookmarks();
@@ -128,6 +133,15 @@ export default function BookmarksScreen({ navigation }: BookmarksScreenProps) {
     }
   };
 
+  const getAnimationValues = (issueId: string) => {
+    if (!animationRefs[issueId]) {
+      animationRefs[issueId] = {
+        bookmark: new Animated.Value(1)
+      };
+    }
+    return animationRefs[issueId];
+  };
+
   const renderIssue = (item: any) => {
     const priorityColor = getPriorityColor(item.priority);
     const statusColor = getStatusColor(item.status);
@@ -136,8 +150,8 @@ export default function BookmarksScreen({ navigation }: BookmarksScreenProps) {
     const authorName = item.profiles?.name || 'Unknown User';
     const authorAvatar = item.profiles?.avatar;
     
-    // Animation values for this specific issue
-    const bookmarkScaleValue = useRef(new Animated.Value(1)).current;
+    // Get animation values for this specific issue
+    const { bookmark: bookmarkScaleValue } = getAnimationValues(item.id);
 
     return (
       <View key={item.id} style={styles.postCard}>
@@ -333,7 +347,13 @@ export default function BookmarksScreen({ navigation }: BookmarksScreenProps) {
       >
         {loading ? (
           <View style={styles.loadingContainer}>
-            <LoadingAnimation visible={loading} size="large" />
+            <LoadingAnimation 
+              visible={loading} 
+              size="large" 
+              useCustomLoader={true}
+              animationType="pulse"
+              color="#FFD700"
+            />
             <Text style={styles.loadingText}>Loading bookmarks...</Text>
           </View>
         ) : bookmarkedIssues.length === 0 ? (
