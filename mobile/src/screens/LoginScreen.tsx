@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Text, TouchableOpacity, StyleSheet, View, StatusBar, TextInput, Alert, Image } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, View, StatusBar, TextInput, Alert, Image, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import GoogleIcon from '../assets/GoogleIcon';
 import AppleIcon from '../assets/AppleIcon';
 import { supabase } from '../services/supabase';
+import { AuthService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen() {
@@ -17,11 +19,26 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
   const { setIsAuthenticated } = useAuth();
 
   useEffect(() => {
     loadRememberedCredentials();
+    initializeOAuth();
   }, []);
+
+  const initializeOAuth = async () => {
+    // Initialize Google Sign-In
+    await AuthService.initializeGoogleSignIn();
+    
+    // Check Apple Sign-In availability
+    if (Platform.OS === 'ios') {
+      const isAvailable = await AppleAuthentication.isAvailableAsync();
+      setAppleSignInAvailable(isAvailable);
+    }
+  };
 
   const loadRememberedCredentials = async () => {
     try {
@@ -88,6 +105,45 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const result = await AuthService.signInWithGoogle();
+      
+      if (result.success) {
+        console.log('Google sign-in successful');
+        // The AuthContext will handle setting isAuthenticated via onAuthStateChange
+      } else if (!result.cancelled) {
+        // Error occurred (not user cancellation)
+        console.error('Google sign-in failed:', result.error || result.message);
+      }
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      Alert.alert('Error', 'Failed to sign in with Google. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setAppleLoading(true);
+    try {
+      const result = await AuthService.signInWithApple();
+      
+      if (result.success) {
+        console.log('Apple sign-in successful');
+        // The AuthContext will handle setting isAuthenticated via onAuthStateChange
+      } else if (!result.cancelled) {
+        // Error occurred (not user cancellation)
+        console.error('Apple sign-in failed:', result.error || result.message);
+      }
+    } catch (error) {
+      console.error('Apple sign-in error:', error);
+      Alert.alert('Error', 'Failed to sign in with Apple. Please try again.');
+    } finally {
+      setAppleLoading(false);
+    }
+  };
 
   return (
     <LinearGradient
@@ -180,14 +236,36 @@ export default function LoginScreen() {
 
           <View style={styles.footer}>
             <View style={styles.buttonContainer}>
-              <TouchableOpacity style={styles.button} onPress={() => console.log('Continue with Google')}>
-                <GoogleIcon />
-                <Text style={styles.buttonText}>Continue with Google</Text>
+              <TouchableOpacity 
+                style={[styles.button, googleLoading && styles.buttonDisabled]} 
+                onPress={handleGoogleSignIn}
+                disabled={googleLoading}
+              >
+                {googleLoading ? (
+                  <Ionicons name="refresh" size={20} color="#18181B" />
+                ) : (
+                  <GoogleIcon />
+                )}
+                <Text style={styles.buttonText}>
+                  {googleLoading ? 'Signing in...' : 'Continue with Google'}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.button} onPress={() => console.log('Continue with Apple')}>
-                <AppleIcon />
-                <Text style={styles.buttonText}>Continue with Apple</Text>
-              </TouchableOpacity>
+              {(Platform.OS === 'ios' && appleSignInAvailable) && (
+                <TouchableOpacity 
+                  style={[styles.button, appleLoading && styles.buttonDisabled]} 
+                  onPress={handleAppleSignIn}
+                  disabled={appleLoading}
+                >
+                  {appleLoading ? (
+                    <Ionicons name="refresh" size={20} color="#18181B" />
+                  ) : (
+                    <AppleIcon />
+                  )}
+                  <Text style={styles.buttonText}>
+                    {appleLoading ? 'Signing in...' : 'Continue with Apple'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
             <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
               <Text style={styles.switchText}>
@@ -323,6 +401,9 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 3,
     gap: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     fontSize: 16,
