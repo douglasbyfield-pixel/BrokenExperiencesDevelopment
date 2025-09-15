@@ -989,6 +989,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+    locationText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+    fontWeight: '500',
+    flex: 1,
+  },
   engagementButton: {
     flexDirection: 'row',
     alignItems: 'center',
