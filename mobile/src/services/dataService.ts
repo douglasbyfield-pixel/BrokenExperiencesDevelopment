@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { CacheService } from './cacheService';
 import type { Database, Issue, Profile, Comment } from '../types/database';
 
 // Note: road_maintenance is a valid enum value in the database
@@ -7,6 +8,13 @@ export class DataService {
   // Issues
   static async getIssues() {
     try {
+      // Check cache first
+      const cachedIssues = await CacheService.get<Issue[]>('issues');
+      if (cachedIssues) {
+        console.log('DataService: Returning cached issues');
+        return cachedIssues;
+      }
+
       console.log('DataService: Fetching issues with counts');
       
       // Use a direct query that should be more cache-resistant
@@ -58,6 +66,9 @@ export class DataService {
           comments: issuesWithCounts[0].comments
         });
       }
+      
+      // Cache the results
+      await CacheService.set('issues', issuesWithCounts, 2 * 60 * 1000); // 2 minutes
       
       return issuesWithCounts;
     } catch (error) {
@@ -112,6 +123,10 @@ export class DataService {
         console.error('Supabase error details:', error);
         throw error;
       }
+      
+      // Invalidate issues cache when creating new issue
+      await CacheService.invalidate('issues');
+      
       return data;
     } catch (error) {
       console.error('Error creating issue:', error);
@@ -129,6 +144,10 @@ export class DataService {
         .single();
 
       if (error) throw error;
+      
+      // Invalidate issues cache when updating issue
+      await CacheService.invalidate('issues');
+      
       return data;
     } catch (error) {
       console.error('Error updating issue:', error);

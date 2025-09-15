@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -21,7 +21,7 @@ type MainTabParamList = {
 type MapScreenNavigationProp = StackNavigationProp<MainTabParamList, 'Map'>;
 type MapScreenRouteProp = RouteProp<MainTabParamList, 'Map'>;
 
-export default function MapScreen() {
+const MapScreen = memo(() => {
   const navigation = useNavigation<MapScreenNavigationProp>();
   const route = useRoute<MapScreenRouteProp>();
   
@@ -53,7 +53,7 @@ export default function MapScreen() {
     }
   }, [mapReady, issues]);
 
-  const updateMapWithIssues = (issuesData: Issue[]) => {
+  const updateMapWithIssues = useCallback((issuesData: Issue[]) => {
     if (webViewRef.current && mapReady) {
       // Filter issues with valid coordinates
       const validIssues = issuesData.filter(issue => 
@@ -84,9 +84,9 @@ export default function MapScreen() {
       });
       webViewRef.current.postMessage(message);
     }
-  };
+  }, [mapReady]);
 
-  const loadIssues = async () => {
+  const loadIssues = useCallback(async () => {
     try {
       setLoading(true);
       const issuesData = await DataService.getIssues();
@@ -102,7 +102,7 @@ export default function MapScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [mapReady, updateMapWithIssues]);
 
   const getCurrentLocation = async () => {
     try {
@@ -608,7 +608,9 @@ export default function MapScreen() {
       </TouchableOpacity>
     </View>
   );
-}
+});
+
+export default MapScreen;
 
 const styles = StyleSheet.create({
   container: {

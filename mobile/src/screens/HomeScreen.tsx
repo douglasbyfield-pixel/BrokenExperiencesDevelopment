@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, RefreshControl, ScrollView, Dimensions, Image, TextInput, Modal, Alert, Share, Animated } from 'react-native';
+import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, RefreshControl, ScrollView, Dimensions, Image, TextInput, Modal, Alert, Share, Animated, FlatList } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { DataService } from '../services/dataService';
@@ -7,8 +7,9 @@ import { useAuth } from '../context/AuthContext';
 import { useBookmark } from '../context/BookmarkContext';
 import IssueDetailScreen from './IssueDetailScreen';
 import type { Issue } from '../types/database';
-import { AnimationUtils, GamificationAnimations } from '../utils/animations';
+import { AnimationUtils } from '../utils/animations';
 import LoadingAnimation from '../components/LoadingAnimation';
+import { PerformanceUtils } from '../utils/performanceOptimizations';
 
 interface HomeScreenProps {
   navigation: any;
@@ -61,7 +62,7 @@ const formatTimeAgo = (dateString: string) => {
   return `${Math.floor(diffInSeconds / 86400)}d ago`;
 };
 
-export default function HomeScreen({ navigation }: HomeScreenProps) {
+const HomeScreen = memo(({ navigation }: HomeScreenProps) => {
   const { user, profile } = useAuth();
   const { isBookmarked, toggleBookmark } = useBookmark();
   const [issues, setIssues] = useState<any[]>([]);
@@ -87,7 +88,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   }}>({}).current;
 
   // Load data functions
-  const loadIssues = async () => {
+  const loadIssues = useCallback(async () => {
     try {
       setLoading(true);
       const issuesData = await DataService.getIssues();
@@ -112,15 +113,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadIssues();
     setRefreshing(false);
-  };
+  }, [loadIssues]);
 
-  const handleUpvote = async (issueId: string) => {
+  const handleUpvote = useCallback(async (issueId: string) => {
     if (!user) {
       Alert.alert('Sign In Required', 'Please sign in to upvote issues.');
       return;
@@ -194,7 +195,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       
       Alert.alert('Error', 'Failed to update upvote. Please try again.');
     }
-  };
+  }, [user, userUpvotes, loadIssues]);
 
   useEffect(() => {
     loadIssues();
@@ -249,10 +250,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     setSelectedPriorityFilter('all');
   };
 
-  const handleIssuePress = (issue: Issue) => {
+  const handleIssuePress = useCallback((issue: Issue) => {
     setSelectedIssue(issue);
     setShowDetailModal(true);
-  };
+  }, []);
 
   const handleCloseDetail = () => {
     setShowDetailModal(false);
@@ -271,11 +272,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
 
   // Issues are already filtered on the server side
-  const filteredIssues = issues;
+  const filteredIssues = useMemo(() => issues, [issues]);
 
-  const handleSearchPress = () => {
+  const handleSearchPress = useCallback(() => {
     navigation.navigate('SearchResults', { searchQuery: '' });
-  };
+  }, [navigation]);
 
   const handleBookmarkPress = async (issueId: string) => {
     await AnimationUtils.lightHaptic();
@@ -464,7 +465,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     return animationRefs[issueId];
   };
 
-  const renderIssue = (item: any) => {
+  const renderIssue = useCallback((item: any) => {
     const priorityColor = getPriorityColor(item.priority);
     const statusColor = getStatusColor(item.status);
     
@@ -529,6 +530,28 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             >
               <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Status and Priority Badges */}
+        <View style={styles.badgesContainer}>
+          <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
+            <View style={[styles.statusIndicator, { backgroundColor: statusColor }]} />
+            <Text style={[styles.statusBadgeText, { color: statusColor }]}>
+              {item.status.replace('_', ' ')}
+            </Text>
+          </View>
+          <View style={[styles.priorityBadge, { backgroundColor: `${priorityColor}20` }]}>
+            <View style={[styles.priorityIndicator, { backgroundColor: priorityColor }]} />
+            <Text style={[styles.priorityBadgeText, { color: priorityColor }]}>
+              {item.priority}
+            </Text>
+          </View>
+          <View style={styles.categoryBadge}>
+            <Ionicons name={getCategoryIcon(item.category) as any} size={14} color="#6b7280" />
+            <Text style={styles.categoryBadgeText}>
+              {item.category.replace('_', ' ')}
+            </Text>
           </View>
         </View>
 
@@ -612,17 +635,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             />
           )}
 
-          {/* Status and Priority */}
-          <View style={styles.metaContainer}>
-            <View style={styles.statusContainer}>
-              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-              <Text style={styles.statusText}>{item.status}</Text>
-            </View>
-            <View style={styles.priorityContainer}>
-              <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
-              <Text style={styles.priorityText}>{item.priority}</Text>
-            </View>
-          </View>
         </TouchableOpacity>
 
         {/* Post Footer */}
@@ -656,15 +668,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             </TouchableOpacity>
             
           </View>
-
-          <View style={styles.statusRow}>
-            <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-              <Text style={styles.statusBadgeText}>{item.status.replace('_', ' ')}</Text>
-            </View>
-            <View style={[styles.priorityBadge, { backgroundColor: priorityColor }]}>
-              <Text style={styles.priorityBadgeText}>{item.priority}</Text>
-            </View>
-          </View>
         </View>
 
         {/* Location */}
@@ -676,7 +679,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </View>
       </View>
     );
-  };
+  }, [user, userUpvotes, handleUpvote, handleIssuePress, isBookmarked, activeMenu]);
 
   const renderEmptyState = () => {
     const hasActiveFilters = selectedStatusFilter !== 'all' || selectedPriorityFilter !== 'all';
@@ -716,16 +719,20 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         activeOpacity={1}
         onPress={() => setActiveMenu(null)}
       >
-        <ScrollView
-        ref={scrollViewRef}
+        <FlatList
+        ref={scrollViewRef as any}
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={filteredIssues.length === 0 ? styles.scrollContent : undefined}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#000" />
         }
-      >
-        <View style={styles.header}>
+        data={filteredIssues}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => renderIssue(item)}
+        ListHeaderComponent={() => (
+          <>
+            <View style={styles.header}>
           <View style={styles.titleContainer}>
             <Ionicons name="home" size={32} color="#000" style={styles.titleIcon} />
             <Text style={styles.title}>Jamaica Issues</Text>
@@ -799,15 +806,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </View>
         )}
 
-        {/* Issues Feed */}
-        {!loading && filteredIssues.length === 0 ? (
-          renderEmptyState()
-        ) : !loading && (
-          <View style={styles.feedContainer}>
-            {filteredIssues.map((issue) => renderIssue(issue))}
-          </View>
+          </>
         )}
-      </ScrollView>
+        ListEmptyComponent={!loading ? renderEmptyState : null}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        windowSize={10}
+        initialNumToRender={5}
+        getItemLayout={(data, index) => (
+          { length: 450, offset: 450 * index, index }
+        )}
+      />
 
       {/* Issue Detail Modal */}
       <IssueDetailScreen
@@ -923,7 +933,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       </TouchableOpacity>
     </View>
   );
-}
+});
+
+export default HomeScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -1567,55 +1579,65 @@ const styles = StyleSheet.create({
     minWidth: 20,
     textAlign: 'center',
   },
-  statusRow: {
+  badgesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginTop: 8,
-    marginBottom: 4,
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 12,
     paddingHorizontal: 16,
+    flexWrap: 'wrap',
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
-    minWidth: 70,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   statusBadgeText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: '600',
     textTransform: 'capitalize',
-    letterSpacing: 0.4,
-    textAlign: 'center',
   },
   priorityBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
-    minWidth: 70,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
+  },
+  priorityIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   priorityBadgeText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: '600',
     textTransform: 'capitalize',
-    letterSpacing: 0.4,
-    textAlign: 'center',
+  },
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#f3f4f6',
+    gap: 4,
+  },
+  categoryBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6b7280',
+    textTransform: 'capitalize',
   },
   locationRow: {
     flexDirection: 'row',
