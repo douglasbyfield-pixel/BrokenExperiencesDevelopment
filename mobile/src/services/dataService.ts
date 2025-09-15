@@ -398,6 +398,109 @@ export class DataService {
     }
   }
 
+  // Bookmarks
+  static async toggleBookmark(issueId: string, userId: string) {
+    try {
+      console.log('DataService: Toggling bookmark for issue:', issueId, 'user:', userId);
+      
+      // Check if bookmark already exists
+      const { data: existingBookmark, error: checkError } = await supabase
+        .from('bookmarks')
+        .select('id')
+        .eq('issue_id', issueId)
+        .eq('user_id', userId)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('DataService: Error checking existing bookmark:', checkError);
+        throw checkError;
+      }
+
+      console.log('DataService: Existing bookmark:', existingBookmark);
+
+      if (existingBookmark) {
+        // Remove bookmark
+        console.log('DataService: Removing bookmark with ID:', existingBookmark.id);
+        const { error } = await supabase
+          .from('bookmarks')
+          .delete()
+          .eq('id', existingBookmark.id);
+
+        if (error) {
+          console.error('DataService: Error removing bookmark:', error);
+          throw error;
+        }
+        console.log('DataService: Bookmark removed successfully');
+        return false; // Bookmark removed
+      } else {
+        // Add bookmark
+        console.log('DataService: Adding bookmark');
+        const { error } = await supabase
+          .from('bookmarks')
+          .insert({
+            issue_id: issueId,
+            user_id: userId
+          });
+
+        if (error) {
+          console.error('DataService: Error adding bookmark:', error);
+          throw error;
+        }
+        console.log('DataService: Bookmark added successfully');
+        return true; // Bookmark added
+      }
+    } catch (error) {
+      console.error('DataService: Error toggling bookmark:', error);
+      throw error;
+    }
+  }
+
+  static async getUserBookmarks(userId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('bookmarks')
+        .select('issue_id')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      return data?.map(bookmark => bookmark.issue_id) || [];
+    } catch (error) {
+      console.error('Error fetching user bookmarks:', error);
+      return [];
+    }
+  }
+
+  static async getBookmarkedIssues(userId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('bookmarks')
+        .select(`
+          issue_id,
+          created_at,
+          issues (
+            *,
+            profiles:reported_by (
+              id,
+              name,
+              avatar
+            ),
+            upvotes (count),
+            comments (count)
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      // Transform the data to return just the issues
+      return data?.map(bookmark => bookmark.issues).filter(Boolean) || [];
+    } catch (error) {
+      console.error('Error fetching bookmarked issues:', error);
+      return [];
+    }
+  }
+
   // Search
   static async searchIssues(query: string) {
     try {

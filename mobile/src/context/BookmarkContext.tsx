@@ -1,12 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Issue } from '../data/mockData';
+import { Alert } from 'react-native';
+import { DataService } from '../services/dataService';
+import { useAuth } from './AuthContext';
+import type { Issue } from '../types/database';
 
 interface BookmarkContextType {
   bookmarkedIssues: string[];
   isBookmarked: (issueId: string) => boolean;
-  toggleBookmark: (issueId: string) => void;
-  getBookmarkedIssues: (allIssues: Issue[]) => Issue[];
+  toggleBookmark: (issueId: string) => Promise<void>;
+  getBookmarkedIssues: () => Promise<Issue[]>;
+  loadUserBookmarks: () => Promise<void>;
+  loading: boolean;
 }
 
 const BookmarkContext = createContext<BookmarkContextType | undefined>(undefined);
@@ -24,34 +28,31 @@ interface BookmarkProviderProps {
 }
 
 export const BookmarkProvider: React.FC<BookmarkProviderProps> = ({ children }) => {
+  const { user } = useAuth();
   const [bookmarkedIssues, setBookmarkedIssues] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Load bookmarks from storage on app start
+  // Load bookmarks when user changes
   useEffect(() => {
-    loadBookmarks();
-  }, []);
+    if (user) {
+      loadUserBookmarks();
+    } else {
+      setBookmarkedIssues([]);
+    }
+  }, [user]);
 
-  // Save bookmarks to storage whenever they change
-  useEffect(() => {
-    saveBookmarks();
-  }, [bookmarkedIssues]);
-
-  const loadBookmarks = async () => {
+  const loadUserBookmarks = async () => {
+    if (!user) return;
+    
     try {
-      const stored = await AsyncStorage.getItem('bookmarkedIssues');
-      if (stored) {
-        setBookmarkedIssues(JSON.parse(stored));
-      }
+      setLoading(true);
+      const bookmarks = await DataService.getUserBookmarks(user.id);
+      setBookmarkedIssues(bookmarks);
+      console.log('BookmarkContext: Loaded', bookmarks.length, 'bookmarks');
     } catch (error) {
       console.error('Error loading bookmarks:', error);
-    }
-  };
-
-  const saveBookmarks = async () => {
-    try {
-      await AsyncStorage.setItem('bookmarkedIssues', JSON.stringify(bookmarkedIssues));
-    } catch (error) {
-      console.error('Error saving bookmarks:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -59,20 +60,60 @@ export const BookmarkProvider: React.FC<BookmarkProviderProps> = ({ children }) 
     return bookmarkedIssues.includes(issueId);
   };
 
-  const toggleBookmark = (issueId: string) => {
-    setBookmarkedIssues(prev => {
-      if (prev.includes(issueId)) {
-        // Remove bookmark
-        return prev.filter(id => id !== issueId);
-      } else {
-        // Add bookmark
-        return [...prev, issueId];
+  const toggleBookmark = async (issueId: string) => {
+    if (!user) {
+      Alert.alert('Sign In Required', 'Please sign in to bookmark issues.');
+      return;
+    }
+
+    const wasBookmarked = isBookmarked(issueId);
+    
+    // Optimistic update
+    if (wasBookmarked) {
+      setBookmarkedIssues(prev => prev.filter(id => id !== issueId));
+    } else {
+      setBookmarkedIssues(prev => [...prev, issueId]);
+    }
+
+    try {
+      console.log('BookmarkContext: Toggling bookmark for issue:', issueId);
+      const isBookmarked = await DataService.toggleBookmark(issueId, user.id);
+      console.log('BookmarkContext: Bookmark result:', isBookmarked);
+      
+      // Verify optimistic update was correct
+      if (isBookmarked === wasBookmarked) {
+        console.log('BookmarkContext: Optimistic update was wrong, reverting');
+        // Revert if our optimistic update was wrong
+        if (wasBookmarked) {
+          setBookmarkedIssues(prev => [...prev, issueId]);
+        } else {
+          setBookmarkedIssues(prev => prev.filter(id => id !== issueId));
+        }
       }
-    });
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      
+      // Revert optimistic update on error
+      if (wasBookmarked) {
+        setBookmarkedIssues(prev => [...prev, issueId]);
+      } else {
+        setBookmarkedIssues(prev => prev.filter(id => id !== issueId));
+      }
+      
+      Alert.alert('Error', 'Failed to update bookmark. Please try again.');
+    }
   };
 
-  const getBookmarkedIssues = (allIssues: Issue[]): Issue[] => {
-    return allIssues.filter(issue => bookmarkedIssues.includes(issue.id));
+  const getBookmarkedIssues = async (): Promise<Issue[]> => {
+    if (!user) return [];
+    
+    try {
+      const issues = await DataService.getBookmarkedIssues(user.id);
+      return issues;
+    } catch (error) {
+      console.error('Error fetching bookmarked issues:', error);
+      return [];
+    }
   };
 
   const value: BookmarkContextType = {
@@ -80,6 +121,8 @@ export const BookmarkProvider: React.FC<BookmarkProviderProps> = ({ children }) 
     isBookmarked,
     toggleBookmark,
     getBookmarkedIssues,
+    loadUserBookmarks,
+    loading,
   };
 
   return (

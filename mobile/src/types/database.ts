@@ -24,6 +24,26 @@ export type Database = {
           created_at?: string;
         };
       };
+      bookmarks: {
+        Row: {
+          id: string;
+          user_id: string;
+          issue_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          issue_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          issue_id?: string;
+          created_at?: string;
+        };
+      };
       comments: {
         Row: {
           id: string;

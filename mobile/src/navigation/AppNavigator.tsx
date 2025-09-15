@@ -26,7 +26,7 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
-  Map: undefined;
+  Map: { issueId?: string; latitude?: number; longitude?: number } | undefined;
   Report: undefined;
   Profile: undefined;
 };

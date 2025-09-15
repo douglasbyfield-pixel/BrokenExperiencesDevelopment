@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, TextInput, Modal, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, TextInput, Modal, Dimensions, Image, Alert, Share } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { getCategoryIcon, getPriorityColor, getStatusColor, formatTimeAgo } from '../data/mockData';
 import { DataService } from '../services/dataService';
 import { useAuth } from '../context/AuthContext';
+import { useBookmark } from '../context/BookmarkContext';
 import type { Issue } from '../types/database';
 import IssueDetailScreen from './IssueDetailScreen';
 
@@ -17,12 +19,18 @@ interface SearchResultsScreenProps {
 export default function SearchResultsScreen({ navigation, route }: SearchResultsScreenProps) {
   const { searchQuery: initialQuery = '' } = route.params || {};
   const { user } = useAuth();
+  const { isBookmarked, toggleBookmark } = useBookmark();
   const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issues, setIssues] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [editingIssue, setEditingIssue] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [filters, setFilters] = useState({
     status: 'all' as 'all' | 'pending' | 'in_progress' | 'resolved',
     category: 'all' as 'all' | 'infrastructure' | 'safety' | 'environment' | 'maintenance' | 'accessibility' | 'road_maintenance',
@@ -71,6 +79,132 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
     if (issue) {
       setSelectedIssue(issue);
     }
+  };
+
+  const handleMenuPress = (issueId: string) => {
+    setActiveMenu(activeMenu === issueId ? null : issueId);
+  };
+
+  const handleBookmarkPress = (issueId: string) => {
+    toggleBookmark(issueId);
+  };
+
+  const handleMenuAction = async (action: string, issue: any) => {
+    setActiveMenu(null);
+    
+    switch (action) {
+      case 'share':
+        try {
+          const shareContent = {
+            title: 'Jamaica Issue Report',
+            message: `Check out this issue in Jamaica: "${issue.title}"\n\n${issue.description}\n\nLocation: ${issue.address}`,
+            url: `jamaicaissues://issue/${issue.id}`, // Deep link format
+          };
+          
+          await Share.share(shareContent);
+        } catch (error) {
+          console.error('Error sharing issue:', error);
+          Alert.alert('Error', 'Failed to share issue. Please try again.');
+        }
+        break;
+        
+      case 'report':
+        Alert.alert('Report Issue', 'Report this issue as inappropriate?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report', style: 'destructive', onPress: () => console.log('Report functionality would go here') }
+        ]);
+        break;
+        
+      case 'copy_link':
+        try {
+          const issueLink = `jamaicaissues://issue/${issue.id}`;
+          await Clipboard.setStringAsync(issueLink);
+          Alert.alert('Link Copied', 'Issue link copied to clipboard');
+        } catch (error) {
+          console.error('Error copying link:', error);
+          Alert.alert('Error', 'Failed to copy link. Please try again.');
+        }
+        break;
+        
+      case 'view_location':
+        navigation.navigate('Map', {
+          issueId: issue.id,
+          latitude: issue.latitude,
+          longitude: issue.longitude
+        });
+        break;
+        
+      case 'edit':
+        if (user?.id === issue.reported_by) {
+          setEditingIssue(issue);
+          setEditTitle(issue.title);
+          setEditDescription(issue.description);
+          setShowEditModal(true);
+        }
+        break;
+        
+      case 'delete':
+        if (user?.id === issue.reported_by) {
+          Alert.alert('Delete Issue', 'Are you sure you want to delete this issue? This action cannot be undone.', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: () => handleDeleteIssue(issue.id) }
+          ]);
+        }
+        break;
+    }
+  };
+
+  const handleDeleteIssue = async (issueId: string) => {
+    try {
+      await DataService.deleteIssue(issueId);
+      setIssues(prevIssues => prevIssues.filter(issue => issue.id !== issueId));
+      Alert.alert('Success', 'Issue deleted successfully');
+    } catch (error) {
+      console.error('Error deleting issue:', error);
+      Alert.alert('Error', 'Failed to delete issue. Please try again.');
+    }
+  };
+
+  const handleEditIssue = async () => {
+    if (!editingIssue || !editTitle.trim() || !editDescription.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    try {
+      const updates = {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        updated_at: new Date().toISOString()
+      };
+
+      await DataService.updateIssue(editingIssue.id, updates);
+      
+      setIssues(prevIssues => 
+        prevIssues.map(issue => 
+          issue.id === editingIssue.id 
+            ? { ...issue, ...updates }
+            : issue
+        )
+      );
+      
+      setShowEditModal(false);
+      setEditingIssue(null);
+      setEditTitle('');
+      setEditDescription('');
+      
+      Alert.alert('Success', 'Issue updated successfully');
+    } catch (error) {
+      console.error('Error updating issue:', error);
+      Alert.alert('Error', 'Failed to update issue. Please try again.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+    setEditingIssue(null);
+    setEditTitle('');
+    setEditDescription('');
   };
 
   const applyFilters = () => {
@@ -161,7 +295,7 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
     // Try partial matches for text search
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      const words = query.split(' ').filter(word => word.length > 2);
+      const words = query.split(' ').filter((word: string) => word.length > 2);
       
       similarResults = similarResults.filter(issue => {
         const searchableText = [
@@ -171,7 +305,7 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
           issue.profiles?.name || ''
         ].join(' ').toLowerCase();
 
-        return words.some(word => searchableText.includes(word));
+        return words.some((word: string) => searchableText.includes(word));
       });
     }
 
@@ -202,7 +336,7 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
     value !== 'all' && value !== ''
   );
 
-  const renderIssue = (item: Issue) => {
+  const renderIssue = (item: any) => {
     const priorityColor = getPriorityColor(item.priority);
     const statusColor = getStatusColor(item.status);
     const upvoteCount = item.upvotes?.[0]?.count || 0;
@@ -233,10 +367,90 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
               <Text style={styles.postTime}>{formatTimeAgo(item.created_at)}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.moreButton}>
-            <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.bookmarkButton}
+              onPress={() => handleBookmarkPress(item.id)}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name={isBookmarked(item.id) ? "bookmark" : "bookmark-outline"} 
+                size={24} 
+                color={isBookmarked(item.id) ? "#FFD700" : "#000"} 
+              />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.moreButton}
+              onPress={() => handleMenuPress(item.id)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {/* Dropdown Menu */}
+        {activeMenu === item.id && (
+          <View style={styles.dropdownMenu}>
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuAction('share', item)}
+            >
+              <Ionicons name="share-outline" size={20} color="#333" />
+              <Text style={styles.menuItemText}>Share Issue</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuAction('copy_link', item)}
+            >
+              <Ionicons name="link-outline" size={20} color="#333" />
+              <Text style={styles.menuItemText}>Copy Link</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuAction('view_location', item)}
+            >
+              <Ionicons name="location-outline" size={20} color="#333" />
+              <Text style={styles.menuItemText}>View on Map</Text>
+            </TouchableOpacity>
+            
+            {user?.id === item.reported_by && (
+              <>
+                <View style={styles.menuDivider} />
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => handleMenuAction('edit', item)}
+                >
+                  <Ionicons name="create-outline" size={20} color="#333" />
+                  <Text style={styles.menuItemText}>Edit Issue</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => handleMenuAction('delete', item)}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#dc3545" />
+                  <Text style={[styles.menuItemText, { color: '#dc3545' }]}>Delete Issue</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            
+            {user?.id !== item.reported_by && (
+              <>
+                <View style={styles.menuDivider} />
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => handleMenuAction('report', item)}
+                >
+                  <Ionicons name="flag-outline" size={20} color="#dc3545" />
+                  <Text style={[styles.menuItemText, { color: '#dc3545' }]}>Report Issue</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
 
         {/* Post Content */}
         <TouchableOpacity 
@@ -264,15 +478,14 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
               <Text style={styles.engagementText}>{upvoteCount}</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.engagementButton}>
+            <TouchableOpacity 
+              style={styles.engagementButton}
+              onPress={() => handleIssuePress(item)}
+            >
               <Ionicons name="chatbubble-outline" size={24} color="#000" />
               <Text style={styles.engagementText}>{commentCount}</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.engagementButton}>
-              <Ionicons name="share-outline" size={24} color="#000" />
-              <Text style={styles.engagementText}>0</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.statusRow}>
@@ -300,8 +513,13 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       
-      {/* Header */}
-      <View style={styles.header}>
+      <TouchableOpacity 
+        style={styles.container} 
+        activeOpacity={1}
+        onPress={() => setActiveMenu(null)}
+      >
+        {/* Header */}
+        <View style={styles.header}>
         <View style={styles.searchBarContainer}>
           <Ionicons name="search-outline" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
@@ -547,6 +765,61 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
           </View>
         </View>
       </Modal>
+
+      {/* Edit Issue Modal */}
+      <Modal
+        visible={showEditModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCancelEdit}
+      >
+        <View style={styles.editModalContainer}>
+          <View style={styles.editModalHeader}>
+            <TouchableOpacity onPress={handleCancelEdit}>
+              <Text style={styles.editModalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.editModalTitle}>Edit Issue</Text>
+            <TouchableOpacity onPress={handleEditIssue}>
+              <Text style={styles.editModalSaveText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.editModalContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.editFormSection}>
+              <Text style={styles.editFormLabel}>Title</Text>
+              <TextInput
+                style={styles.editFormInput}
+                value={editTitle}
+                onChangeText={setEditTitle}
+                placeholder="Issue title"
+                maxLength={100}
+                multiline
+              />
+            </View>
+
+            <View style={styles.editFormSection}>
+              <Text style={styles.editFormLabel}>Description</Text>
+              <TextInput
+                style={[styles.editFormInput, styles.editFormTextArea]}
+                value={editDescription}
+                onChangeText={setEditDescription}
+                placeholder="Describe the issue in detail"
+                maxLength={500}
+                multiline
+                numberOfLines={6}
+              />
+            </View>
+
+            <View style={styles.editFormInfo}>
+              <Text style={styles.editFormInfoText}>
+                Note: Location, category, and priority cannot be changed after posting.
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      </TouchableOpacity>
     </View>
   );
 }
@@ -653,12 +926,14 @@ const styles = StyleSheet.create({
   postCard: {
     backgroundColor: '#ffffff',
     marginBottom: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
   },
   postHeader: {
     flexDirection: 'row',
@@ -715,19 +990,21 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   postTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    lineHeight: 22,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    lineHeight: 24,
     paddingHorizontal: 16,
     marginBottom: 8,
+    letterSpacing: -0.2,
   },
   postText: {
-    fontSize: 14,
-    color: '#000',
-    lineHeight: 20,
+    fontSize: 15,
+    color: '#333',
+    lineHeight: 22,
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 16,
+    fontWeight: '400',
   },
   postImage: {
     width: '100%',
@@ -748,62 +1025,101 @@ const styles = StyleSheet.create({
   },
   postFooter: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 16,
+    paddingTop: 4,
   },
   engagementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'flex-start',
+    marginBottom: 12,
+    marginTop: 4,
   },
   engagementButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginRight: 24,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    minWidth: 50,
+    justifyContent: 'center',
   },
   engagementText: {
     fontSize: 14,
-    color: '#000',
-    marginLeft: 6,
-    fontWeight: '500',
+    color: '#333',
+    marginLeft: 8,
+    fontWeight: '600',
+    minWidth: 20,
+    textAlign: 'center',
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+    marginTop: 8,
+    marginBottom: 4,
+    paddingHorizontal: 16,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+    minWidth: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statusBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
     textTransform: 'capitalize',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
   priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+    minWidth: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   priorityBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
     textTransform: 'capitalize',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 16,
+    paddingTop: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.01)',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   },
   locationText: {
     fontSize: 12,
     color: '#666',
-    marginLeft: 4,
+    marginLeft: 6,
     flex: 1,
+    fontWeight: '500',
   },
   // Filter Modal Styles
   filterContainer: {
@@ -935,5 +1251,121 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Header Actions Styles
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bookmarkButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  // Dropdown Menu Styles
+  dropdownMenu: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+    minWidth: 160,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  menuItemText: {
+    fontSize: 15,
+    color: '#333',
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: '#f0f0f0',
+    marginVertical: 4,
+    marginHorizontal: 8,
+  },
+  // Edit Modal Styles
+  editModalContainer: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingTop: 60,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#ffffff',
+  },
+  editModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+  },
+  editModalCancelText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  editModalSaveText: {
+    fontSize: 16,
+    color: '#1DA1F2',
+    fontWeight: '600',
+  },
+  editModalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  editFormSection: {
+    marginBottom: 24,
+  },
+  editFormLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  editFormInput: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#f8f9fa',
+    color: '#000',
+  },
+  editFormTextArea: {
+    height: 120,
+    textAlignVertical: 'top',
+  },
+  editFormInfo: {
+    backgroundColor: '#f0f8ff',
+    padding: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#1DA1F2',
+  },
+  editFormInfoText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
   },
 });

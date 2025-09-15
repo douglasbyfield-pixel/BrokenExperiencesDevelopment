@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { RouteProp } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import WebView from 'react-native-webview';
 import { getPriorityColor, getCategoryIcon, formatTimeAgo } from '../data/mockData';
@@ -10,17 +11,19 @@ import { DataService } from '../services/dataService';
 import type { Issue } from '../types/database';
 
 
-type RootStackParamList = {
+type MainTabParamList = {
   Home: undefined;
-  Map: undefined;
+  Map: { issueId?: string; latitude?: number; longitude?: number } | undefined;
   Report: undefined;
   Profile: undefined;
 };
 
-type MapScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Map'>;
+type MapScreenNavigationProp = StackNavigationProp<MainTabParamList, 'Map'>;
+type MapScreenRouteProp = RouteProp<MainTabParamList, 'Map'>;
 
 export default function MapScreen() {
   const navigation = useNavigation<MapScreenNavigationProp>();
+  const route = useRoute<MapScreenRouteProp>();
   
   // Refresh issues when screen comes into focus
   useEffect(() => {
@@ -141,7 +144,7 @@ export default function MapScreen() {
     }
   };
 
-  const navigateToScreen = (screenName: keyof RootStackParamList) => {
+  const navigateToScreen = (screenName: keyof MainTabParamList) => {
     navigation.navigate(screenName);
   };
 

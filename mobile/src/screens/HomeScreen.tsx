@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, RefreshControl, ScrollView, Dimensions, Image, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, RefreshControl, ScrollView, Dimensions, Image, TextInput, Modal, Alert, Share, Animated } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { DataService } from '../services/dataService';
 import { useAuth } from '../context/AuthContext';
 import { useBookmark } from '../context/BookmarkContext';
 import IssueDetailScreen from './IssueDetailScreen';
 import type { Issue } from '../types/database';
+import { AnimationUtils, GamificationAnimations } from '../utils/animations';
+import LoadingAnimation from '../components/LoadingAnimation';
 
 interface HomeScreenProps {
   navigation: any;
@@ -119,6 +122,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
     const wasUpvoted = userUpvotes.includes(issueId);
     
+    // Haptic feedback
+    await AnimationUtils.mediumHaptic();
+    
     // Optimistic update - update UI immediately
     if (wasUpvoted) {
       setUserUpvotes(prev => prev.filter(id => id !== issueId));
@@ -146,6 +152,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             : issue
         )
       );
+      
+      // Celebration animation for new upvote
+      await AnimationUtils.successHaptic();
     }
 
     try {
@@ -262,8 +271,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     navigation.navigate('SearchResults', { searchQuery: '' });
   };
 
-  const handleBookmarkPress = (issueId: string) => {
+  const handleBookmarkPress = async (issueId: string) => {
+    await AnimationUtils.lightHaptic();
+    const wasBookmarked = isBookmarked(issueId);
+    
     toggleBookmark(issueId);
+    
+    if (!wasBookmarked) {
+      // Success haptic for new bookmark
+      await AnimationUtils.successHaptic();
+    }
   };
 
   const handleMenuPress = (issueId: string) => {
@@ -275,10 +292,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     
     switch (action) {
       case 'share':
-        Alert.alert('Share Issue', `Share "${issue.title}" with others?`, [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Share', onPress: () => console.log('Share functionality would go here') }
-        ]);
+        try {
+          const shareContent = {
+            title: 'Jamaica Issue Report',
+            message: `Check out this issue in Jamaica: "${issue.title}"\n\n${issue.description}\n\nLocation: ${issue.address}`,
+            url: `jamaicaissues://issue/${issue.id}`, // Deep link format
+          };
+          
+          await Share.share(shareContent);
+        } catch (error) {
+          console.error('Error sharing issue:', error);
+          Alert.alert('Error', 'Failed to share issue. Please try again.');
+        }
         break;
         
       case 'report':
@@ -289,11 +314,22 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         break;
         
       case 'copy_link':
-        Alert.alert('Link Copied', 'Issue link copied to clipboard');
+        try {
+          const issueLink = `jamaicaissues://issue/${issue.id}`;
+          await Clipboard.setStringAsync(issueLink);
+          Alert.alert('Link Copied', 'Issue link copied to clipboard');
+        } catch (error) {
+          console.error('Error copying link:', error);
+          Alert.alert('Error', 'Failed to copy link. Please try again.');
+        }
         break;
         
       case 'view_location':
-        navigation.navigate('Map');
+        navigation.navigate('Map', {
+          issueId: issue.id,
+          latitude: issue.latitude,
+          longitude: issue.longitude
+        });
         break;
         
       case 'edit':
@@ -331,7 +367,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     } catch (error) {
       console.error('Error deleting issue:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
-      Alert.alert('Error', `Failed to delete issue: ${error.message || 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Error', `Failed to delete issue: ${errorMessage}`);
     }
   };
 
@@ -425,6 +462,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     const isUpvoted = userUpvotes.includes(item.id);
     const authorName = item.profiles?.name || 'Unknown User';
     const authorAvatar = item.profiles?.avatar;
+    
+    // Animation values for this specific issue
+    const upvoteScaleValue = useRef(new Animated.Value(1)).current;
+    const bookmarkScaleValue = useRef(new Animated.Value(1)).current;
 
     return (
       <View key={item.id} style={styles.postCard}>
@@ -450,17 +491,22 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             </View>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity 
-              style={styles.bookmarkButton}
-              onPress={() => handleBookmarkPress(item.id)}
-              activeOpacity={0.7}
-            >
-              <Ionicons 
-                name={isBookmarked(item.id) ? "bookmark" : "bookmark-outline"} 
-                size={24} 
-                color={isBookmarked(item.id) ? "#FFD700" : "#000"} 
-              />
-            </TouchableOpacity>
+            <Animated.View style={{ transform: [{ scale: bookmarkScaleValue }] }}>
+              <TouchableOpacity 
+                style={styles.bookmarkButton}
+                onPress={async () => {
+                  AnimationUtils.celebrationBurst(bookmarkScaleValue).start();
+                  await handleBookmarkPress(item.id);
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons 
+                  name={isBookmarked(item.id) ? "bookmark" : "bookmark-outline"} 
+                  size={24} 
+                  color={isBookmarked(item.id) ? "#FFD700" : "#000"} 
+                />
+              </TouchableOpacity>
+            </Animated.View>
             <TouchableOpacity 
               style={styles.moreButton}
               onPress={() => handleMenuPress(item.id)}
@@ -567,36 +613,33 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         {/* Post Footer */}
         <View style={styles.postFooter}>
           <View style={styles.engagementRow}>
-            <TouchableOpacity 
-              style={styles.engagementButton}
-              onPress={() => handleUpvote(item.id)}
-            >
-              <Ionicons 
-                name={isUpvoted ? "heart" : "heart-outline"} 
-                size={24} 
-                color={isUpvoted ? "#ef4444" : "#000"} 
-              />
-              <Text style={styles.engagementText}>{upvoteCount}</Text>
-            </TouchableOpacity>
+            <Animated.View style={{ transform: [{ scale: upvoteScaleValue }] }}>
+              <TouchableOpacity 
+                style={styles.engagementButton}
+                onPress={async () => {
+                  AnimationUtils.heartBeat(upvoteScaleValue).start();
+                  await handleUpvote(item.id);
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons 
+                  name={isUpvoted ? "heart" : "heart-outline"} 
+                  size={24} 
+                  color={isUpvoted ? "#ef4444" : "#000"} 
+                />
+                <Text style={styles.engagementText}>{upvoteCount}</Text>
+              </TouchableOpacity>
+            </Animated.View>
             
             <TouchableOpacity 
               style={styles.engagementButton}
               onPress={() => handleIssuePress(item)}
+              activeOpacity={0.7}
             >
               <Ionicons name="chatbubble-outline" size={24} color="#000" />
               <Text style={styles.engagementText}>{commentCount}</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity 
-              style={styles.engagementButton}
-              onPress={() => handleBookmarkPress(item.id)}
-            >
-              <Ionicons 
-                name={isBookmarked(item.id) ? "bookmark" : "bookmark-outline"} 
-                size={24} 
-                color={isBookmarked(item.id) ? "#000" : "#666"} 
-              />
-            </TouchableOpacity>
           </View>
 
           <View style={styles.statusRow}>
@@ -727,10 +770,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </View>
         )}
 
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <LoadingAnimation visible={loading} size="large" />
+            <Text style={styles.loadingText}>Loading issues...</Text>
+          </View>
+        )}
+
         {/* Issues Feed */}
-        {filteredIssues.length === 0 ? (
+        {!loading && filteredIssues.length === 0 ? (
           renderEmptyState()
-        ) : (
+        ) : !loading && (
           <View style={styles.feedContainer}>
             {filteredIssues.map((issue) => renderIssue(issue))}
           </View>
@@ -777,7 +828,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                   {renderPriorityFilterButton('low', 'Low', lowCount)}
                   {renderPriorityFilterButton('medium', 'Medium', mediumCount)}
                   {renderPriorityFilterButton('high', 'High', highCount)}
-                  {renderPriorityFilterButton('critical', 'Critical', criticalCount)}
+                  {renderPriorityFilterButton('high', 'Critical', criticalCount)}
                 </View>
               </View>
             </ScrollView>
@@ -1163,12 +1214,15 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   postTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    lineHeight: 24,
+    paddingHorizontal: 16,
     marginBottom: 8,
+    letterSpacing: -0.2,
   },
-  categoryContainer: {
+  categoryInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginLeft: 12,
@@ -1365,12 +1419,14 @@ const styles = StyleSheet.create({
   postCard: {
     backgroundColor: '#ffffff',
     marginBottom: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
   },
   postHeader: {
     flexDirection: 'row',
@@ -1435,11 +1491,12 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   postText: {
-    fontSize: 14,
-    color: '#000',
-    lineHeight: 20,
+    fontSize: 15,
+    color: '#333',
+    lineHeight: 22,
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 16,
+    fontWeight: '400',
   },
   postImage: {
     width: '100%',
@@ -1460,69 +1517,101 @@ const styles = StyleSheet.create({
   },
   postFooter: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 16,
+    paddingTop: 4,
   },
   engagementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-    locationText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 4,
-    fontWeight: '500',
-    flex: 1,
+    justifyContent: 'flex-start',
+    marginBottom: 12,
+    marginTop: 4,
   },
   engagementButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginRight: 24,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    minWidth: 50,
+    justifyContent: 'center',
   },
   engagementText: {
     fontSize: 14,
-    color: '#000',
-    marginLeft: 6,
-    fontWeight: '500',
+    color: '#333',
+    marginLeft: 8,
+    fontWeight: '600',
+    minWidth: 20,
+    textAlign: 'center',
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+    marginTop: 8,
+    marginBottom: 4,
+    paddingHorizontal: 16,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+    minWidth: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statusBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
     textTransform: 'capitalize',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
   priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+    minWidth: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   priorityBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
     textTransform: 'capitalize',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 16,
+    paddingTop: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.01)',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   },
   locationText: {
     fontSize: 12,
     color: '#666',
-    marginLeft: 4,
+    marginLeft: 6,
     flex: 1,
+    fontWeight: '500',
   },
   // Dropdown Menu Styles
   dropdownMenu: {
@@ -1630,5 +1719,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 16,
+    fontWeight: '500',
   },
 });

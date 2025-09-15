@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { EMOJI_REACTIONS, ReactionType } from '../types/comments';
 import { useComment } from '../context/CommentContext';
+import { AnimationUtils, GamificationAnimations } from '../utils/animations';
 
 interface IssueReactionsProps {
   issueId: string;
@@ -17,15 +18,46 @@ export default function IssueReactions({ issueId }: IssueReactionsProps) {
     getIssueReactionCount 
   } = useComment();
 
+  // Animation values
+  const scaleValue = useRef(new Animated.Value(1)).current;
+  const modalScaleValue = useRef(new Animated.Value(0)).current;
+  const modalOpacityValue = useRef(new Animated.Value(0)).current;
+
   const userReaction = getUserIssueReaction(issueId);
 
-  const handleReaction = (reactionType: ReactionType) => {
+  const handleReaction = async (reactionType: ReactionType) => {
+    // Haptic feedback
+    await AnimationUtils.mediumHaptic();
+    
+    // Celebration animation
+    AnimationUtils.celebrationBurst(scaleValue).start();
+    
     if (userReaction === reactionType) {
       removeIssueReaction(issueId, reactionType);
     } else {
       addIssueReaction(issueId, reactionType);
+      // Success haptic for new reaction
+      await AnimationUtils.successHaptic();
     }
-    setShowReactions(false);
+    
+    // Close modal with animation
+    Animated.parallel([
+      AnimationUtils.scaleRelease(modalScaleValue),
+      AnimationUtils.fadeOut(modalOpacityValue)
+    ]).start(() => {
+      setShowReactions(false);
+    });
+  };
+
+  const handleShowReactions = async () => {
+    await AnimationUtils.lightHaptic();
+    setShowReactions(true);
+    
+    // Modal entrance animation
+    Animated.parallel([
+      AnimationUtils.bounceIn(modalScaleValue, 1),
+      AnimationUtils.fadeIn(modalOpacityValue)
+    ]).start();
   };
 
   const renderReactions = () => {
@@ -36,18 +68,20 @@ export default function IssueReactions({ issueId }: IssueReactionsProps) {
       if (count === 0 && !isActive) return null;
 
       return (
-        <TouchableOpacity
-          key={type}
-          style={[styles.reactionButton, isActive && styles.reactionButtonActive]}
-          onPress={() => handleReaction(type)}
-        >
-          <Text style={styles.reactionEmoji}>{emoji}</Text>
-          {count > 0 && (
-            <Text style={[styles.reactionCount, isActive && styles.reactionCountActive]}>
-              {count}
-            </Text>
-          )}
-        </TouchableOpacity>
+        <Animated.View key={type} style={{ transform: [{ scale: scaleValue }] }}>
+          <TouchableOpacity
+            style={[styles.reactionButton, isActive && styles.reactionButtonActive]}
+            onPress={() => handleReaction(type)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.reactionEmoji}>{emoji}</Text>
+            {count > 0 && (
+              <Text style={[styles.reactionCount, isActive && styles.reactionCountActive]}>
+                {count}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
       );
     });
   };
@@ -60,7 +94,8 @@ export default function IssueReactions({ issueId }: IssueReactionsProps) {
     <View style={styles.container}>
       <TouchableOpacity 
         style={styles.reactButton}
-        onPress={() => setShowReactions(true)}
+        onPress={handleShowReactions}
+        activeOpacity={0.7}
       >
         <Ionicons name="happy-outline" size={20} color="#666" />
         <Text style={styles.reactButtonText}>React</Text>
@@ -76,27 +111,50 @@ export default function IssueReactions({ issueId }: IssueReactionsProps) {
       <Modal
         visible={showReactions}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={() => setShowReactions(false)}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowReactions(false)}
+        <Animated.View 
+          style={[
+            styles.modalOverlay,
+            { opacity: modalOpacityValue }
+          ]}
         >
-          <View style={styles.reactionsModal}>
-            {EMOJI_REACTIONS.map(({ type, emoji, label }) => (
-              <TouchableOpacity
-                key={type}
-                style={styles.reactionModalButton}
-                onPress={() => handleReaction(type)}
-              >
-                <Text style={styles.reactionModalEmoji}>{emoji}</Text>
-                <Text style={styles.reactionModalLabel}>{label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => {
+              Animated.parallel([
+                AnimationUtils.scaleRelease(modalScaleValue),
+                AnimationUtils.fadeOut(modalOpacityValue)
+              ]).start(() => {
+                setShowReactions(false);
+              });
+            }}
+          >
+            <Animated.View 
+              style={[
+                styles.reactionsModal,
+                { 
+                  transform: [{ scale: modalScaleValue }],
+                  opacity: modalOpacityValue
+                }
+              ]}
+            >
+              {EMOJI_REACTIONS.map(({ type, emoji, label }) => (
+                <TouchableOpacity
+                  key={type}
+                  style={styles.reactionModalButton}
+                  onPress={() => handleReaction(type)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.reactionModalEmoji}>{emoji}</Text>
+                  <Text style={styles.reactionModalLabel}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
       </Modal>
     </View>
   );
