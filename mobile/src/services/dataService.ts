@@ -8,6 +8,8 @@ export class DataService {
   static async getIssues() {
     try {
       console.log('DataService: Fetching issues with counts');
+      
+      // Use a direct query that should be more cache-resistant
       const { data, error } = await supabase
         .from('issues')
         .select(`
@@ -16,9 +18,7 @@ export class DataService {
             id,
             name,
             avatar
-          ),
-          upvotes (count),
-          comments (count)
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -26,18 +26,40 @@ export class DataService {
         console.error('DataService: Error fetching issues:', error);
         throw error;
       }
+
+      // Get counts separately to avoid caching issues
+      const issuesWithCounts = await Promise.all(
+        (data || []).map(async (issue) => {
+          const [upvotesResult, commentsResult] = await Promise.all([
+            supabase
+              .from('upvotes')
+              .select('id', { count: 'exact', head: true })
+              .eq('issue_id', issue.id),
+            supabase
+              .from('comments')
+              .select('id', { count: 'exact', head: true })
+              .eq('issue_id', issue.id)
+          ]);
+
+          return {
+            ...issue,
+            upvotes: [{ count: upvotesResult.count || 0 }],
+            comments: [{ count: commentsResult.count || 0 }]
+          };
+        })
+      );
       
-      console.log('DataService: Fetched', data?.length || 0, 'issues');
-      if (data && data.length > 0) {
-        console.log('DataService: Sample issue with counts:', {
-          id: data[0].id,
-          title: data[0].title,
-          upvotes: data[0].upvotes,
-          comments: data[0].comments
+      console.log('DataService: Fetched', issuesWithCounts.length, 'issues with fresh counts');
+      if (issuesWithCounts.length > 0) {
+        console.log('DataService: Sample issue with fresh counts:', {
+          id: issuesWithCounts[0].id,
+          title: issuesWithCounts[0].title,
+          upvotes: issuesWithCounts[0].upvotes,
+          comments: issuesWithCounts[0].comments
         });
       }
       
-      return data || [];
+      return issuesWithCounts;
     } catch (error) {
       console.error('Error fetching issues:', error);
       return [];
@@ -244,6 +266,13 @@ export class DataService {
     try {
       console.log('DataService: Checking existing upvote for issue:', issueId, 'user:', userId);
       
+      // Check current authentication context
+      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+      console.log('DataService: Current auth user:', currentUser?.id, 'provided userId:', userId);
+      if (authError) {
+        console.error('DataService: Auth error:', authError);
+      }
+      
       // Check if user already upvoted
       const { data: existingUpvote, error: checkError } = await supabase
         .from('upvotes')
@@ -260,19 +289,43 @@ export class DataService {
       console.log('DataService: Existing upvote:', existingUpvote);
 
       if (existingUpvote) {
-        // Remove upvote
-        console.log('DataService: Removing upvote');
-        const { error } = await supabase
+        // Remove upvote using the specific ID
+        console.log('DataService: Removing upvote with ID:', existingUpvote.id);
+        const { data: deleteData, error, count } = await supabase
           .from('upvotes')
           .delete()
-          .eq('issue_id', issueId)
-          .eq('user_id', userId);
+          .eq('id', existingUpvote.id)
+          .select();
+
+        console.log('DataService: Delete result:', { deleteData, error, count });
 
         if (error) {
           console.error('DataService: Error removing upvote:', error);
           throw error;
         }
-        console.log('DataService: Upvote removed successfully');
+        
+        // Check if deletion actually happened
+        if (!deleteData || deleteData.length === 0) {
+          console.error('DataService: Delete returned no data - likely RLS policy issue');
+          throw new Error('Unable to delete upvote - permission denied. Please check if you own this upvote.');
+        }
+        
+        // Verify deletion by checking if the record still exists
+        const { data: verifyData, error: verifyError } = await supabase
+          .from('upvotes')
+          .select('id')
+          .eq('id', existingUpvote.id)
+          .single();
+          
+        console.log('DataService: Verification check:', { verifyData, verifyError });
+        
+        if (verifyData) {
+          console.error('DataService: WARNING - Upvote still exists after deletion!');
+          throw new Error('Upvote deletion failed - record still exists in database');
+        } else {
+          console.log('DataService: Upvote successfully deleted and verified');
+        }
+        
         return false; // Upvote removed
       } else {
         // Add upvote

@@ -117,31 +117,66 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       return;
     }
 
+    const wasUpvoted = userUpvotes.includes(issueId);
+    
+    // Optimistic update - update UI immediately
+    if (wasUpvoted) {
+      setUserUpvotes(prev => prev.filter(id => id !== issueId));
+      // Optimistically decrease count
+      setIssues(prevIssues => 
+        prevIssues.map(issue => 
+          issue.id === issueId 
+            ? {
+                ...issue, 
+                upvotes: [{ count: Math.max(0, (issue.upvotes?.[0]?.count || 0) - 1) }]
+              }
+            : issue
+        )
+      );
+    } else {
+      setUserUpvotes(prev => [...prev, issueId]);
+      // Optimistically increase count
+      setIssues(prevIssues => 
+        prevIssues.map(issue => 
+          issue.id === issueId 
+            ? {
+                ...issue, 
+                upvotes: [{ count: (issue.upvotes?.[0]?.count || 0) + 1 }]
+              }
+            : issue
+        )
+      );
+    }
+
     try {
       console.log('HomeScreen: Toggling upvote for issue:', issueId, 'by user:', user.id);
       const isUpvoted = await DataService.toggleUpvote(issueId, user.id);
       console.log('HomeScreen: Upvote result:', isUpvoted);
       
-      // Update local state
-      if (isUpvoted) {
-        setUserUpvotes(prev => {
-          const updated = [...prev, issueId];
-          console.log('HomeScreen: Added upvote, new list:', updated);
-          return updated;
-        });
-      } else {
-        setUserUpvotes(prev => {
-          const updated = prev.filter(id => id !== issueId);
-          console.log('HomeScreen: Removed upvote, new list:', updated);
-          return updated;
-        });
+      // Verify optimistic update was correct
+      if (isUpvoted !== !wasUpvoted) {
+        console.log('HomeScreen: Optimistic update was wrong, reverting');
+        // Revert if our optimistic update was wrong
+        if (wasUpvoted) {
+          setUserUpvotes(prev => [...prev, issueId]);
+        } else {
+          setUserUpvotes(prev => prev.filter(id => id !== issueId));
+        }
+        // Refresh to get accurate data
+        await loadIssues();
       }
-      
-      // Refresh issues to get updated counts
-      console.log('HomeScreen: Refreshing issues to get updated counts');
-      await loadIssues();
     } catch (error) {
       console.error('Error toggling upvote:', error);
+      
+      // Revert optimistic update on error
+      if (wasUpvoted) {
+        setUserUpvotes(prev => [...prev, issueId]);
+      } else {
+        setUserUpvotes(prev => prev.filter(id => id !== issueId));
+      }
+      // Refresh to get accurate data
+      await loadIssues();
+      
       Alert.alert('Error', 'Failed to update upvote. Please try again.');
     }
   };
@@ -380,8 +415,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     const priorityColor = getPriorityColor(item.priority);
     const statusColor = getStatusColor(item.status);
     
-    // Debug logging for counts
-    console.log('HomeScreen renderIssue: Issue', item.id, 'upvotes data:', item.upvotes, 'comments data:', item.comments);
+    // Debug logging only for first render
+    if (item.id === issues[0]?.id) {
+      console.log('HomeScreen renderIssue: Sample upvotes:', item.upvotes, 'comments:', item.comments);
+    }
     
     const upvoteCount = item.upvotes?.[0]?.count || 0;
     const commentCount = item.comments?.[0]?.count || 0;
