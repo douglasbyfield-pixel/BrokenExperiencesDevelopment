@@ -7,6 +7,7 @@ export class DataService {
   // Issues
   static async getIssues() {
     try {
+      console.log('DataService: Fetching issues with counts');
       const { data, error } = await supabase
         .from('issues')
         .select(`
@@ -21,7 +22,21 @@ export class DataService {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('DataService: Error fetching issues:', error);
+        throw error;
+      }
+      
+      console.log('DataService: Fetched', data?.length || 0, 'issues');
+      if (data && data.length > 0) {
+        console.log('DataService: Sample issue with counts:', {
+          id: data[0].id,
+          title: data[0].title,
+          upvotes: data[0].upvotes,
+          comments: data[0].comments
+        });
+      }
+      
       return data || [];
     } catch (error) {
       console.error('Error fetching issues:', error);
@@ -227,26 +242,41 @@ export class DataService {
   // Upvotes
   static async toggleUpvote(issueId: string, userId: string) {
     try {
+      console.log('DataService: Checking existing upvote for issue:', issueId, 'user:', userId);
+      
       // Check if user already upvoted
-      const { data: existingUpvote } = await supabase
+      const { data: existingUpvote, error: checkError } = await supabase
         .from('upvotes')
         .select('id')
         .eq('issue_id', issueId)
         .eq('user_id', userId)
         .single();
 
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('DataService: Error checking existing upvote:', checkError);
+        throw checkError;
+      }
+
+      console.log('DataService: Existing upvote:', existingUpvote);
+
       if (existingUpvote) {
         // Remove upvote
+        console.log('DataService: Removing upvote');
         const { error } = await supabase
           .from('upvotes')
           .delete()
           .eq('issue_id', issueId)
           .eq('user_id', userId);
 
-        if (error) throw error;
+        if (error) {
+          console.error('DataService: Error removing upvote:', error);
+          throw error;
+        }
+        console.log('DataService: Upvote removed successfully');
         return false; // Upvote removed
       } else {
         // Add upvote
+        console.log('DataService: Adding upvote');
         const { error } = await supabase
           .from('upvotes')
           .insert({
@@ -254,11 +284,15 @@ export class DataService {
             user_id: userId
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('DataService: Error adding upvote:', error);
+          throw error;
+        }
+        console.log('DataService: Upvote added successfully');
         return true; // Upvote added
       }
     } catch (error) {
-      console.error('Error toggling upvote:', error);
+      console.error('DataService: Error toggling upvote:', error);
       throw error;
     }
   }

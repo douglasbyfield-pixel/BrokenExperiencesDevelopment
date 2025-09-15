@@ -82,11 +82,19 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     try {
       setLoading(true);
       const issuesData = await DataService.getIssues();
+      console.log('HomeScreen: Loaded', issuesData.length, 'issues');
+      
+      // Log sample issue data structure
+      if (issuesData.length > 0) {
+        console.log('HomeScreen: Sample issue data:', JSON.stringify(issuesData[0], null, 2));
+      }
+      
       setIssues(issuesData);
       
       // Load user upvotes if user is logged in
       if (user) {
         const upvotes = await DataService.getUserUpvotes(user.id);
+        console.log('HomeScreen: User upvotes:', upvotes);
         setUserUpvotes(upvotes);
       }
     } catch (error) {
@@ -110,16 +118,27 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     }
 
     try {
+      console.log('HomeScreen: Toggling upvote for issue:', issueId, 'by user:', user.id);
       const isUpvoted = await DataService.toggleUpvote(issueId, user.id);
+      console.log('HomeScreen: Upvote result:', isUpvoted);
       
       // Update local state
       if (isUpvoted) {
-        setUserUpvotes(prev => [...prev, issueId]);
+        setUserUpvotes(prev => {
+          const updated = [...prev, issueId];
+          console.log('HomeScreen: Added upvote, new list:', updated);
+          return updated;
+        });
       } else {
-        setUserUpvotes(prev => prev.filter(id => id !== issueId));
+        setUserUpvotes(prev => {
+          const updated = prev.filter(id => id !== issueId);
+          console.log('HomeScreen: Removed upvote, new list:', updated);
+          return updated;
+        });
       }
       
       // Refresh issues to get updated counts
+      console.log('HomeScreen: Refreshing issues to get updated counts');
       await loadIssues();
     } catch (error) {
       console.error('Error toggling upvote:', error);
@@ -188,6 +207,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const handleCloseDetail = () => {
     setShowDetailModal(false);
     setSelectedIssue(null);
+    // Refresh issues to get updated comment counts
+    console.log('HomeScreen: Detail modal closed, refreshing issues');
+    loadIssues();
   };
 
   const handleNavigateToIssue = (issueId: string) => {
@@ -357,6 +379,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const renderIssue = (item: any) => {
     const priorityColor = getPriorityColor(item.priority);
     const statusColor = getStatusColor(item.status);
+    
+    // Debug logging for counts
+    console.log('HomeScreen renderIssue: Issue', item.id, 'upvotes data:', item.upvotes, 'comments data:', item.comments);
+    
     const upvoteCount = item.upvotes?.[0]?.count || 0;
     const commentCount = item.comments?.[0]?.count || 0;
     const isUpvoted = userUpvotes.includes(item.id);
@@ -516,7 +542,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               <Text style={styles.engagementText}>{upvoteCount}</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.engagementButton}>
+            <TouchableOpacity 
+              style={styles.engagementButton}
+              onPress={() => handleIssuePress(item)}
+            >
               <Ionicons name="chatbubble-outline" size={24} color="#000" />
               <Text style={styles.engagementText}>{commentCount}</Text>
             </TouchableOpacity>
