@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, TouchableOpacity, StyleSheet, View, StatusBar, TextInput, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import GoogleIcon from '../assets/GoogleIcon';
 import AppleIcon from '../assets/AppleIcon';
 import { supabase } from '../services/supabase';
@@ -12,7 +14,28 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const { setIsAuthenticated } = useAuth();
+
+  useEffect(() => {
+    loadRememberedCredentials();
+  }, []);
+
+  const loadRememberedCredentials = async () => {
+    try {
+      const rememberedEmail = await AsyncStorage.getItem('rememberedEmail');
+      const rememberedPassword = await AsyncStorage.getItem('rememberedPassword');
+      if (rememberedEmail && rememberedPassword) {
+        setEmail(rememberedEmail);
+        setPassword(rememberedPassword);
+        setRememberMe(true);
+      }
+    } catch (error) {
+      console.error('Error loading remembered credentials:', error);
+    }
+  };
 
   const handleAuth = async () => {
     try {
@@ -47,6 +70,16 @@ export default function LoginScreen() {
         if (error) throw error;
         
         console.log('Sign in successful:', data);
+        
+        // Save credentials if remember me is checked
+        if (rememberMe) {
+          await AsyncStorage.setItem('rememberedEmail', email);
+          await AsyncStorage.setItem('rememberedPassword', password);
+        } else {
+          await AsyncStorage.removeItem('rememberedEmail');
+          await AsyncStorage.removeItem('rememberedPassword');
+        }
+        
         // The AuthContext will handle setting isAuthenticated via onAuthStateChange
       }
     } catch (error) {
@@ -55,19 +88,6 @@ export default function LoginScreen() {
     }
   };
 
-  const testConnection = async () => {
-    try {
-      console.log('Testing Supabase connection...');
-      const { data, error } = await supabase.from('profiles').select('count').limit(1);
-      if (error) throw error;
-      
-      Alert.alert('Success', 'Supabase connection working!');
-      console.log('Connection test successful');
-    } catch (error) {
-      console.error('Connection test failed:', error);
-      Alert.alert('Error', 'Supabase connection failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    }
-  };
 
   return (
     <LinearGradient
@@ -100,28 +120,61 @@ export default function LoginScreen() {
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-            {isSignUp && (
+            <View style={styles.passwordContainer}>
               <TextInput
-                style={styles.input}
-                placeholder="Confirm Password"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
+                style={styles.passwordInput}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
               />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={20}
+                  color="#666"
+                />
+              </TouchableOpacity>
+            </View>
+            {isSignUp && (
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-off' : 'eye'}
+                    size={20}
+                    color="#666"
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
+            {!isSignUp && (
+              <TouchableOpacity
+                style={styles.rememberMeContainer}
+                onPress={() => setRememberMe(!rememberMe)}
+              >
+                <Ionicons
+                  name={rememberMe ? 'checkbox' : 'square-outline'}
+                  size={20}
+                  color={rememberMe ? '#18181B' : '#666'}
+                />
+                <Text style={styles.rememberMeText}>Remember Me</Text>
+              </TouchableOpacity>
             )}
             <TouchableOpacity style={styles.authButton} onPress={handleAuth}>
               <Text style={styles.authButtonText}>{isSignUp ? 'Sign Up' : 'Sign In'}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.testButton} onPress={testConnection}>
-              <Text style={styles.testButtonText}>Test Connection</Text>
             </TouchableOpacity>
           </View>
 
@@ -204,6 +257,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E4E4E7',
   },
+  passwordContainer: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    backgroundColor: 'white',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingRight: 45,
+    borderRadius: 8,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 12,
+    padding: 4,
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  rememberMeText: {
+    fontSize: 14,
+    color: '#475569',
+  },
   authButton: {
     backgroundColor: '#18181B',
     paddingVertical: 12,
@@ -213,18 +297,6 @@ const styles = StyleSheet.create({
   authButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '500',
-  },
-  testButton: {
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  testButtonText: {
-    color: '#333',
-    fontSize: 14,
     fontWeight: '500',
   },
   footer: {

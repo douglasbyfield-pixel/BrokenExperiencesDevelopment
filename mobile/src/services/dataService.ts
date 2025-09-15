@@ -99,6 +99,84 @@ export class DataService {
     }
   }
 
+  static async deleteIssue(issueId: string) {
+    try {
+      console.log('DataService: Deleting issue with ID:', issueId);
+      
+      // First check if the issue exists and get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      console.log('DataService: Current user ID:', user.id);
+      
+      // Check if user owns this issue
+      const { data: issue, error: fetchError } = await supabase
+        .from('issues')
+        .select('reported_by')
+        .eq('id', issueId)
+        .single();
+        
+      if (fetchError) {
+        console.error('Error fetching issue:', fetchError);
+        throw new Error('Issue not found');
+      }
+      
+      if (issue.reported_by !== user.id) {
+        throw new Error('You can only delete your own issues');
+      }
+      
+      console.log('DataService: User owns issue, proceeding with delete');
+      
+      // First, delete related records that might have foreign key constraints
+      try {
+        // Delete comments for this issue
+        await supabase
+          .from('comments')
+          .delete()
+          .eq('issue_id', issueId);
+          
+        // Delete upvotes for this issue  
+        await supabase
+          .from('upvotes')
+          .delete()
+          .eq('issue_id', issueId);
+          
+        console.log('DataService: Related records deleted');
+      } catch (relatedError) {
+        console.warn('DataService: Error deleting related records:', relatedError);
+        // Continue anyway, as these might not exist or have different constraints
+      }
+      
+      // Now delete the main issue
+      const { data, error } = await supabase
+        .from('issues')
+        .delete()
+        .eq('id', issueId)
+        .eq('reported_by', user.id); // Double-check ownership
+        
+      console.log('DataService: Delete response:', { data, error });
+
+      if (error) {
+        console.error('DataService: Delete error:', error);
+        
+        // If it's a policy error, provide more specific message
+        if (error.code === '42501' || error.message.includes('policy')) {
+          throw new Error('Database policy prevents deletion. Please check if you own this issue.');
+        }
+        
+        throw error;
+      }
+      
+      console.log('DataService: Issue deleted successfully');
+      return true;
+    } catch (error) {
+      console.error('DataService: Error deleting issue:', error);
+      throw error;
+    }
+  }
+
   // Comments
   static async getComments(issueId: string) {
     try {

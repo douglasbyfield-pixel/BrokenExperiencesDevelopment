@@ -171,6 +171,8 @@ export default function MapScreen() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Issue Map</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body, #map { height: 100%; width: 100%; font-family: Arial, sans-serif; }
@@ -202,15 +204,36 @@ export default function MapScreen() {
         .leaflet-popup-content {
             margin: 8px !important;
         }
+        /* Custom cluster styles */
+        .marker-cluster-small {
+            background-color: rgba(181, 226, 140, 0.6);
+        }
+        .marker-cluster-small div {
+            background-color: rgba(110, 204, 57, 0.6);
+        }
+        .marker-cluster-medium {
+            background-color: rgba(241, 211, 87, 0.6);
+        }
+        .marker-cluster-medium div {
+            background-color: rgba(240, 194, 12, 0.6);
+        }
+        .marker-cluster-large {
+            background-color: rgba(253, 156, 115, 0.6);
+        }
+        .marker-cluster-large div {
+            background-color: rgba(241, 128, 23, 0.6);
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
     
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script>
         let map;
         let markers = [];
+        let markerClusterGroup = null;
         let userMarker = null;
 
         let issues = [];
@@ -290,20 +313,48 @@ export default function MapScreen() {
                 maxZoom: 19
             }).addTo(map);
 
+            // Initialize marker cluster group
+            markerClusterGroup = L.markerClusterGroup({
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true,
+                spiderfyOnMaxZoom: true,
+                removeOutsideVisibleBounds: true,
+                maxClusterRadius: 50,
+                iconCreateFunction: function(cluster) {
+                    const childCount = cluster.getChildCount();
+                    let c = ' marker-cluster-';
+                    if (childCount < 10) {
+                        c += 'small';
+                    } else if (childCount < 100) {
+                        c += 'medium';
+                    } else {
+                        c += 'large';
+                    }
+                    c += ' ';
+                    
+                    return new L.DivIcon({ 
+                        html: '<div><span>' + childCount + '</span></div>', 
+                        className: 'marker-cluster' + c, 
+                        iconSize: new L.Point(40, 40) 
+                    });
+                }
+            });
+            map.addLayer(markerClusterGroup);
+
             // Issues will be loaded dynamically
         }
 
         function updateIssues(newIssues) {
-            // Clear existing markers
-            markers.forEach(marker => map.removeLayer(marker));
+            // Clear existing markers from cluster group
+            markerClusterGroup.clearLayers();
             markers = [];
 
-            // Add new issue markers
+            // Add new issue markers to cluster group
             newIssues.forEach(issue => {
                 const color = getPriorityColor(issue.priority);
                 const marker = L.marker([issue.latitude, issue.longitude], {
                     icon: createBrokenIcon(issue.priority, issue.category)
-                }).addTo(map);
+                });
 
                 let distanceText = '';
                 if (userLocation) {
@@ -329,6 +380,8 @@ export default function MapScreen() {
                     className: 'custom-popup-wrapper'
                 });
 
+                // Add marker to cluster group instead of map directly
+                markerClusterGroup.addLayer(marker);
                 markers.push(marker);
             });
 

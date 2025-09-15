@@ -70,6 +70,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [userUpvotes, setUserUpvotes] = useState<string[]>([]);
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [editingIssue, setEditingIssue] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const scrollViewRef = React.useRef<ScrollView>(null);
 
   // Load data functions
@@ -204,6 +209,119 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     toggleBookmark(issueId);
   };
 
+  const handleMenuPress = (issueId: string) => {
+    setActiveMenu(activeMenu === issueId ? null : issueId);
+  };
+
+  const handleMenuAction = async (action: string, issue: any) => {
+    setActiveMenu(null);
+    
+    switch (action) {
+      case 'share':
+        Alert.alert('Share Issue', `Share "${issue.title}" with others?`, [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Share', onPress: () => console.log('Share functionality would go here') }
+        ]);
+        break;
+        
+      case 'report':
+        Alert.alert('Report Issue', 'Report this issue as inappropriate?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report', style: 'destructive', onPress: () => console.log('Report functionality would go here') }
+        ]);
+        break;
+        
+      case 'copy_link':
+        Alert.alert('Link Copied', 'Issue link copied to clipboard');
+        break;
+        
+      case 'view_location':
+        navigation.navigate('Map');
+        break;
+        
+      case 'edit':
+        if (user?.id === issue.reported_by) {
+          setEditingIssue(issue);
+          setEditTitle(issue.title);
+          setEditDescription(issue.description);
+          setShowEditModal(true);
+        }
+        break;
+        
+      case 'delete':
+        if (user?.id === issue.reported_by) {
+          Alert.alert('Delete Issue', 'Are you sure you want to delete this issue? This action cannot be undone.', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: () => handleDeleteIssue(issue.id) }
+          ]);
+        }
+        break;
+    }
+  };
+
+  const handleDeleteIssue = async (issueId: string) => {
+    try {
+      console.log('Attempting to delete issue:', issueId);
+      console.log('Current user:', user?.id);
+      
+      const result = await DataService.deleteIssue(issueId);
+      console.log('Delete result:', result);
+      
+      // Remove from local state
+      setIssues(prevIssues => prevIssues.filter(issue => issue.id !== issueId));
+      
+      Alert.alert('Success', 'Issue deleted successfully');
+    } catch (error) {
+      console.error('Error deleting issue:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      Alert.alert('Error', `Failed to delete issue: ${error.message || 'Unknown error'}`);
+    }
+  };
+
+  const handleEditIssue = async () => {
+    if (!editingIssue || !editTitle.trim() || !editDescription.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    try {
+      const updates = {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        updated_at: new Date().toISOString()
+      };
+
+      const updatedIssue = await DataService.updateIssue(editingIssue.id, updates);
+      
+      // Update local state
+      setIssues(prevIssues => 
+        prevIssues.map(issue => 
+          issue.id === editingIssue.id 
+            ? { ...issue, ...updates }
+            : issue
+        )
+      );
+      
+      // Close modal
+      setShowEditModal(false);
+      setEditingIssue(null);
+      setEditTitle('');
+      setEditDescription('');
+      
+      Alert.alert('Success', 'Issue updated successfully');
+    } catch (error) {
+      console.error('Error updating issue:', error);
+      Alert.alert('Error', 'Failed to update issue. Please try again.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+    setEditingIssue(null);
+    setEditTitle('');
+    setEditDescription('');
+  };
+
   const renderStatusFilterButton = (filter: typeof selectedStatusFilter, label: string, count: number) => {
     const isActive = selectedStatusFilter === filter;
     return (
@@ -280,11 +398,78 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 color={isBookmarked(item.id) ? "#FFD700" : "#000"} 
               />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.moreButton}>
+            <TouchableOpacity 
+              style={styles.moreButton}
+              onPress={() => handleMenuPress(item.id)}
+              activeOpacity={0.7}
+            >
               <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Dropdown Menu */}
+        {activeMenu === item.id && (
+          <View style={styles.dropdownMenu}>
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuAction('share', item)}
+            >
+              <Ionicons name="share-outline" size={20} color="#333" />
+              <Text style={styles.menuItemText}>Share Issue</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuAction('copy_link', item)}
+            >
+              <Ionicons name="link-outline" size={20} color="#333" />
+              <Text style={styles.menuItemText}>Copy Link</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuAction('view_location', item)}
+            >
+              <Ionicons name="location-outline" size={20} color="#333" />
+              <Text style={styles.menuItemText}>View on Map</Text>
+            </TouchableOpacity>
+            
+            {user?.id === item.reported_by && (
+              <>
+                <View style={styles.menuDivider} />
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => handleMenuAction('edit', item)}
+                >
+                  <Ionicons name="create-outline" size={20} color="#333" />
+                  <Text style={styles.menuItemText}>Edit Issue</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => handleMenuAction('delete', item)}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#dc3545" />
+                  <Text style={[styles.menuItemText, { color: '#dc3545' }]}>Delete Issue</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            
+            {user?.id !== item.reported_by && (
+              <>
+                <View style={styles.menuDivider} />
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => handleMenuAction('report', item)}
+                >
+                  <Ionicons name="flag-outline" size={20} color="#dc3545" />
+                  <Text style={[styles.menuItemText, { color: '#dc3545' }]}>Report Issue</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
 
         {/* Post Content */}
         <TouchableOpacity 
@@ -402,7 +587,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       
-      <ScrollView
+      <TouchableOpacity 
+        style={styles.container} 
+        activeOpacity={1}
+        onPress={() => setActiveMenu(null)}
+      >
+        <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -539,6 +729,60 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </View>
       )}
 
+      {/* Edit Issue Modal */}
+      <Modal
+        visible={showEditModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCancelEdit}
+      >
+        <View style={styles.editModalContainer}>
+          <View style={styles.editModalHeader}>
+            <TouchableOpacity onPress={handleCancelEdit}>
+              <Text style={styles.editModalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.editModalTitle}>Edit Issue</Text>
+            <TouchableOpacity onPress={handleEditIssue}>
+              <Text style={styles.editModalSaveText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.editModalContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.editFormSection}>
+              <Text style={styles.editFormLabel}>Title</Text>
+              <TextInput
+                style={styles.editFormInput}
+                value={editTitle}
+                onChangeText={setEditTitle}
+                placeholder="Issue title"
+                maxLength={100}
+                multiline
+              />
+            </View>
+
+            <View style={styles.editFormSection}>
+              <Text style={styles.editFormLabel}>Description</Text>
+              <TextInput
+                style={[styles.editFormInput, styles.editFormTextArea]}
+                value={editDescription}
+                onChangeText={setEditDescription}
+                placeholder="Describe the issue in detail"
+                maxLength={500}
+                multiline
+                numberOfLines={6}
+              />
+            </View>
+
+            <View style={styles.editFormInfo}>
+              <Text style={styles.editFormInfoText}>
+                Note: Location, category, and priority cannot be changed after posting.
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      </TouchableOpacity>
     </View>
   );
 }
@@ -1213,5 +1457,112 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 4,
     flex: 1,
+  },
+  // Dropdown Menu Styles
+  dropdownMenu: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+    minWidth: 160,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  menuItemText: {
+    fontSize: 15,
+    color: '#333',
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: '#f0f0f0',
+    marginVertical: 4,
+    marginHorizontal: 8,
+  },
+  // Edit Modal Styles
+  editModalContainer: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingTop: 60,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#ffffff',
+  },
+  editModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+  },
+  editModalCancelText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  editModalSaveText: {
+    fontSize: 16,
+    color: '#1DA1F2',
+    fontWeight: '600',
+  },
+  editModalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  editFormSection: {
+    marginBottom: 24,
+  },
+  editFormLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  editFormInput: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#f8f9fa',
+    color: '#000',
+  },
+  editFormTextArea: {
+    height: 120,
+    textAlignVertical: 'top',
+  },
+  editFormInfo: {
+    backgroundColor: '#f0f8ff',
+    padding: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#1DA1F2',
+  },
+  editFormInfoText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
   },
 });
