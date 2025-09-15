@@ -21,11 +21,21 @@ type MapScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Map'>;
 
 export default function MapScreen() {
   const navigation = useNavigation<MapScreenNavigationProp>();
+  
+  // Refresh issues when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('Map screen focused, reloading issues');
+      loadIssues();
+    });
+    return unsubscribe;
+  }, [navigation]);
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(true);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
@@ -33,30 +43,56 @@ export default function MapScreen() {
     loadIssues();
   }, []);
 
+  // Load issues again when map becomes ready
+  useEffect(() => {
+    if (mapReady && issues.length > 0) {
+      updateMapWithIssues(issues);
+    }
+  }, [mapReady, issues]);
+
+  const updateMapWithIssues = (issuesData: Issue[]) => {
+    if (webViewRef.current && mapReady) {
+      // Filter issues with valid coordinates
+      const validIssues = issuesData.filter(issue => 
+        issue.latitude && issue.longitude && 
+        !isNaN(issue.latitude) && !isNaN(issue.longitude)
+      );
+      
+      console.log('Updating map with', validIssues.length, 'valid issues out of', issuesData.length, 'total');
+      
+      validIssues.forEach(issue => {
+        console.log(`Issue "${issue.title}" at lat: ${issue.latitude}, lng: ${issue.longitude}`);
+      });
+      
+      const message = JSON.stringify({
+        type: 'UPDATE_ISSUES',
+        issues: validIssues.map(issue => ({
+          id: issue.id,
+          title: issue.title,
+          description: issue.description,
+          priority: issue.priority,
+          category: issue.category,
+          latitude: issue.latitude,
+          longitude: issue.longitude,
+          address: issue.address,
+          upvotes: issue.upvotes?.[0]?.count || 0,
+          reportedBy: issue.profiles?.name || 'Anonymous'
+        }))
+      });
+      webViewRef.current.postMessage(message);
+    }
+  };
+
   const loadIssues = async () => {
     try {
       setLoading(true);
       const issuesData = await DataService.getIssues();
+      console.log('Loaded issues from database:', issuesData.length);
       setIssues(issuesData);
       
-      // Update map with real issues
-      if (webViewRef.current) {
-        const message = JSON.stringify({
-          type: 'UPDATE_ISSUES',
-          issues: issuesData.map(issue => ({
-            id: issue.id,
-            title: issue.title,
-            description: issue.description,
-            priority: issue.priority,
-            category: issue.category,
-            latitude: issue.latitude,
-            longitude: issue.longitude,
-            address: issue.address,
-            upvotes: issue.upvotes?.[0]?.count || 0,
-            reportedBy: issue.profiles?.name || 'Anonymous'
-          }))
-        });
-        webViewRef.current.postMessage(message);
+      // Update map if it's ready
+      if (mapReady) {
+        updateMapWithIssues(issuesData);
       }
     } catch (error) {
       console.error('Error loading issues:', error);
@@ -142,13 +178,18 @@ export default function MapScreen() {
         <View style={styles.titleContainer}>
           <Ionicons name="map" size={32} color="#000" style={styles.titleIcon} />
           <Text style={styles.title}>Issue Locations</Text>
-          <TouchableOpacity style={styles.toggleButton} onPress={toggleView}>
-            <Ionicons 
-              name={showMap ? "list-outline" : "map-outline"} 
-              size={24} 
-              color="#000" 
-            />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity style={styles.refreshButton} onPress={loadIssues}>
+              <Ionicons name="refresh" size={20} color="#000" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.toggleButton} onPress={toggleView}>
+              <Ionicons 
+                name={showMap ? "list-outline" : "map-outline"} 
+                size={24} 
+                color="#000" 
+              />
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.subtitle}>The Broken Experience - Jamaica</Text>
         {userLocation && (
@@ -345,12 +386,15 @@ export default function MapScreen() {
         }
 
         function updateIssues(newIssues) {
+            console.log('WebView: Updating issues with', newIssues.length, 'items');
+            
             // Clear existing markers from cluster group
             markerClusterGroup.clearLayers();
             markers = [];
 
             // Add new issue markers to cluster group
-            newIssues.forEach(issue => {
+            newIssues.forEach((issue, index) => {
+                console.log('WebView: Processing issue', index + 1, ':', issue.title, 'at', issue.latitude, issue.longitude);
                 const color = getPriorityColor(issue.priority);
                 const marker = L.marker([issue.latitude, issue.longitude], {
                     icon: createBrokenIcon(issue.priority, issue.category)
@@ -414,6 +458,7 @@ export default function MapScreen() {
         window.addEventListener('message', function(event) {
             try {
                 const data = JSON.parse(event.data);
+                console.log('WebView: Received message:', data.type, data);
                 
                 if (data.type === 'SET_CENTER') {
                     map.setView([data.lat, data.lng], data.zoom || 14);
@@ -466,6 +511,7 @@ export default function MapScreen() {
             }}
             onLoadEnd={() => {
               console.log('Map loaded successfully');
+              setMapReady(true);
             }}
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
@@ -579,6 +625,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
     justifyContent: 'space-between',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  refreshButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
   },
   toggleButton: {
     padding: 8,
