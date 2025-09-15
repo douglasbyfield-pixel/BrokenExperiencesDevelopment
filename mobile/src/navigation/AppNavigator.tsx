@@ -9,11 +9,19 @@ import HomeScreen from '../screens/HomeScreen';
 import MapScreen from '../screens/MapScreen';
 import ReportScreen from '../screens/ReportScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import SearchResultsScreen from '../screens/SearchResultsScreen';
+import BookmarksScreen from '../screens/BookmarksScreen';
+import UserCommentsScreen from '../screens/UserCommentsScreen';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { BookmarkProvider } from '../context/BookmarkContext';
+import { CommentProvider } from '../context/CommentContext';
 
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
+  SearchResults: { searchQuery?: string };
+  Bookmarks: undefined;
+  UserComments: undefined;
 };
 
 export type MainTabParamList = {
@@ -75,7 +83,12 @@ function AppNavigatorInner() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
-          <Stack.Screen name="Main" component={MainTabs} />
+          <>
+            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
+            <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
+            <Stack.Screen name="UserComments" component={UserCommentsScreen} />
+          </>
         ) : (
           <Stack.Screen name="Auth" component={LoginScreen} />
         )}
@@ -87,7 +100,11 @@ function AppNavigatorInner() {
 export default function AppNavigator() {
   return (
     <AuthProvider>
-      <AppNavigatorInner />
+      <BookmarkProvider>
+        <CommentProvider>
+          <AppNavigatorInner />
+        </CommentProvider>
+      </BookmarkProvider>
     </AuthProvider>
   );
 }

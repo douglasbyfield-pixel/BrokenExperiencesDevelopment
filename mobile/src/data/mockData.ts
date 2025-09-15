@@ -15,6 +15,26 @@ export interface Issue {
   imageUrl?: string;
   upvotes: number;
   comments: Comment[];
+  // Post-like structure
+  author: {
+    name: string;
+    avatar?: string;
+    verified?: boolean;
+  };
+  postContent: {
+    hasImage: boolean;
+    imageUrl?: string;
+    postText: string;
+    hashtags: string[];
+  };
+  engagement: {
+    likes: number;
+    shares: number;
+    comments: number;
+    views?: number;
+  };
+  timestamp: string;
+  isPinned?: boolean;
 }
 
 export interface Comment {
@@ -73,7 +93,26 @@ export const mockIssues: Issue[] = [
         author: 'Keisha Morgan',
         createdAt: '2025-01-21T11:22:00Z'
       }
-    ]
+    ],
+    author: {
+      name: 'Marcia Campbell',
+      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+      verified: false
+    },
+    postContent: {
+      hasImage: true,
+      imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop',
+      postText: '🚨 URGENT: This massive pothole on Spanish Town Road near Half Way Tree is causing serious damage to vehicles! Water pools here during heavy rain making it extremely dangerous for drivers. My car tire burst yesterday and I know others have had similar issues. This needs immediate attention from KMC!',
+      hashtags: ['#PotholeAlert', '#SpanishTownRoad', '#KMC', '#RoadSafety', '#Kingston']
+    },
+    engagement: {
+      likes: 47,
+      shares: 12,
+      comments: 2,
+      views: 156
+    },
+    timestamp: '2025-01-20T14:30:00Z',
+    isPinned: true
   },
   {
     id: '2',
@@ -97,7 +136,26 @@ export const mockIssues: Issue[] = [
         author: 'JPS Customer Service',
         createdAt: '2025-01-22T13:00:00Z'
       }
-    ]
+    ],
+    author: {
+      name: 'Shanique Wright',
+      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+      verified: false
+    },
+    postContent: {
+      hasImage: true,
+      imageUrl: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=800&h=600&fit=crop',
+      postText: '⚠️ Safety Alert: Street light near Devon House has been out for over a month! It\'s extremely dark and unsafe at night, especially for women walking alone. This is a major safety concern that needs immediate attention. JPS, please prioritize this!',
+      hashtags: ['#StreetLight', '#HopeRoad', '#SafetyFirst', '#JPS', '#WomenSafety']
+    },
+    engagement: {
+      likes: 31,
+      shares: 8,
+      comments: 1,
+      views: 89
+    },
+    timestamp: '2025-01-18T20:45:00Z',
+    isPinned: false
   },
   {
     id: '3',
@@ -121,7 +179,26 @@ export const mockIssues: Issue[] = [
         author: 'Community Member',
         createdAt: '2025-01-23T08:30:00Z'
       }
-    ]
+    ],
+    author: {
+      name: 'Junior Thompson',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+      verified: false
+    },
+    postContent: {
+      hasImage: true,
+      imageUrl: 'https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?w=800&h=600&fit=crop',
+      postText: '✅ RESOLVED! The garbage situation on Orange Street downtown has been cleaned up! Skip bins were overflowing for weeks, creating terrible smell and attracting stray animals. Big up to NSWMA for clearing it up this morning! Community action works! 🙌',
+      hashtags: ['#GarbageCleanup', '#OrangeStreet', '#NSWMA', '#CommunityAction', '#DowntownKingston']
+    },
+    engagement: {
+      likes: 23,
+      shares: 5,
+      comments: 1,
+      views: 67
+    },
+    timestamp: '2025-01-15T16:20:00Z',
+    isPinned: false
   },
   {
     id: '4',
@@ -138,7 +215,26 @@ export const mockIssues: Issue[] = [
     reportedAt: '2025-01-19T12:15:00Z',
     category: 'accessibility',
     upvotes: 19,
-    comments: []
+    comments: [],
+    author: {
+      name: 'Patricia Green',
+      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+      verified: false
+    },
+    postContent: {
+      hasImage: true,
+      imageUrl: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=800&h=600&fit=crop',
+      postText: '🚧 Accessibility Issue: The concrete sidewalk on Knutsford Boulevard near New Kingston is completely broken up! This is very dangerous for pedestrians, especially elderly people who might trip and fall. We need better infrastructure for our community!',
+      hashtags: ['#Accessibility', '#KnutsfordBoulevard', '#Sidewalk', '#PedestrianSafety', '#NewKingston']
+    },
+    engagement: {
+      likes: 19,
+      shares: 3,
+      comments: 0,
+      views: 45
+    },
+    timestamp: '2025-01-19T12:15:00Z',
+    isPinned: false
   },
   {
     id: '5',
@@ -162,7 +258,26 @@ export const mockIssues: Issue[] = [
         author: 'Kingston Community',
         createdAt: '2025-01-21T16:45:00Z'
       }
-    ]
+    ],
+    author: {
+      name: 'Michael Brown',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+      verified: false
+    },
+    postContent: {
+      hasImage: true,
+      imageUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=600&fit=crop',
+      postText: '😔 Sad to see vandalism at our beautiful Emancipation Park! Graffiti sprayed on the monument and benches damaged. This is our heritage and we need to protect it. Community group organizing cleanup this Saturday - let\'s come together!',
+      hashtags: ['#EmancipationPark', '#CommunityCleanup', '#Heritage', '#Vandalism', '#NewKingston']
+    },
+    engagement: {
+      likes: 15,
+      shares: 4,
+      comments: 1,
+      views: 38
+    },
+    timestamp: '2025-01-17T10:00:00Z',
+    isPinned: false
   },
   {
     id: '6',
@@ -186,7 +301,26 @@ export const mockIssues: Issue[] = [
         author: 'NWC Representative',
         createdAt: '2025-01-22T14:20:00Z'
       }
-    ]
+    ],
+    author: {
+      name: 'Andre Campbell',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+      verified: false
+    },
+    postContent: {
+      hasImage: true,
+      imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop',
+      postText: '🚨 CRITICAL: Major water main break on Constant Spring Road near Tropical Plaza! Water flooding the road causing traffic backup and wasting precious water. NWC crew is on site working on the leak. This is affecting traffic and water supply!',
+      hashtags: ['#WaterMainBreak', '#ConstantSpringRoad', '#NWC', '#TrafficAlert', '#WaterCrisis']
+    },
+    engagement: {
+      likes: 38,
+      shares: 9,
+      comments: 1,
+      views: 124
+    },
+    timestamp: '2025-01-22T07:30:00Z',
+    isPinned: false
   }
 ];
 
