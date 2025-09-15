@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, TextInput, Modal, Dimensions, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { mockIssues, Issue, getCategoryIcon, getPriorityColor, getStatusColor, formatTimeAgo } from '../data/mockData';
+import { getCategoryIcon, getPriorityColor, getStatusColor, formatTimeAgo } from '../data/mockData';
+import { DataService } from '../services/dataService';
+import { useAuth } from '../context/AuthContext';
+import type { Issue } from '../types/database';
 import IssueDetailScreen from './IssueDetailScreen';
 
 const { width } = Dimensions.get('window');
@@ -13,18 +16,37 @@ interface SearchResultsScreenProps {
 
 export default function SearchResultsScreen({ navigation, route }: SearchResultsScreenProps) {
   const { searchQuery: initialQuery = '' } = route.params || {};
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     status: 'all' as 'all' | 'pending' | 'in_progress' | 'resolved',
-    category: 'all' as 'all' | 'infrastructure' | 'safety' | 'environment' | 'maintenance' | 'accessibility',
+    category: 'all' as 'all' | 'infrastructure' | 'safety' | 'environment' | 'maintenance' | 'accessibility' | 'road_maintenance',
     author: '',
     dateFrom: '',
     dateTo: '',
     reportedAt: 'all' as 'all' | 'today' | 'week' | 'month' | 'year'
   });
+
+  useEffect(() => {
+    loadIssues();
+  }, []);
+
+  const loadIssues = async () => {
+    try {
+      setLoading(true);
+      const issuesData = await DataService.getIssues();
+      setIssues(issuesData);
+    } catch (error) {
+      console.error('Error loading issues:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleIssuePress = (issue: Issue) => {
     setSelectedIssue(issue);
@@ -67,7 +89,7 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
   };
 
   const getFilteredResults = () => {
-    let results = mockIssues;
+    let results = issues;
 
     // Text search
     if (searchQuery.trim()) {
@@ -75,10 +97,8 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
       results = results.filter(issue =>
         issue.title.toLowerCase().includes(query) ||
         issue.description.toLowerCase().includes(query) ||
-        issue.postContent.postText.toLowerCase().includes(query) ||
-        issue.location.address.toLowerCase().includes(query) ||
-        issue.author.name.toLowerCase().includes(query) ||
-        issue.postContent.hashtags.some(tag => tag.toLowerCase().includes(query))
+        issue.address.toLowerCase().includes(query) ||
+        (issue.profiles?.name || '').toLowerCase().includes(query)
       );
     }
 
@@ -96,36 +116,36 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
     if (filters.author.trim()) {
       const authorQuery = filters.author.toLowerCase();
       results = results.filter(issue => 
-        issue.author.name.toLowerCase().includes(authorQuery)
+        (issue.profiles?.name || '').toLowerCase().includes(authorQuery)
       );
     }
 
     // Date filters
     if (filters.dateFrom) {
       const fromDate = new Date(filters.dateFrom);
-      results = results.filter(issue => new Date(issue.timestamp) >= fromDate);
+      results = results.filter(issue => new Date(issue.created_at) >= fromDate);
     }
 
     if (filters.dateTo) {
       const toDate = new Date(filters.dateTo);
       toDate.setHours(23, 59, 59, 999); // End of day
-      results = results.filter(issue => new Date(issue.timestamp) <= toDate);
+      results = results.filter(issue => new Date(issue.created_at) <= toDate);
     }
 
     // Reported at filter
     const now = new Date();
     if (filters.reportedAt === 'today') {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      results = results.filter(issue => new Date(issue.timestamp) >= today);
+      results = results.filter(issue => new Date(issue.created_at) >= today);
     } else if (filters.reportedAt === 'week') {
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      results = results.filter(issue => new Date(issue.timestamp) >= weekAgo);
+      results = results.filter(issue => new Date(issue.created_at) >= weekAgo);
     } else if (filters.reportedAt === 'month') {
       const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      results = results.filter(issue => new Date(issue.timestamp) >= monthAgo);
+      results = results.filter(issue => new Date(issue.created_at) >= monthAgo);
     } else if (filters.reportedAt === 'year') {
       const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      results = results.filter(issue => new Date(issue.timestamp) >= yearAgo);
+      results = results.filter(issue => new Date(issue.created_at) >= yearAgo);
     }
 
     return results;
@@ -136,7 +156,7 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
     if (exactResults.length > 0) return [];
 
     // If no exact results, find similar ones
-    let similarResults = mockIssues;
+    let similarResults = issues;
 
     // Try partial matches for text search
     if (searchQuery.trim()) {
@@ -147,10 +167,8 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
         const searchableText = [
           issue.title,
           issue.description,
-          issue.postContent.postText,
-          issue.location.address,
-          issue.author.name,
-          ...issue.postContent.hashtags
+          issue.address,
+          issue.profiles?.name || ''
         ].join(' ').toLowerCase();
 
         return words.some(word => searchableText.includes(word));
@@ -170,6 +188,7 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
       similarResults = similarResults.filter(issue => 
         issue.category === filters.category ||
         (filters.category === 'infrastructure' && issue.category === 'maintenance') ||
+        (filters.category === 'infrastructure' && issue.category === 'road_maintenance') ||
         (filters.category === 'safety' && issue.category === 'infrastructure')
       );
     }
@@ -186,6 +205,10 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
   const renderIssue = (item: Issue) => {
     const priorityColor = getPriorityColor(item.priority);
     const statusColor = getStatusColor(item.status);
+    const upvoteCount = item.upvotes?.[0]?.count || 0;
+    const commentCount = item.comments?.[0]?.count || 0;
+    const authorName = item.profiles?.name || 'Unknown User';
+    const authorAvatar = item.profiles?.avatar;
 
     return (
       <View key={item.id} style={styles.postCard}>
@@ -193,24 +216,21 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
         <View style={styles.postHeader}>
           <View style={styles.authorInfo}>
             <View style={styles.avatarContainer}>
-              {item.author.avatar ? (
-                <Image source={{ uri: item.author.avatar }} style={styles.avatar} />
+              {authorAvatar ? (
+                <Image source={{ uri: authorAvatar }} style={styles.avatar} />
               ) : (
                 <View style={styles.defaultAvatar}>
                   <Text style={styles.defaultAvatarText}>
-                    {item.author.name.charAt(0).toUpperCase()}
+                    {authorName.charAt(0).toUpperCase()}
                   </Text>
                 </View>
               )}
             </View>
             <View style={styles.authorDetails}>
               <View style={styles.authorNameRow}>
-                <Text style={styles.authorName}>{item.author.name}</Text>
-                {item.author.verified && (
-                  <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" />
-                )}
+                <Text style={styles.authorName}>{authorName}</Text>
               </View>
-              <Text style={styles.postTime}>{formatTimeAgo(item.timestamp)}</Text>
+              <Text style={styles.postTime}>{formatTimeAgo(item.created_at)}</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.moreButton}>
@@ -223,25 +243,17 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
           activeOpacity={0.7}
           onPress={() => handleIssuePress(item)}
         >
-          <Text style={styles.postText}>{item.postContent.postText}</Text>
+          <Text style={styles.postTitle}>{item.title}</Text>
+          <Text style={styles.postText}>{item.description}</Text>
           
           {/* Image */}
-          {item.postContent.hasImage && item.postContent.imageUrl && (
+          {item.image_url && (
             <Image 
-              source={{ uri: item.postContent.imageUrl }} 
+              source={{ uri: item.image_url }} 
               style={styles.postImage}
               resizeMode="cover"
             />
           )}
-
-          {/* Hashtags */}
-          <View style={styles.hashtagsContainer}>
-            {item.postContent.hashtags.map((hashtag, index) => (
-              <Text key={index} style={styles.hashtag}>
-                {hashtag}
-              </Text>
-            ))}
-          </View>
         </TouchableOpacity>
 
         {/* Post Footer */}
@@ -249,17 +261,17 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
           <View style={styles.engagementRow}>
             <TouchableOpacity style={styles.engagementButton}>
               <Ionicons name="heart-outline" size={24} color="#000" />
-              <Text style={styles.engagementText}>{item.engagement.likes}</Text>
+              <Text style={styles.engagementText}>{upvoteCount}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.engagementButton}>
               <Ionicons name="chatbubble-outline" size={24} color="#000" />
-              <Text style={styles.engagementText}>{item.engagement.comments}</Text>
+              <Text style={styles.engagementText}>{commentCount}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.engagementButton}>
               <Ionicons name="share-outline" size={24} color="#000" />
-              <Text style={styles.engagementText}>{item.engagement.shares}</Text>
+              <Text style={styles.engagementText}>0</Text>
             </TouchableOpacity>
           </View>
 
@@ -277,7 +289,7 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={14} color="#666" />
           <Text style={styles.locationText} numberOfLines={1}>
-            {item.location.address}
+            {item.address}
           </Text>
         </View>
       </View>
@@ -324,7 +336,12 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
 
       {/* Results */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {exactResults.length === 0 && similarResults.length === 0 ? (
+        {loading ? (
+          <View style={styles.noResultsContainer}>
+            <Ionicons name="hourglass-outline" size={60} color="#ccc" />
+            <Text style={styles.noResultsText}>Loading issues...</Text>
+          </View>
+        ) : exactResults.length === 0 && similarResults.length === 0 ? (
           <View style={styles.noResultsContainer}>
             <Ionicons name="search-outline" size={60} color="#ccc" />
             <Text style={styles.noResultsText}>No issues found</Text>
@@ -427,6 +444,7 @@ export default function SearchResultsScreen({ navigation, route }: SearchResults
                 {[
                   { key: 'all', label: 'All' },
                   { key: 'infrastructure', label: 'Infrastructure' },
+                  { key: 'road_maintenance', label: 'Road Maintenance' },
                   { key: 'safety', label: 'Safety' },
                   { key: 'environment', label: 'Environment' },
                   { key: 'maintenance', label: 'Maintenance' },
@@ -695,6 +713,14 @@ const styles = StyleSheet.create({
   },
   moreButton: {
     padding: 8,
+  },
+  postTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    lineHeight: 22,
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   postText: {
     fontSize: 14,

@@ -1,27 +1,57 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Comment, Reaction, ReactionType, UserComment } from '../types/comments';
-import { Issue } from '../data/mockData';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { DataService } from '../services/dataService';
+import { useAuth } from './AuthContext';
+import type { Comment as DBComment } from '../types/database';
+
+interface Comment {
+  id: string;
+  text: string;
+  author: {
+    id: string;
+    name: string;
+    avatar?: string;
+    verified?: boolean;
+  };
+  createdAt: string;
+  updatedAt?: string;
+  reactions: never[]; // We'll handle reactions separately for now
+  replies: never[];   // We'll handle replies separately for now
+  parentId?: string;
+  depth: number;
+  isEdited?: boolean;
+  issueId: string;
+}
+
+export type ReactionType = 'like' | 'love' | 'laugh' | 'angry' | 'sad' | 'wow';
 
 interface CommentContextType {
   // Comments
-  addComment: (issueId: string, text: string, parentId?: string) => void;
-  editComment: (commentId: string, text: string) => void;
-  deleteComment: (commentId: string) => void;
+  addComment: (issueId: string, text: string, parentId?: string) => Promise<void>;
+  editComment: (commentId: string, text: string) => Promise<void>;
+  deleteComment: (commentId: string) => Promise<void>;
   getCommentsForIssue: (issueId: string) => Comment[];
-  getUserComments: () => UserComment[];
+  getUserComments: () => Comment[];
+  loadCommentsForIssue: (issueId: string) => Promise<void>;
   
-  // Reactions
+  // Issue reactions (simplified to just upvotes for now)
+  toggleUpvote: (issueId: string) => Promise<void>;
+  getUserUpvotes: () => string[];
+  
+  // Comment reactions (stubbed for compatibility)
   addReaction: (commentId: string, reactionType: ReactionType) => void;
   removeReaction: (commentId: string, reactionType: ReactionType) => void;
   getUserReaction: (commentId: string) => ReactionType | null;
   getReactionCount: (commentId: string, reactionType: ReactionType) => number;
   
-  // Issue reactions
+  // Issue reactions (stubbed for compatibility)
   addIssueReaction: (issueId: string, reactionType: ReactionType) => void;
   removeIssueReaction: (issueId: string, reactionType: ReactionType) => void;
   getUserIssueReaction: (issueId: string) => ReactionType | null;
   getIssueReactionCount: (issueId: string, reactionType: ReactionType) => number;
+  
+  // Loading states
+  loading: boolean;
+  commentsLoading: boolean;
 }
 
 const CommentContext = createContext<CommentContextType | undefined>(undefined);
@@ -38,296 +68,201 @@ interface CommentProviderProps {
   children: React.ReactNode;
 }
 
-// Mock current user ID - in a real app, this would come from auth context
-const CURRENT_USER_ID = 'user_123';
-const CURRENT_USER_NAME = 'John Doe';
-
 export const CommentProvider: React.FC<CommentProviderProps> = ({ children }) => {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [issueReactions, setIssueReactions] = useState<Record<string, Reaction[]>>({});
+  const { user } = useAuth();
+  const [commentsByIssue, setCommentsByIssue] = useState<Record<string, Comment[]>>({});
+  const [userUpvotes, setUserUpvotes] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(false);
 
-  // Load data from storage on app start
+  // Load user upvotes when user changes
   useEffect(() => {
-    loadComments();
-    loadIssueReactions();
-  }, []);
+    if (user) {
+      loadUserUpvotes();
+    }
+  }, [user]);
 
-  // Save data to storage whenever it changes
-  useEffect(() => {
-    saveComments();
-  }, [comments]);
-
-  useEffect(() => {
-    saveIssueReactions();
-  }, [issueReactions]);
-
-  const loadComments = async () => {
+  const loadUserUpvotes = async () => {
+    if (!user) return;
     try {
-      const stored = await AsyncStorage.getItem('comments');
-      if (stored) {
-        setComments(JSON.parse(stored));
-      } else {
-        // Add some sample comments for testing
-        const sampleComments: Comment[] = [
-          {
-            id: 'comment_1',
-            text: 'This is a sample comment to test the system.',
-            author: {
-              id: 'user_123',
-              name: 'John Doe',
-              verified: true,
-            },
-            createdAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-            reactions: [
-              {
-                id: 'reaction_1',
-                userId: 'user_456',
-                type: 'like',
-                createdAt: new Date(Date.now() - 1800000).toISOString(),
-              }
-            ],
-            replies: [],
-            depth: 0,
-            issueId: '1',
-          },
-          {
-            id: 'comment_2',
-            text: 'This is a reply to the first comment.',
-            author: {
-              id: 'user_456',
-              name: 'Jane Smith',
-              verified: false,
-            },
-            createdAt: new Date(Date.now() - 1800000).toISOString(), // 30 minutes ago
-            reactions: [],
-            replies: [],
-            parentId: 'comment_1',
-            depth: 1,
-            issueId: '1',
-          }
-        ];
-        setComments(sampleComments);
-      }
+      const upvotes = await DataService.getUserUpvotes(user.id);
+      setUserUpvotes(upvotes);
     } catch (error) {
-      console.error('Error loading comments:', error);
+      console.error('Error loading user upvotes:', error);
     }
   };
 
-  const saveComments = async () => {
+  const loadCommentsForIssue = useCallback(async (issueId: string) => {
     try {
-      await AsyncStorage.setItem('comments', JSON.stringify(comments));
-    } catch (error) {
-      console.error('Error saving comments:', error);
-    }
-  };
-
-  const loadIssueReactions = async () => {
-    try {
-      const stored = await AsyncStorage.getItem('issueReactions');
-      if (stored) {
-        setIssueReactions(JSON.parse(stored));
-      } else {
-        // Add some sample issue reactions for testing
-        const sampleReactions: Record<string, Reaction[]> = {
-          '1': [
-            {
-              id: 'issue_reaction_1',
-              userId: 'user_456',
-              type: 'like',
-              createdAt: new Date(Date.now() - 1800000).toISOString(),
-            }
-          ]
-        };
-        setIssueReactions(sampleReactions);
-      }
-    } catch (error) {
-      console.error('Error loading issue reactions:', error);
-    }
-  };
-
-  const saveIssueReactions = async () => {
-    try {
-      await AsyncStorage.setItem('issueReactions', JSON.stringify(issueReactions));
-    } catch (error) {
-      console.error('Error saving issue reactions:', error);
-    }
-  };
-
-  const generateId = () => {
-    return 'comment_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  };
-
-  const addComment = (issueId: string, text: string, parentId?: string) => {
-    const parentComment = parentId ? comments.find(c => c.id === parentId) : null;
-    const depth = parentComment ? parentComment.depth + 1 : 0;
-
-    if (depth > 5) {
-      console.warn('Maximum comment depth reached');
-      return;
-    }
-
-    const newComment: Comment = {
-      id: generateId(),
-      text,
-      author: {
-        id: CURRENT_USER_ID,
-        name: CURRENT_USER_NAME,
-        verified: true,
-      },
-      createdAt: new Date().toISOString(),
-      reactions: [],
-      replies: [],
-      parentId,
-      depth,
-      issueId, // Add issueId to the comment
-    };
-
-    setComments(prev => [...prev, newComment]);
-  };
-
-  const editComment = (commentId: string, text: string) => {
-    setComments(prev => prev.map(comment => 
-      comment.id === commentId 
-        ? { ...comment, text, updatedAt: new Date().toISOString(), isEdited: true }
-        : comment
-    ));
-  };
-
-  const deleteComment = (commentId: string) => {
-    setComments(prev => prev.filter(comment => comment.id !== commentId));
-  };
-
-  const getCommentsForIssue = (issueId: string): Comment[] => {
-    return comments.filter(comment => comment.issueId === issueId)
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  };
-
-  const getUserComments = (): UserComment[] => {
-    return comments
-      .filter(comment => comment.author.id === CURRENT_USER_ID)
-      .map(comment => ({
+      setCommentsLoading(true);
+      const dbComments = await DataService.getComments(issueId);
+      
+      // Transform database comments to match our interface
+      const transformedComments: Comment[] = dbComments.map((comment: any) => ({
         id: comment.id,
         text: comment.text,
-        issueId: comment.issueId,
-        issueTitle: `Issue ${comment.issueId}`, // In a real app, this would be fetched from issues
-        createdAt: comment.createdAt,
-        reactions: comment.reactions,
-        replies: comment.replies,
-        depth: comment.depth,
-      }))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  };
-
-  const addReaction = (commentId: string, reactionType: ReactionType) => {
-    setComments(prev => prev.map(comment => {
-      if (comment.id === commentId) {
-        const existingReaction = comment.reactions.find(r => r.userId === CURRENT_USER_ID);
-        if (existingReaction) {
-          // Update existing reaction
-          return {
-            ...comment,
-            reactions: comment.reactions.map(r => 
-              r.userId === CURRENT_USER_ID 
-                ? { ...r, type: reactionType, createdAt: new Date().toISOString() }
-                : r
-            )
-          };
-        } else {
-          // Add new reaction
-          return {
-            ...comment,
-            reactions: [
-              ...comment.reactions,
-              {
-                id: generateId(),
-                userId: CURRENT_USER_ID,
-                type: reactionType,
-                createdAt: new Date().toISOString(),
-              }
-            ]
-          };
-        }
-      }
-      return comment;
-    }));
-  };
-
-  const removeReaction = (commentId: string, reactionType: ReactionType) => {
-    setComments(prev => prev.map(comment => {
-      if (comment.id === commentId) {
-        return {
-          ...comment,
-          reactions: comment.reactions.filter(r => !(r.userId === CURRENT_USER_ID && r.type === reactionType))
-        };
-      }
-      return comment;
-    }));
-  };
-
-  const getUserReaction = (commentId: string): ReactionType | null => {
-    const comment = comments.find(c => c.id === commentId);
-    if (!comment) return null;
-    
-    const userReaction = comment.reactions.find(r => r.userId === CURRENT_USER_ID);
-    return userReaction ? userReaction.type : null;
-  };
-
-  const getReactionCount = (commentId: string, reactionType: ReactionType): number => {
-    const comment = comments.find(c => c.id === commentId);
-    if (!comment) return 0;
-    
-    return comment.reactions.filter(r => r.type === reactionType).length;
-  };
-
-  const addIssueReaction = (issueId: string, reactionType: ReactionType) => {
-    setIssueReactions(prev => {
-      const currentReactions = prev[issueId] || [];
-      const existingReaction = currentReactions.find(r => r.userId === CURRENT_USER_ID);
+        author: {
+          id: comment.profiles?.id || '',
+          name: comment.profiles?.name || 'Unknown User',
+          avatar: comment.profiles?.avatar || undefined,
+          verified: false,
+        },
+        createdAt: comment.created_at,
+        updatedAt: comment.updated_at || undefined,
+        reactions: [],
+        replies: [],
+        depth: 0,
+        issueId: comment.issue_id,
+      }));
       
-      if (existingReaction) {
-        // Update existing reaction
-        return {
-          ...prev,
-          [issueId]: currentReactions.map(r => 
-            r.userId === CURRENT_USER_ID 
-              ? { ...r, type: reactionType, createdAt: new Date().toISOString() }
-              : r
-          )
+      setCommentsByIssue(prev => ({
+        ...prev,
+        [issueId]: transformedComments
+      }));
+    } catch (error) {
+      console.error('Error loading comments:', error);
+      setCommentsByIssue(prev => ({
+        ...prev,
+        [issueId]: []
+      }));
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, []);
+
+  const addComment = async (issueId: string, text: string, parentId?: string) => {
+    if (!user) {
+      throw new Error('User must be authenticated to add comments');
+    }
+
+    try {
+      setLoading(true);
+      const commentData = {
+        issue_id: issueId,
+        author_id: user.id,
+        text: text.trim(),
+      };
+
+      const newComment = await DataService.addComment(commentData);
+      
+      if (newComment) {
+        // Transform and add to local state
+        const transformedComment: Comment = {
+          id: newComment.id,
+          text: newComment.text,
+          author: {
+            id: newComment.profiles?.id || user.id,
+            name: newComment.profiles?.name || 'You',
+            avatar: newComment.profiles?.avatar || undefined,
+            verified: false,
+          },
+          createdAt: newComment.created_at,
+          reactions: [],
+          replies: [],
+          depth: 0,
+          issueId: newComment.issue_id,
         };
-      } else {
-        // Add new reaction
-        return {
+        
+        setCommentsByIssue(prev => ({
           ...prev,
-          [issueId]: [
-            ...currentReactions,
-            {
-              id: generateId(),
-              userId: CURRENT_USER_ID,
-              type: reactionType,
-              createdAt: new Date().toISOString(),
-            }
-          ]
-        };
+          [issueId]: [...(prev[issueId] || []), transformedComment]
+        }));
       }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const editComment = async (commentId: string, text: string) => {
+    // For now, we'll just update locally since we don't have an edit endpoint
+    console.log('Edit comment not implemented yet');
+  };
+
+  const deleteComment = async (commentId: string) => {
+    // For now, we'll just remove locally since we don't have a delete endpoint
+    setCommentsByIssue(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(issueId => {
+        updated[issueId] = updated[issueId].filter(comment => comment.id !== commentId);
+      });
+      return updated;
     });
   };
 
+  const getCommentsForIssue = (issueId: string): Comment[] => {
+    return (commentsByIssue[issueId] || [])
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  };
+
+  const getUserComments = (): Comment[] => {
+    if (!user) return [];
+    const allComments = Object.values(commentsByIssue).flat();
+    return allComments
+      .filter(comment => comment.author.id === user.id)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  };
+
+  const toggleUpvote = async (issueId: string) => {
+    if (!user) {
+      throw new Error('User must be authenticated to vote');
+    }
+
+    try {
+      setLoading(true);
+      const isUpvoted = await DataService.toggleUpvote(issueId, user.id);
+      
+      // Update local state
+      if (isUpvoted) {
+        setUserUpvotes(prev => [...prev, issueId]);
+      } else {
+        setUserUpvotes(prev => prev.filter(id => id !== issueId));
+      }
+    } catch (error) {
+      console.error('Error toggling upvote:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getUserUpvotes = (): string[] => {
+    return userUpvotes;
+  };
+
+  // Stub implementations for compatibility
+  const addReaction = (commentId: string, reactionType: ReactionType) => {
+    console.log('Comment reactions not implemented yet');
+  };
+
+  const removeReaction = (commentId: string, reactionType: ReactionType) => {
+    console.log('Comment reactions not implemented yet');
+  };
+
+  const getUserReaction = (commentId: string): ReactionType | null => {
+    return null;
+  };
+
+  const getReactionCount = (commentId: string, reactionType: ReactionType): number => {
+    return 0;
+  };
+
+  const addIssueReaction = (issueId: string, reactionType: ReactionType) => {
+    console.log('Issue reactions not implemented yet');
+  };
+
   const removeIssueReaction = (issueId: string, reactionType: ReactionType) => {
-    setIssueReactions(prev => ({
-      ...prev,
-      [issueId]: (prev[issueId] || []).filter(r => !(r.userId === CURRENT_USER_ID && r.type === reactionType))
-    }));
+    console.log('Issue reactions not implemented yet');
   };
 
   const getUserIssueReaction = (issueId: string): ReactionType | null => {
-    const reactions = issueReactions[issueId] || [];
-    const userReaction = reactions.find(r => r.userId === CURRENT_USER_ID);
-    return userReaction ? userReaction.type : null;
+    return null;
   };
 
   const getIssueReactionCount = (issueId: string, reactionType: ReactionType): number => {
-    const reactions = issueReactions[issueId] || [];
-    return reactions.filter(r => r.type === reactionType).length;
+    return 0;
   };
 
   const value: CommentContextType = {
@@ -336,6 +271,9 @@ export const CommentProvider: React.FC<CommentProviderProps> = ({ children }) =>
     deleteComment,
     getCommentsForIssue,
     getUserComments,
+    loadCommentsForIssue,
+    toggleUpvote,
+    getUserUpvotes,
     addReaction,
     removeReaction,
     getUserReaction,
@@ -344,6 +282,8 @@ export const CommentProvider: React.FC<CommentProviderProps> = ({ children }) =>
     removeIssueReaction,
     getUserIssueReaction,
     getIssueReactionCount,
+    loading,
+    commentsLoading,
   };
 
   return (

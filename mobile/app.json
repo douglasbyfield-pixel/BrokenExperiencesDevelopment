@@ -14,8 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.brokenexperience.mobile",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "bundleIdentifier": "com.brokenexperience.mobile"
     },
     "android": {
       "package": "com.brokenexperience.mobile",
@@ -34,7 +33,15 @@
         {
           "locationAlwaysAndWhenInUsePermission": "This app uses location to show your position on the map."
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "This app needs access to your photo library to attach images to reports.",
+          "cameraPermission": "This app needs access to your camera to take photos for reports."
+        }
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

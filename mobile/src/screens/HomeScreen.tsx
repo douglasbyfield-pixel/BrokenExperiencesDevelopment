@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, RefreshControl, ScrollView, Dimensions, Image, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, RefreshControl, ScrollView, Dimensions, Image, TextInput, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { mockIssues, Issue, getCategoryIcon, getPriorityColor, getStatusColor, formatTimeAgo, mockUserProfile } from '../data/mockData';
+import { DataService } from '../services/dataService';
+import { useAuth } from '../context/AuthContext';
 import { useBookmark } from '../context/BookmarkContext';
 import IssueDetailScreen from './IssueDetailScreen';
+import type { Issue } from '../types/database';
 
 interface HomeScreenProps {
   navigation: any;
@@ -12,16 +14,117 @@ interface HomeScreenProps {
 const { width } = Dimensions.get('window');
 
 
+// Helper functions
+const getCategoryIcon = (category: string) => {
+  const icons: { [key: string]: string } = {
+    infrastructure: 'construct-outline',
+    safety: 'shield-outline',
+    environment: 'leaf-outline',
+    maintenance: 'hammer-outline',
+    accessibility: 'accessibility-outline',
+    road_maintenance: 'car-outline',
+  };
+  return icons[category] || 'help-outline';
+};
+
+const getPriorityColor = (priority: string) => {
+  const colors: { [key: string]: string } = {
+    low: '#22c55e',
+    medium: '#f59e0b',
+    high: '#ef4444',
+    critical: '#dc2626',
+  };
+  return colors[priority] || '#6b7280';
+};
+
+const getStatusColor = (status: string) => {
+  const colors: { [key: string]: string } = {
+    pending: '#f59e0b',
+    in_progress: '#3b82f6',
+    resolved: '#22c55e',
+    closed: '#6b7280',
+  };
+  return colors[status] || '#6b7280';
+};
+
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  return `${Math.floor(diffInSeconds / 86400)}d ago`;
+};
+
 export default function HomeScreen({ navigation }: HomeScreenProps) {
+  const { user, profile } = useAuth();
   const { isBookmarked, toggleBookmark } = useBookmark();
-  const [issues, setIssues] = useState<Issue[]>(mockIssues);
+  const [issues, setIssues] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
-  const [selectedPriorityFilter, setSelectedPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high' | 'critical'>('all');
+  const [selectedPriorityFilter, setSelectedPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
-  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [userUpvotes, setUserUpvotes] = useState<string[]>([]);
   const scrollViewRef = React.useRef<ScrollView>(null);
+
+  // Load data functions
+  const loadIssues = async () => {
+    try {
+      setLoading(true);
+      const issuesData = await DataService.getIssues();
+      setIssues(issuesData);
+      
+      // Load user upvotes if user is logged in
+      if (user) {
+        const upvotes = await DataService.getUserUpvotes(user.id);
+        setUserUpvotes(upvotes);
+      }
+    } catch (error) {
+      console.error('Error loading issues:', error);
+      Alert.alert('Error', 'Failed to load issues. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadIssues();
+    setRefreshing(false);
+  };
+
+  const handleUpvote = async (issueId: string) => {
+    if (!user) {
+      Alert.alert('Sign In Required', 'Please sign in to upvote issues.');
+      return;
+    }
+
+    try {
+      const isUpvoted = await DataService.toggleUpvote(issueId, user.id);
+      
+      // Update local state
+      if (isUpvoted) {
+        setUserUpvotes(prev => [...prev, issueId]);
+      } else {
+        setUserUpvotes(prev => prev.filter(id => id !== issueId));
+      }
+      
+      // Refresh issues to get updated counts
+      await loadIssues();
+    } catch (error) {
+      console.error('Error toggling upvote:', error);
+      Alert.alert('Error', 'Failed to update upvote. Please try again.');
+    }
+  };
+
+  useEffect(() => {
+    loadIssues();
+  }, [user]);
 
   // Jamaica stats
   const communityStats = {
@@ -32,13 +135,35 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   };
 
 
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setIssues([...mockIssues]);
-      setRefreshing(false);
-    }, 1000);
-  }, []);
+  // Filter issues based on selected filters
+  const applyFilters = async () => {
+    try {
+      setLoading(true);
+      const filters: any = {};
+      
+      if (selectedStatusFilter !== 'all') {
+        filters.status = selectedStatusFilter;
+      }
+      if (selectedPriorityFilter !== 'all') {
+        filters.priority = selectedPriorityFilter;
+      }
+      
+      const filteredData = await DataService.getFilteredIssues(filters);
+      setIssues(filteredData);
+    } catch (error) {
+      console.error('Error applying filters:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedStatusFilter !== 'all' || selectedPriorityFilter !== 'all') {
+      applyFilters();
+    } else {
+      loadIssues();
+    }
+  }, [selectedStatusFilter, selectedPriorityFilter]);
 
 
   const toggleFilterPanel = () => {
@@ -68,11 +193,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   };
 
 
-  const filteredIssues = issues.filter(issue => {
-    const statusMatch = selectedStatusFilter === 'all' || issue.status === selectedStatusFilter;
-    const priorityMatch = selectedPriorityFilter === 'all' || issue.priority === selectedPriorityFilter;
-    return statusMatch && priorityMatch;
-  });
+  // Issues are already filtered on the server side
+  const filteredIssues = issues;
 
   const handleSearchPress = () => {
     navigation.navigate('SearchResults', { searchQuery: '' });
@@ -114,9 +236,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     );
   };
 
-  const renderIssue = (item: Issue) => {
+  const renderIssue = (item: any) => {
     const priorityColor = getPriorityColor(item.priority);
     const statusColor = getStatusColor(item.status);
+    const upvoteCount = item.upvotes?.[0]?.count || 0;
+    const commentCount = item.comments?.[0]?.count || 0;
+    const isUpvoted = userUpvotes.includes(item.id);
+    const authorName = item.profiles?.name || 'Unknown User';
+    const authorAvatar = item.profiles?.avatar;
 
     return (
       <View key={item.id} style={styles.postCard}>
@@ -124,24 +251,21 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <View style={styles.postHeader}>
           <View style={styles.authorInfo}>
             <View style={styles.avatarContainer}>
-              {item.author.avatar ? (
-                <Image source={{ uri: item.author.avatar }} style={styles.avatar} />
+              {authorAvatar ? (
+                <Image source={{ uri: authorAvatar }} style={styles.avatar} />
               ) : (
                 <View style={styles.defaultAvatar}>
                   <Text style={styles.defaultAvatarText}>
-                    {item.author.name.charAt(0).toUpperCase()}
+                    {authorName.charAt(0).toUpperCase()}
                   </Text>
                 </View>
               )}
             </View>
             <View style={styles.authorDetails}>
               <View style={styles.authorNameRow}>
-                <Text style={styles.authorName}>{item.author.name}</Text>
-                {item.author.verified && (
-                  <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" />
-                )}
+                <Text style={styles.authorName}>{authorName}</Text>
               </View>
-              <Text style={styles.postTime}>{formatTimeAgo(item.timestamp)}</Text>
+              <Text style={styles.postTime}>{formatTimeAgo(item.created_at)}</Text>
             </View>
           </View>
           <View style={styles.headerActions}>
@@ -167,43 +291,60 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           activeOpacity={0.7}
           onPress={() => handleIssuePress(item)}
         >
-          <Text style={styles.postText}>{item.postContent.postText}</Text>
+          <Text style={styles.postTitle}>{item.title}</Text>
+          <Text style={styles.postText}>{item.description}</Text>
           
           {/* Image */}
-          {item.postContent.hasImage && item.postContent.imageUrl && (
+          {item.image_url && (
             <Image 
-              source={{ uri: item.postContent.imageUrl }} 
+              source={{ uri: item.image_url }} 
               style={styles.postImage}
               resizeMode="cover"
             />
           )}
 
-          {/* Hashtags */}
-          <View style={styles.hashtagsContainer}>
-            {item.postContent.hashtags.map((hashtag, index) => (
-              <Text key={index} style={styles.hashtag}>
-                {hashtag}
-              </Text>
-            ))}
+          {/* Status and Priority */}
+          <View style={styles.metaContainer}>
+            <View style={styles.statusContainer}>
+              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+              <Text style={styles.statusText}>{item.status}</Text>
+            </View>
+            <View style={styles.priorityContainer}>
+              <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+              <Text style={styles.priorityText}>{item.priority}</Text>
+            </View>
           </View>
         </TouchableOpacity>
 
         {/* Post Footer */}
         <View style={styles.postFooter}>
           <View style={styles.engagementRow}>
-            <TouchableOpacity style={styles.engagementButton}>
-              <Ionicons name="heart-outline" size={24} color="#000" />
-              <Text style={styles.engagementText}>{item.engagement.likes}</Text>
+            <TouchableOpacity 
+              style={styles.engagementButton}
+              onPress={() => handleUpvote(item.id)}
+            >
+              <Ionicons 
+                name={isUpvoted ? "heart" : "heart-outline"} 
+                size={24} 
+                color={isUpvoted ? "#ef4444" : "#000"} 
+              />
+              <Text style={styles.engagementText}>{upvoteCount}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.engagementButton}>
               <Ionicons name="chatbubble-outline" size={24} color="#000" />
-              <Text style={styles.engagementText}>{item.engagement.comments}</Text>
+              <Text style={styles.engagementText}>{commentCount}</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.engagementButton}>
-              <Ionicons name="share-outline" size={24} color="#000" />
-              <Text style={styles.engagementText}>{item.engagement.shares}</Text>
+            <TouchableOpacity 
+              style={styles.engagementButton}
+              onPress={() => handleBookmarkPress(item.id)}
+            >
+              <Ionicons 
+                name={isBookmarked(item.id) ? "bookmark" : "bookmark-outline"} 
+                size={24} 
+                color={isBookmarked(item.id) ? "#000" : "#666"} 
+              />
             </TouchableOpacity>
           </View>
 
@@ -221,7 +362,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={14} color="#666" />
           <Text style={styles.locationText} numberOfLines={1}>
-            {item.location.address}
+            {item.address}
           </Text>
         </View>
       </View>
@@ -267,7 +408,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#000" />
         }
       >
         <View style={styles.header}>
@@ -710,6 +851,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#000',
+  },
+  postTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  categoryText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  priorityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  priorityText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+    textTransform: 'capitalize',
   },
   emptyState: {
     justifyContent: 'center',

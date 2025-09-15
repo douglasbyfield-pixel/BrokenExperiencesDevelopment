@@ -5,7 +5,9 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as Location from 'expo-location';
 import WebView from 'react-native-webview';
-import { mockIssues, getPriorityColor, getCategoryIcon, Issue } from '../data/mockData';
+import { getPriorityColor, getCategoryIcon, formatTimeAgo } from '../data/mockData';
+import { DataService } from '../services/dataService';
+import type { Issue } from '../types/database';
 
 
 type RootStackParamList = {
@@ -22,11 +24,46 @@ export default function MapScreen() {
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(true);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [loading, setLoading] = useState(true);
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
     getCurrentLocation();
+    loadIssues();
   }, []);
+
+  const loadIssues = async () => {
+    try {
+      setLoading(true);
+      const issuesData = await DataService.getIssues();
+      setIssues(issuesData);
+      
+      // Update map with real issues
+      if (webViewRef.current) {
+        const message = JSON.stringify({
+          type: 'UPDATE_ISSUES',
+          issues: issuesData.map(issue => ({
+            id: issue.id,
+            title: issue.title,
+            description: issue.description,
+            priority: issue.priority,
+            category: issue.category,
+            latitude: issue.latitude,
+            longitude: issue.longitude,
+            address: issue.address,
+            upvotes: issue.upvotes?.[0]?.count || 0,
+            reportedBy: issue.profiles?.name || 'Anonymous'
+          }))
+        });
+        webViewRef.current.postMessage(message);
+      }
+    } catch (error) {
+      console.error('Error loading issues:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getCurrentLocation = async () => {
     try {
@@ -176,56 +213,7 @@ export default function MapScreen() {
         let markers = [];
         let userMarker = null;
 
-        const issues = [
-            {
-                id: "1",
-                title: "Pothole on Main Street",
-                description: "Large pothole causing traffic issues",
-                priority: "high",
-                location: { latitude: 18.1096, longitude: -77.2975, address: "Main Street, Kingston" },
-                upvotes: 12
-            },
-            {
-                id: "2", 
-                title: "Broken Street Light",
-                description: "Street light has been out for weeks",
-                priority: "medium",
-                location: { latitude: 18.4607, longitude: -77.8916, address: "Montego Bay, St. James" },
-                upvotes: 8
-            },
-            {
-                id: "3",
-                title: "Damaged Sidewalk",
-                description: "Cracked sidewalk is a safety hazard",
-                priority: "low",
-                location: { latitude: 17.9311, longitude: -76.7951, address: "Port Antonio, Portland" },
-                upvotes: 5
-            },
-            {
-                id: "4",
-                title: "Road Flooding",
-                description: "Road floods during heavy rain",
-                priority: "high",
-                location: { latitude: 18.5206, longitude: -77.8946, address: "Falmouth, Trelawny" },
-                upvotes: 15
-            },
-            {
-                id: "5",
-                title: "Broken Water Pipe",
-                description: "Water pipe burst causing road damage",
-                priority: "medium",
-                location: { latitude: 17.8811, longitude: -76.9527, address: "Blue Mountains, St. Andrew" },
-                upvotes: 9
-            },
-            {
-                id: "6",
-                title: "Cracked Bridge",
-                description: "Small cracks appearing on bridge surface",
-                priority: "low",
-                location: { latitude: 18.0179, longitude: -77.8803, address: "Mandeville, Manchester" },
-                upvotes: 3
-            }
-        ];
+        let issues = [];
 
         function getPriorityColor(priority) {
             switch (priority) {
@@ -236,20 +224,25 @@ export default function MapScreen() {
             }
         }
 
-        function createBrokenIcon(priority) {
+        function getCategoryIcon(category) {
+            switch (category) {
+                case 'infrastructure': return '🏗️';
+                case 'road_maintenance': return '🚧';
+                case 'safety': return '🛡️';
+                case 'environment': return '🌿';
+                case 'maintenance': return '🔧';
+                case 'accessibility': return '♿';
+                default: return '⚠️';
+            }
+        }
+
+        function createBrokenIcon(priority, category) {
             const color = getPriorityColor(priority);
             const size = priority === 'high' ? 40 : priority === 'medium' ? 36 : 32;
             const darkColor = adjustColor(color, -20);
             const fontSize = size > 36 ? '20px' : size > 32 ? '18px' : '16px';
             
-            let icon;
-            if (priority === 'high') {
-                icon = '🏠'; // House for high priority
-            } else if (priority === 'medium') {
-                icon = '⚡'; // Lightning for medium priority  
-            } else {
-                icon = '⚠'; // Warning for low priority
-            }
+            const icon = getCategoryIcon(category);
             
             return L.divIcon({
                 className: 'broken-marker',
@@ -297,19 +290,38 @@ export default function MapScreen() {
                 maxZoom: 19
             }).addTo(map);
 
-            // Add issue markers
-            issues.forEach(issue => {
+            // Issues will be loaded dynamically
+        }
+
+        function updateIssues(newIssues) {
+            // Clear existing markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            // Add new issue markers
+            newIssues.forEach(issue => {
                 const color = getPriorityColor(issue.priority);
-                const marker = L.marker([issue.location.latitude, issue.location.longitude], {
-                    icon: createBrokenIcon(issue.priority)
+                const marker = L.marker([issue.latitude, issue.longitude], {
+                    icon: createBrokenIcon(issue.priority, issue.category)
                 }).addTo(map);
+
+                let distanceText = '';
+                if (userLocation) {
+                    const distance = calculateDistance(
+                        userLocation.lat, userLocation.lng,
+                        issue.latitude, issue.longitude
+                    );
+                    distanceText = '<div style="margin-top: 8px; font-size: 12px; color: #0066cc; font-weight: bold;">📍 ' + formatDistance(distance) + '</div>';
+                }
 
                 const popupContent = '<div class="custom-popup">' +
                     '<div class="popup-title">' + issue.title + '</div>' +
                     '<div class="popup-description">' + issue.description + '</div>' +
                     '<div class="popup-priority" style="color: ' + color + '">' + 
                     issue.priority + ' priority • ↑' + issue.upvotes + '</div>' +
-                    '<div class="popup-address">' + issue.location.address + '</div>' +
+                    '<div class="popup-address">' + issue.address + '</div>' +
+                    distanceText +
+                    '<div style="margin-top: 8px; font-size: 11px; color: #888;">Reported by: ' + issue.reportedBy + '</div>' +
                     '</div>';
 
                 marker.bindPopup(popupContent, {
@@ -319,6 +331,31 @@ export default function MapScreen() {
 
                 markers.push(marker);
             });
+
+            issues = newIssues;
+        }
+
+        let userLocation = null;
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c; // Distance in kilometers
+            return distance;
+        }
+
+        function formatDistance(distance) {
+            if (distance < 1) {
+                return Math.round(distance * 1000) + 'm away';
+            } else {
+                return distance.toFixed(1) + 'km away';
+            }
         }
 
         window.addEventListener('message', function(event) {
@@ -328,6 +365,8 @@ export default function MapScreen() {
                 if (data.type === 'SET_CENTER') {
                     map.setView([data.lat, data.lng], data.zoom || 14);
                 } else if (data.type === 'SET_USER_LOCATION') {
+                    userLocation = { lat: data.lat, lng: data.lng };
+                    
                     if (userMarker) {
                         map.removeLayer(userMarker);
                     }
@@ -342,6 +381,13 @@ export default function MapScreen() {
                     }).addTo(map);
                     
                     userMarker.bindPopup('Your Location');
+                    
+                    // Update existing issue markers with distance if they exist
+                    if (issues.length > 0) {
+                        updateIssues(issues);
+                    }
+                } else if (data.type === 'UPDATE_ISSUES') {
+                    updateIssues(data.issues);
                 }
             } catch (e) {
                 console.log('Message parsing error:', e);
@@ -379,7 +425,7 @@ export default function MapScreen() {
         style={[styles.issuesList, showMap && styles.issuesListHidden]} 
         showsVerticalScrollIndicator={false}
       >
-        {mockIssues.map((issue) => (
+        {issues.map((issue) => (
           <TouchableOpacity
             key={issue.id}
             style={[
@@ -406,7 +452,7 @@ export default function MapScreen() {
                   <Text style={styles.categoryLabel}>{issue.category}</Text>
                 </View>
               </View>
-              <Text style={styles.upvotesText}>↑ {issue.upvotes}</Text>
+              <Text style={styles.upvotesText}>↑ {issue.upvotes?.[0]?.count || 0}</Text>
             </View>
             
             <Text style={styles.issueTitle}>{issue.title}</Text>
@@ -414,12 +460,12 @@ export default function MapScreen() {
             
             <View style={styles.locationInfo}>
               <Ionicons name="location-outline" size={16} color="#666" />
-              <Text style={styles.addressText}>{issue.location.address}</Text>
+              <Text style={styles.addressText}>{issue.address}</Text>
             </View>
             
             <View style={styles.coordinatesContainer}>
               <Text style={styles.coordinatesText}>
-                📍 {issue.location.latitude.toFixed(4)}, {issue.location.longitude.toFixed(4)}
+                📍 {issue.latitude?.toFixed(4)}, {issue.longitude?.toFixed(4)}
               </Text>
             </View>
           </TouchableOpacity>

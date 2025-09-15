@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Dimensions, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Dimensions, Modal, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Issue, getCategoryIcon, getPriorityColor, formatTimeAgo } from '../data/mockData';
+import { getCategoryIcon, getPriorityColor, formatTimeAgo } from '../data/mockData';
 import { useComment } from '../context/CommentContext';
 import CommentInput from '../components/CommentInput';
 import CommentItem from '../components/CommentItem';
 import IssueReactions from '../components/IssueReactions';
+import type { Issue } from '../types/database';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,8 +19,15 @@ interface IssueDetailScreenProps {
 }
 
 export default function IssueDetailScreen({ issue, visible, onClose, onNavigateToIssue, allIssues }: IssueDetailScreenProps) {
-  const { getCommentsForIssue } = useComment();
+  const { getCommentsForIssue, commentsLoading, loadCommentsForIssue } = useComment();
   const [showCommentInput, setShowCommentInput] = useState(false);
+  
+  // Load comments when issue changes
+  useEffect(() => {
+    if (issue && visible) {
+      loadCommentsForIssue(issue.id);
+    }
+  }, [issue?.id, visible, loadCommentsForIssue]);
   
   if (!issue) return null;
 
@@ -86,25 +94,34 @@ export default function IssueDetailScreen({ issue, visible, onClose, onNavigateT
             
             <Text style={styles.issueDescription}>{issue.description}</Text>
 
+            {/* Issue Image */}
+            {issue.image_url && (
+              <Image 
+                source={{ uri: issue.image_url }} 
+                style={styles.issueImage}
+                resizeMode="cover"
+              />
+            )}
+
             <View style={styles.metaInfo}>
               <View style={styles.metaRow}>
                 <Ionicons name="location-outline" size={16} color="#666" />
-                <Text style={styles.metaText}>{issue.location.address}</Text>
+                <Text style={styles.metaText}>{issue.address}</Text>
               </View>
               
               <View style={styles.metaRow}>
                 <Ionicons name="person-outline" size={16} color="#666" />
-                <Text style={styles.metaText}>Reported by {issue.reportedBy}</Text>
+                <Text style={styles.metaText}>Reported by {issue.profiles?.name || 'Anonymous'}</Text>
               </View>
               
               <View style={styles.metaRow}>
                 <Ionicons name="time-outline" size={16} color="#666" />
-                <Text style={styles.metaText}>{formatTimeAgo(issue.reportedAt)}</Text>
+                <Text style={styles.metaText}>{formatTimeAgo(issue.created_at)}</Text>
               </View>
               
               <View style={styles.metaRow}>
                 <Ionicons name="thumbs-up-outline" size={16} color="#666" />
-                <Text style={styles.metaText}>{issue.upvotes} upvotes</Text>
+                <Text style={styles.metaText}>{issue.upvotes?.[0]?.count || 0} upvotes</Text>
               </View>
             </View>
 
@@ -112,7 +129,7 @@ export default function IssueDetailScreen({ issue, visible, onClose, onNavigateT
             <View style={styles.coordinatesContainer}>
               <Text style={styles.coordinatesLabel}>Coordinates:</Text>
               <Text style={styles.coordinatesText}>
-                {issue.location.latitude.toFixed(6)}, {issue.location.longitude.toFixed(6)}
+                {issue.latitude?.toFixed(6)}, {issue.longitude?.toFixed(6)}
               </Text>
             </View>
           </View>
@@ -120,7 +137,9 @@ export default function IssueDetailScreen({ issue, visible, onClose, onNavigateT
           {/* Comments Section */}
           <View style={styles.commentsSection}>
             <View style={styles.commentsHeader}>
-              <Text style={styles.commentsTitle}>Comments ({comments.length})</Text>
+              <Text style={styles.commentsTitle}>
+                Comments ({commentsLoading ? '...' : comments.length})
+              </Text>
               <TouchableOpacity 
                 style={styles.addCommentButton}
                 onPress={() => setShowCommentInput(!showCommentInput)}
@@ -138,7 +157,12 @@ export default function IssueDetailScreen({ issue, visible, onClose, onNavigateT
               />
             )}
             
-            {comments.length === 0 ? (
+            {commentsLoading ? (
+              <View style={styles.noComments}>
+                <Ionicons name="hourglass-outline" size={48} color="#ccc" />
+                <Text style={styles.noCommentsText}>Loading comments...</Text>
+              </View>
+            ) : comments.length === 0 ? (
               <View style={styles.noComments}>
                 <Ionicons name="chatbubbles-outline" size={48} color="#ccc" />
                 <Text style={styles.noCommentsText}>No comments yet</Text>
@@ -433,6 +457,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#666',
+  },
+  issueImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 8,
+    marginVertical: 16,
+    backgroundColor: '#f0f0f0',
   },
 });
 

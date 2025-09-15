@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../services/supabase';
-import { mockUserProfile } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { DataService } from '../services/dataService';
 
 interface ProfileScreenProps {
   navigation: any;
@@ -11,11 +11,43 @@ interface ProfileScreenProps {
 const { width } = Dimensions.get('window');
 
 export default function ProfileScreen({ navigation }: ProfileScreenProps) {
+  const { user, profile, signOut } = useAuth();
+  const [userStats, setUserStats] = useState({
+    issuesReported: 0,
+    issuesResolved: 0,
+    reputation: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserStats();
+    }
+  }, [user]);
+
+  const fetchUserStats = async () => {
+    try {
+      setLoading(true);
+      // Get user's reported issues
+      const allIssues = await DataService.getIssues();
+      const userIssues = allIssues.filter(issue => issue.reported_by === user?.id);
+      const resolvedIssues = userIssues.filter(issue => issue.status === 'resolved');
+      
+      setUserStats({
+        issuesReported: userIssues.length,
+        issuesResolved: resolvedIssues.length,
+        reputation: profile?.reputation || 0
+      });
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      await signOut();
     } catch (error) {
       Alert.alert('Error', 'Failed to sign out');
     }
@@ -37,7 +69,40 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
     navigation.navigate('UserComments');
   };
 
-  const renderBadge = (badge: typeof mockUserProfile.badges[0]) => {
+  const getBadges = () => {
+    const badges = [];
+    
+    if (userStats.issuesReported >= 5) {
+      badges.push({
+        id: 'community_helper',
+        name: 'Community Helper',
+        description: 'Reported 5+ issues',
+        icon: 'medal-outline'
+      });
+    }
+    
+    if (userStats.issuesResolved >= 3) {
+      badges.push({
+        id: 'problem_solver',
+        name: 'Problem Solver',
+        description: 'Had 3+ reports resolved',
+        icon: 'checkmark-circle-outline'
+      });
+    }
+    
+    if (userStats.issuesReported >= 1) {
+      badges.push({
+        id: 'contributor',
+        name: 'Contributor',
+        description: 'Made your first report',
+        icon: 'star-outline'
+      });
+    }
+    
+    return badges;
+  };
+
+  const renderBadge = (badge: { id: string; name: string; description: string; icon: string }) => {
     return (
       <View key={badge.id} style={styles.badge}>
         <Ionicons name={badge.icon as any} size={24} color="#000" />
@@ -77,32 +142,32 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
             </TouchableOpacity>
           </View>
           
-          <Text style={styles.userName}>{mockUserProfile.name}</Text>
-          <Text style={styles.userEmail}>{mockUserProfile.email}</Text>
+          <Text style={styles.userName}>{profile?.name || 'User'}</Text>
+          <Text style={styles.userEmail}>{profile?.email || user?.email || ''}</Text>
           <Text style={styles.joinDate}>
-            Member since {new Date(mockUserProfile.joinedAt).toLocaleDateString('en-US', { 
+            Member since {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { 
               month: 'long', 
               year: 'numeric' 
-            })}
+            }) : 'Recently'}
           </Text>
         </View>
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Ionicons name="alert-circle" size={24} color="#000" />
-            <Text style={styles.statNumber}>{mockUserProfile.issuesReported}</Text>
+            <Text style={styles.statNumber}>{loading ? '...' : userStats.issuesReported}</Text>
             <Text style={styles.statLabel}>Issues Reported</Text>
           </View>
           
           <View style={styles.statCard}>
             <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
-            <Text style={styles.statNumber}>{mockUserProfile.issuesResolved}</Text>
+            <Text style={styles.statNumber}>{loading ? '...' : userStats.issuesResolved}</Text>
             <Text style={styles.statLabel}>Issues Resolved</Text>
           </View>
           
           <View style={styles.statCard}>
             <Ionicons name="trophy" size={24} color="#ca8a04" />
-            <Text style={styles.statNumber}>{mockUserProfile.reputation}</Text>
+            <Text style={styles.statNumber}>{loading ? '...' : userStats.reputation}</Text>
             <Text style={styles.statLabel}>Reputation</Text>
           </View>
         </View>
@@ -110,7 +175,10 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
         <View style={styles.badgesSection}>
           <Text style={styles.sectionTitle}>Achievements</Text>
           <View style={styles.badgesContainer}>
-            {mockUserProfile.badges.map((badge) => renderBadge(badge))}
+            {getBadges().map((badge) => renderBadge(badge))}
+            {getBadges().length === 0 && (
+              <Text style={styles.noBadges}>No badges earned yet. Start reporting issues to earn achievements!</Text>
+            )}
           </View>
         </View>
 
@@ -299,6 +367,13 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 14,
+  },
+  noBadges: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    padding: 20,
   },
   actionsSection: {
     paddingHorizontal: 20,

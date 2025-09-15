@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Text, TouchableOpacity, StyleSheet, View, StatusBar, SafeAreaView, TextInput, Alert } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, View, StatusBar, TextInput, Alert, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import GoogleIcon from '../assets/GoogleIcon';
 import AppleIcon from '../assets/AppleIcon';
@@ -24,22 +25,47 @@ export default function LoginScreen() {
           Alert.alert('Error', 'Password must be at least 6 characters long');
           return;
         }
-        const { error } = await supabase.auth.signUp({
+        
+        console.log('Attempting to sign up user:', email);
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
         });
+        
         if (error) throw error;
-        Alert.alert('Success', 'Check your email for confirmation link');
+        
+        console.log('Sign up successful:', data);
+        Alert.alert('Success', 'Account created! You can now sign in.');
+        setIsSignUp(false); // Switch to sign in mode
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        console.log('Attempting to sign in user:', email);
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
+        
         if (error) throw error;
-        setIsAuthenticated(true);
+        
+        console.log('Sign in successful:', data);
+        // The AuthContext will handle setting isAuthenticated via onAuthStateChange
       }
     } catch (error) {
+      console.error('Auth error:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Authentication failed');
+    }
+  };
+
+  const testConnection = async () => {
+    try {
+      console.log('Testing Supabase connection...');
+      const { data, error } = await supabase.from('profiles').select('count').limit(1);
+      if (error) throw error;
+      
+      Alert.alert('Success', 'Supabase connection working!');
+      console.log('Connection test successful');
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      Alert.alert('Error', 'Supabase connection failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -55,6 +81,11 @@ export default function LoginScreen() {
         
         <View style={styles.contentContainer}>
           <View style={styles.header}>
+            <Image 
+              source={require('../../assets/images/logo.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>BROKEN</Text>
             <Text style={styles.titleSecondary}>EXPERIENCES</Text>
             <Text style={styles.subtitle}>Report and fix issues in your community.</Text>
@@ -87,6 +118,10 @@ export default function LoginScreen() {
             )}
             <TouchableOpacity style={styles.authButton} onPress={handleAuth}>
               <Text style={styles.authButtonText}>{isSignUp ? 'Sign Up' : 'Sign In'}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.testButton} onPress={testConnection}>
+              <Text style={styles.testButtonText}>Test Connection</Text>
             </TouchableOpacity>
           </View>
 
@@ -133,9 +168,14 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
   },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: 20,
+  },
   title: {
     fontSize: 42,
-    fontFamily: 'Poppins-Bold',
+    fontWeight: 'bold',
   },
   titleSecondary: {
     fontSize: 42,
@@ -143,14 +183,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#18181B',
     letterSpacing: -2,
-    fontFamily: 'Poppins-Bold',
+    fontWeight: 'bold',
   },
   subtitle: {
     fontSize: 18,
     textAlign: 'center',
     color: '#334155',
     paddingHorizontal: 20,
-    fontFamily: 'Poppins-Regular',
   },
   formContainer: {
     width: '100%',
@@ -164,7 +203,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#E4E4E7',
-    fontFamily: 'Poppins-Regular',
   },
   authButton: {
     backgroundColor: '#18181B',
@@ -175,7 +213,19 @@ const styles = StyleSheet.create({
   authButtonText: {
     color: 'white',
     fontSize: 16,
-    fontFamily: 'Poppins-Medium',
+    fontWeight: '500',
+  },
+  testButton: {
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  testButtonText: {
+    color: '#333',
+    fontSize: 14,
+    fontWeight: '500',
   },
   footer: {
     alignItems: 'center',
@@ -206,12 +256,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#18181B',
     letterSpacing: -0.015,
-    fontFamily: 'Poppins-Medium',
+    fontWeight: '500',
   },
   switchText: {
     fontSize: 14,
     color: '#475569',
-    fontFamily: 'Poppins-Medium',
+    fontWeight: '500',
     marginBottom: 16,
     textDecorationLine: 'underline',
   },
@@ -220,6 +270,5 @@ const styles = StyleSheet.create({
     color: '#475569',
     textAlign: 'center',
     paddingHorizontal: 20,
-    fontFamily: 'Poppins-Regular',
   },
 });

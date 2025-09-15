@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, StatusBar, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, StatusBar, ScrollView, Image, ActionSheetIOS, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { Issue } from '../data/mockData';
+import * as ImagePicker from 'expo-image-picker';
+import { DataService } from '../services/dataService';
+import { ImageService } from '../services/imageService';
+import { useAuth } from '../context/AuthContext';
+import type { Issue, IssuePriority } from '../types/database';
 
 
-type Priority = 'low' | 'medium' | 'high' | 'critical';
-type Category = 'infrastructure' | 'safety' | 'environment' | 'maintenance' | 'accessibility';
+type Priority = 'low' | 'medium' | 'high';
+type Category = 'infrastructure' | 'safety' | 'environment' | 'maintenance' | 'accessibility' | 'road_maintenance';
 
 const priorityOptions: { value: Priority; label: string; color: string }[] = [
   { value: 'low', label: 'Low', color: '#16a34a' },
   { value: 'medium', label: 'Medium', color: '#ca8a04' },
   { value: 'high', label: 'High', color: '#ea580c' },
-  { value: 'critical', label: 'Critical', color: '#dc2626' },
 ];
 
 const categoryOptions: { value: Category; label: string; icon: string }[] = [
   { value: 'infrastructure', label: 'Infrastructure', icon: 'construct-outline' },
+  { value: 'road_maintenance', label: 'Road Maintenance', icon: 'car-outline' },
   { value: 'safety', label: 'Safety', icon: 'shield-checkmark-outline' },
   { value: 'environment', label: 'Environment', icon: 'leaf-outline' },
   { value: 'maintenance', label: 'Maintenance', icon: 'build-outline' },
@@ -24,12 +28,15 @@ const categoryOptions: { value: Category; label: string; icon: string }[] = [
 ];
 
 export default function ReportScreen() {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category>('infrastructure');
   const [priority, setPriority] = useState<Priority>('medium');
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<string>('');
+  const [image, setImage] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     getCurrentLocation();
@@ -63,16 +70,98 @@ export default function ReportScreen() {
 
   const calculateProgress = () => {
     let progress = 0;
-    if (title.trim()) progress += 0.25;
-    if (description.trim()) progress += 0.25;
-    if (category) progress += 0.25;
-    if (priority) progress += 0.25;
+    if (title.trim()) progress += 0.2;
+    if (description.trim()) progress += 0.2;
+    if (category) progress += 0.2;
+    if (priority) progress += 0.2;
+    if (image) progress += 0.2;
     return progress;
+  };
+
+  const pickImage = async () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Library'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            openCamera();
+          } else if (buttonIndex === 2) {
+            openImageLibrary();
+          }
+        }
+      );
+    } else {
+      // For Android, show a simple alert
+      Alert.alert(
+        'Select Image',
+        'Choose an option',
+        [
+          { text: 'Camera', onPress: openCamera },
+          { text: 'Gallery', onPress: openImageLibrary },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
+  };
+
+  const openCamera = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Permission required', 'Camera permission is required to take photos');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
+  const openImageLibrary = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Permission required', 'Photo library permission is required to select images');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
+  const removeImage = () => {
+    setImage(null);
+  };
+
+  const uploadImage = async (imageUri: string): Promise<string> => {
+    if (!user) {
+      throw new Error('User must be authenticated to upload images');
+    }
+    return await ImageService.uploadImage(imageUri, user.id);
   };
 
   const handleSubmit = async () => {
     if (!title.trim() || !description.trim()) {
       Alert.alert('Missing Information', 'Please fill in both title and description');
+      return;
+    }
+
+    if (!user) {
+      Alert.alert('Authentication Required', 'Please log in to report issues');
       return;
     }
 
@@ -86,9 +175,42 @@ export default function ReportScreen() {
         return;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Create the issue in Supabase
+      const issueData = {
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        priority,
+        status: 'pending' as const,
+        reported_by: user.id,
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+        address: location || 'Location not available'
+      };
 
-              Alert.alert('Success!', 'Issue reported successfully! Thank you for helping improve Jamaica.', [
+      // Upload image if present
+      let imageUrl = null;
+      if (image) {
+        setUploadingImage(true);
+        try {
+          imageUrl = await uploadImage(image);
+        } catch (imageError) {
+          console.error('Error uploading image:', imageError);
+          Alert.alert('Image Upload Failed', 'The issue was created but the image could not be uploaded.');
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+
+      // Add image URL to issue data
+      const finalIssueData = {
+        ...issueData,
+        image_url: imageUrl
+      };
+
+      await DataService.createIssue(finalIssueData);
+
+      Alert.alert('Success!', 'Issue reported successfully! Thank you for helping improve Jamaica.', [
         {
           text: 'Report Another',
           onPress: () => {
@@ -96,11 +218,13 @@ export default function ReportScreen() {
             setDescription('');
             setCategory('infrastructure');
             setPriority('medium');
+            setImage(null);
           }
         },
         { text: 'Done', style: 'default' }
       ]);
     } catch (error) {
+      console.error('Error creating issue:', error);
       Alert.alert('Error', 'Failed to report issue. Please try again.');
     } finally {
       setLoading(false);
@@ -194,6 +318,29 @@ export default function ReportScreen() {
                 textAlignVertical="top"
               />
             </View>
+          </View>
+
+          <View style={styles.formSection}>
+            <Text style={styles.sectionTitle}>Add Photo (Optional)</Text>
+            <Text style={styles.sectionSubtitle}>A picture helps others understand the issue better</Text>
+            
+            {image ? (
+              <View style={styles.imageContainer}>
+                <Image source={{ uri: image }} style={styles.selectedImage} />
+                <TouchableOpacity style={styles.removeImageButton} onPress={removeImage}>
+                  <Ionicons name="close-circle" size={24} color="#ff0000" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.changeImageButton} onPress={pickImage}>
+                  <Ionicons name="camera-outline" size={16} color="#666" />
+                  <Text style={styles.changeImageText}>Change Photo</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
+                <Ionicons name="camera-outline" size={32} color="#666" />
+                <Text style={styles.imagePickerText}>Take Photo or Choose from Gallery</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.formSection}>
@@ -437,5 +584,64 @@ const styles = StyleSheet.create({
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+    fontStyle: 'italic',
+  },
+  imageContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  selectedImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  changeImageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 8,
+  },
+  changeImageText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  imagePickerButton: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed',
+  },
+  imagePickerText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 8,
+    fontWeight: '500',
   },
 });
