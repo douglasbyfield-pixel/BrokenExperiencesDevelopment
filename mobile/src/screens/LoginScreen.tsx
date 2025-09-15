@@ -22,6 +22,7 @@ export default function LoginScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
+  const [googleSignInAvailable, setGoogleSignInAvailable] = useState(false);
   const { setIsAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -30,8 +31,14 @@ export default function LoginScreen() {
   }, []);
 
   const initializeOAuth = async () => {
-    // Initialize Google Sign-In
-    await AuthService.initializeGoogleSignIn();
+    // Check Google Sign-In availability
+    const googleAvailable = AuthService.isGoogleSignInAvailable();
+    setGoogleSignInAvailable(googleAvailable);
+    
+    if (googleAvailable) {
+      // Initialize Google Sign-In if available
+      await AuthService.initializeGoogleSignIn();
+    }
     
     // Check Apple Sign-In availability
     if (Platform.OS === 'ios') {
@@ -236,20 +243,30 @@ export default function LoginScreen() {
 
           <View style={styles.footer}>
             <View style={styles.buttonContainer}>
-              <TouchableOpacity 
-                style={[styles.button, googleLoading && styles.buttonDisabled]} 
-                onPress={handleGoogleSignIn}
-                disabled={googleLoading}
-              >
-                {googleLoading ? (
-                  <Ionicons name="refresh" size={20} color="#18181B" />
-                ) : (
+              {googleSignInAvailable && (
+                <TouchableOpacity 
+                  style={[styles.button, googleLoading && styles.buttonDisabled]} 
+                  onPress={handleGoogleSignIn}
+                  disabled={googleLoading}
+                >
+                  {googleLoading ? (
+                    <Ionicons name="refresh" size={20} color="#18181B" />
+                  ) : (
+                    <GoogleIcon />
+                  )}
+                  <Text style={styles.buttonText}>
+                    {googleLoading ? 'Signing in...' : 'Continue with Google'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {!googleSignInAvailable && (
+                <View style={styles.unavailableButton}>
                   <GoogleIcon />
-                )}
-                <Text style={styles.buttonText}>
-                  {googleLoading ? 'Signing in...' : 'Continue with Google'}
-                </Text>
-              </TouchableOpacity>
+                  <Text style={styles.unavailableButtonText}>
+                    Google Sign-In (Requires Dev Build)
+                  </Text>
+                </View>
+              )}
               {(Platform.OS === 'ios' && appleSignInAvailable) && (
                 <TouchableOpacity 
                   style={[styles.button, appleLoading && styles.buttonDisabled]} 
@@ -404,6 +421,25 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  unavailableButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+    borderRadius: 9999,
+    gap: 8,
+    opacity: 0.7,
+  },
+  unavailableButtonText: {
+    fontSize: 14,
+    color: '#6B7280',
+    letterSpacing: -0.015,
+    fontWeight: '500',
   },
   buttonText: {
     fontSize: 16,

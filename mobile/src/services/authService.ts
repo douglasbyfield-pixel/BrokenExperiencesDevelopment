@@ -1,9 +1,20 @@
 import { Platform, Alert } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import { supabase } from './supabase';
+
+// Conditional imports for native modules
+let GoogleSignin: any = null;
+let statusCodes: any = null;
+
+try {
+  const googleSignInModule = require('@react-native-google-signin/google-signin');
+  GoogleSignin = googleSignInModule.GoogleSignin;
+  statusCodes = googleSignInModule.statusCodes;
+} catch (error) {
+  console.log('Google Sign-In not available in this environment (requires development build)');
+}
 
 // Configuration
 const GOOGLE_WEB_CLIENT_ID = 'your-google-web-client-id.googleusercontent.com';
@@ -11,7 +22,16 @@ const GOOGLE_IOS_CLIENT_ID = 'your-google-ios-client-id.googleusercontent.com';
 const GOOGLE_ANDROID_CLIENT_ID = 'your-google-android-client-id.googleusercontent.com';
 
 export class AuthService {
+  static isGoogleSignInAvailable() {
+    return GoogleSignin !== null;
+  }
+
   static async initializeGoogleSignIn() {
+    if (!GoogleSignin) {
+      console.log('Google Sign-In not available - requires development build');
+      return false;
+    }
+    
     try {
       await GoogleSignin.configure({
         webClientId: GOOGLE_WEB_CLIENT_ID,
@@ -21,17 +41,30 @@ export class AuthService {
         forceCodeForRefreshToken: true,
       });
       console.log('Google Sign-In configured successfully');
+      return true;
     } catch (error) {
       console.error('Error configuring Google Sign-In:', error);
+      return false;
     }
   }
 
   static async signInWithGoogle() {
+    if (!GoogleSignin) {
+      Alert.alert(
+        'Google Sign-In Unavailable', 
+        'Google Sign-In requires a development build. It\'s not available in Expo Go.'
+      );
+      return { success: false, message: 'Google Sign-In requires development build' };
+    }
+
     try {
       console.log('Starting Google Sign-In...');
       
       // Initialize Google Sign-In if not already done
-      await this.initializeGoogleSignIn();
+      const initialized = await this.initializeGoogleSignIn();
+      if (!initialized) {
+        throw new Error('Failed to initialize Google Sign-In');
+      }
       
       // Check if device supports Google Play Services
       await GoogleSignin.hasPlayServices();
@@ -60,12 +93,12 @@ export class AuthService {
     } catch (error: any) {
       console.error('Google Sign-In error:', error);
       
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      if (statusCodes && error.code === statusCodes.SIGN_IN_CANCELLED) {
         return { success: false, cancelled: true };
-      } else if (error.code === statusCodes.IN_PROGRESS) {
+      } else if (statusCodes && error.code === statusCodes.IN_PROGRESS) {
         Alert.alert('Sign-In in Progress', 'Google sign-in is already in progress');
         return { success: false, message: 'Sign-in in progress' };
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      } else if (statusCodes && error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         Alert.alert('Google Play Services', 'Google Play Services are not available on this device');
         return { success: false, message: 'Google Play Services not available' };
       } else {
@@ -153,9 +186,15 @@ export class AuthService {
       // Sign out from Supabase
       await supabase.auth.signOut();
       
-      // Sign out from Google if signed in
-      if (await GoogleSignin.isSignedIn()) {
-        await GoogleSignin.signOut();
+      // Sign out from Google if available and signed in
+      if (GoogleSignin) {
+        try {
+          if (await GoogleSignin.isSignedIn()) {
+            await GoogleSignin.signOut();
+          }
+        } catch (error) {
+          console.log('Google sign-out not available:', error);
+        }
       }
       
       console.log('Sign-out successful');
