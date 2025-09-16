@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, FlatList } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, FlatList, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useComment } from '../context/CommentContext';
-import { UserComment } from '../types/comments';
+// Remove the import since we'll use the Comment type from context
 import { formatTimeAgo } from '../data/mockData';
 
 interface UserCommentsScreenProps {
@@ -10,15 +10,73 @@ interface UserCommentsScreenProps {
 }
 
 export default function UserCommentsScreen({ navigation }: UserCommentsScreenProps) {
-  const { getUserComments } = useComment();
+  const { getUserComments, loadUserComments, commentsLoading, deleteComment } = useComment();
   const userComments = getUserComments();
 
-  const renderComment = ({ item }: { item: UserComment }) => (
-    <View style={styles.commentCard}>
+  useEffect(() => {
+    loadUserComments();
+  }, [loadUserComments]);
+
+  const handleCommentPress = (comment: any) => {
+    if (comment.issueId) {
+      // Navigate directly to the issue detail screen
+      navigation.navigate('IssueDetail', { issueId: comment.issueId });
+    }
+  };
+
+  const handleCommentLongPress = (comment: any) => {
+    Alert.alert(
+      'Comment Options',
+      'What would you like to do with this comment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'View Issue', onPress: () => handleCommentPress(comment) },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => handleDeleteComment(comment)
+        }
+      ]
+    );
+  };
+
+  const handleDeleteComment = (comment: any) => {
+    Alert.alert(
+      'Delete Comment',
+      'Are you sure you want to delete this comment? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteComment(comment.id);
+              Alert.alert('Success', 'Comment deleted successfully');
+            } catch (error) {
+              console.error('Failed to delete comment:', error);
+              Alert.alert(
+                'Error', 
+                error instanceof Error ? error.message : 'Failed to delete comment. Please try again.'
+              );
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderComment = ({ item }: { item: any }) => (
+    <TouchableOpacity 
+      style={styles.commentCard}
+      onPress={() => handleCommentPress(item)}
+      onLongPress={() => handleCommentLongPress(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.commentHeader}>
         <View style={styles.issueInfo}>
           <Text style={styles.issueTitle} numberOfLines={2}>
-            {item.issueTitle}
+            {item.issueTitle || 'Unknown Issue'}
           </Text>
           <Text style={styles.commentTime}>
             {formatTimeAgo(item.createdAt)}
@@ -33,9 +91,9 @@ export default function UserCommentsScreen({ navigation }: UserCommentsScreenPro
 
       <Text style={styles.commentText}>{item.text}</Text>
 
-      {item.reactions.length > 0 && (
+      {item.reactions && item.reactions.length > 0 && (
         <View style={styles.reactionsContainer}>
-          {item.reactions.map((reaction, index) => (
+          {item.reactions.map((reaction: any, index: number) => (
             <View key={index} style={styles.reactionItem}>
               <Text style={styles.reactionEmoji}>
                 {reaction.type === 'like' ? '👍' :
@@ -50,14 +108,14 @@ export default function UserCommentsScreen({ navigation }: UserCommentsScreenPro
         </View>
       )}
 
-      {item.replies.length > 0 && (
+      {item.replies && item.replies.length > 0 && (
         <View style={styles.repliesContainer}>
           <Text style={styles.repliesText}>
             {item.replies.length} repl{item.replies.length === 1 ? 'y' : 'ies'}
           </Text>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   const renderEmptyState = () => (
@@ -89,7 +147,11 @@ export default function UserCommentsScreen({ navigation }: UserCommentsScreenPro
       </View>
 
       {/* Content */}
-      {userComments.length === 0 ? (
+      {commentsLoading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading your comments...</Text>
+        </View>
+      ) : userComments.length === 0 ? (
         renderEmptyState()
       ) : (
         <View style={styles.content}>
@@ -279,5 +341,16 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 22,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
   },
 });

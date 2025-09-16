@@ -358,7 +358,7 @@ export const mockUserProfile: UserProfile = {
   ]
 };
 
-export const getCategoryIcon = (category: Issue['category']): string => {
+export const getCategoryIcon = (category: string): string => {
   switch (category) {
     case 'infrastructure':
       return 'construct-outline';
@@ -370,12 +370,14 @@ export const getCategoryIcon = (category: Issue['category']): string => {
       return 'build-outline';
     case 'accessibility':
       return 'accessibility-outline';
+    case 'road_maintenance':
+      return 'car-outline';
     default:
       return 'alert-circle-outline';
   }
 };
 
-export const getPriorityColor = (priority: Issue['priority']): string => {
+export const getPriorityColor = (priority: string): string => {
   switch (priority) {
     case 'critical':
       return '#dc2626';

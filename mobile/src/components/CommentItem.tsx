@@ -51,7 +51,18 @@ export default function CommentItem({ comment, issueId, onReply }: CommentItemPr
         { 
           text: 'Delete', 
           style: 'destructive',
-          onPress: () => deleteComment(comment.id)
+          onPress: async () => {
+            try {
+              await deleteComment(comment.id);
+              Alert.alert('Success', 'Comment deleted successfully');
+            } catch (error) {
+              console.error('Failed to delete comment:', error);
+              Alert.alert(
+                'Error', 
+                error instanceof Error ? error.message : 'Failed to delete comment. Please try again.'
+              );
+            }
+          }
         }
       ]
     );

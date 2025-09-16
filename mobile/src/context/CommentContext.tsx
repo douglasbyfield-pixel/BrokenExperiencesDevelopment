@@ -20,6 +20,7 @@ interface Comment {
   depth: number;
   isEdited?: boolean;
   issueId: string;
+  issueTitle?: string; // Add optional issue title for user comments
 }
 
 export type ReactionType = 'like' | 'love' | 'laugh' | 'angry' | 'sad' | 'wow';
@@ -32,6 +33,7 @@ interface CommentContextType {
   getCommentsForIssue: (issueId: string) => Comment[];
   getUserComments: () => Comment[];
   loadCommentsForIssue: (issueId: string) => Promise<void>;
+  loadUserComments: () => Promise<void>;
   
   // Issue reactions (simplified to just upvotes for now)
   toggleUpvote: (issueId: string) => Promise<void>;
@@ -71,6 +73,7 @@ interface CommentProviderProps {
 export const CommentProvider: React.FC<CommentProviderProps> = ({ children }) => {
   const { user } = useAuth();
   const [commentsByIssue, setCommentsByIssue] = useState<Record<string, Comment[]>>({});
+  const [userComments, setUserComments] = useState<Comment[]>([]);
   const [userUpvotes, setUserUpvotes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -146,6 +149,16 @@ export const CommentProvider: React.FC<CommentProviderProps> = ({ children }) =>
       const newComment = await DataService.addComment(commentData);
       
       if (newComment) {
+        // Award points for commenting
+        try {
+          const pointsResult = await DataService.addPoints(user.id, 'COMMENT');
+          if (pointsResult?.leveledUp) {
+            console.log('User leveled up from commenting!', pointsResult.newLevel);
+          }
+        } catch (pointsError) {
+          console.error('Error awarding points for comment:', pointsError);
+        }
+
         // Transform and add to local state
         const transformedComment: Comment = {
           id: newComment.id,
@@ -167,6 +180,9 @@ export const CommentProvider: React.FC<CommentProviderProps> = ({ children }) =>
           ...prev,
           [issueId]: [...(prev[issueId] || []), transformedComment]
         }));
+
+        // Also add to user comments if we have them loaded
+        setUserComments(prev => [transformedComment, ...prev]);
       }
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -182,14 +198,35 @@ export const CommentProvider: React.FC<CommentProviderProps> = ({ children }) =>
   };
 
   const deleteComment = async (commentId: string) => {
-    // For now, we'll just remove locally since we don't have a delete endpoint
-    setCommentsByIssue(prev => {
-      const updated = { ...prev };
-      Object.keys(updated).forEach(issueId => {
-        updated[issueId] = updated[issueId].filter(comment => comment.id !== commentId);
+    if (!user) {
+      throw new Error('User must be authenticated to delete comments');
+    }
+
+    try {
+      setLoading(true);
+      
+      // Delete from database
+      await DataService.deleteComment(commentId);
+      
+      // Remove from local state after successful deletion
+      setCommentsByIssue(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(issueId => {
+          updated[issueId] = updated[issueId].filter(comment => comment.id !== commentId);
+        });
+        return updated;
       });
-      return updated;
-    });
+
+      // Also remove from user comments if loaded
+      setUserComments(prev => prev.filter(comment => comment.id !== commentId));
+      
+      console.log('Comment deleted successfully');
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getCommentsForIssue = (issueId: string): Comment[] => {
@@ -197,12 +234,42 @@ export const CommentProvider: React.FC<CommentProviderProps> = ({ children }) =>
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   };
 
+  const loadUserComments = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      setCommentsLoading(true);
+      const dbComments = await DataService.getUserComments(user.id);
+      
+      // Transform database comments to match our interface
+      const transformedComments: Comment[] = dbComments.map((comment: any) => ({
+        id: comment.id,
+        text: comment.text,
+        author: {
+          id: comment.profiles?.id || user.id,
+          name: comment.profiles?.name || 'You',
+          avatar: comment.profiles?.avatar || undefined,
+          verified: false,
+        },
+        createdAt: comment.created_at,
+        reactions: [],
+        replies: [],
+        depth: 0,
+        issueId: comment.issue_id,
+        issueTitle: comment.issues?.title || 'Unknown Issue', // Add issue title for display
+      }));
+      
+      setUserComments(transformedComments);
+    } catch (error) {
+      console.error('Error loading user comments:', error);
+      setUserComments([]);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [user]);
+
   const getUserComments = (): Comment[] => {
-    if (!user) return [];
-    const allComments = Object.values(commentsByIssue).flat();
-    return allComments
-      .filter(comment => comment.author.id === user.id)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return userComments;
   };
 
   const toggleUpvote = async (issueId: string) => {
@@ -272,6 +339,7 @@ export const CommentProvider: React.FC<CommentProviderProps> = ({ children }) =>
     getCommentsForIssue,
     getUserComments,
     loadCommentsForIssue,
+    loadUserComments,
     toggleUpvote,
     getUserUpvotes,
     addReaction,

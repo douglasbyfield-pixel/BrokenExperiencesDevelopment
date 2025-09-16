@@ -12,7 +12,6 @@ import { AnimationUtils } from '../utils/animations';
 import LoadingAnimation from '../components/LoadingAnimation';
 import { PerformanceUtils } from '../utils/performanceOptimizations';
 import OptimizedIssueCard from '../components/OptimizedIssueCard';
-import { IssueCardSkeleton } from '../components/ShimmerLoader';
 
 interface HomeScreenProps {
   navigation: any;
@@ -503,11 +502,197 @@ const HomeScreen = memo(({ navigation }: HomeScreenProps) => {
         onUpvote={handleUpvote}
         onBookmark={handleBookmarkPress}
         onMenuPress={handleMenuPress}
-        onMenuAction={handleMenuAction}
         onIssuePress={handleIssuePress}
       />
     );
-  }, [userUpvotes, isBookmarked, activeMenu, handleUpvote, handleBookmarkPress, handleMenuPress, handleMenuAction, handleIssuePress]);
+
+    return (
+      <View key={item.id} style={styles.postCard}>
+        {/* Post Header */}
+        <View style={styles.postHeader}>
+          <View style={styles.authorInfo}>
+            <View style={styles.avatarContainer}>
+              {authorAvatar ? (
+                <Image source={{ uri: authorAvatar }} style={styles.avatar} />
+              ) : (
+                <View style={styles.defaultAvatar}>
+                  <Text style={styles.defaultAvatarText}>
+                    {authorName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.authorDetails}>
+              <View style={styles.authorNameRow}>
+                <Text style={styles.authorName}>{authorName}</Text>
+              </View>
+              <Text style={styles.postTime}>{formatTimeAgo(item.created_at)}</Text>
+            </View>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.bookmarkButton}
+              onPress={() => handleBookmarkPress(item.id)}
+              activeOpacity={0.7}
+            >
+                <Ionicons 
+                  name={isBookmarked(item.id) ? "bookmark" : "bookmark-outline"} 
+                  size={24} 
+                  color={isBookmarked(item.id) ? "#FFD700" : "#000"} 
+                />
+              </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.moreButton}
+              onPress={() => handleMenuPress(item.id)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Status and Priority Badges */}
+        <View style={styles.badgesContainer}>
+          <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
+            <View style={[styles.statusIndicator, { backgroundColor: statusColor }]} />
+            <Text style={[styles.statusBadgeText, { color: statusColor }]}>
+              {item.status.replace('_', ' ')}
+            </Text>
+          </View>
+          <View style={[styles.priorityBadge, { backgroundColor: `${priorityColor}20` }]}>
+            <View style={[styles.priorityIndicator, { backgroundColor: priorityColor }]} />
+            <Text style={[styles.priorityBadgeText, { color: priorityColor }]}>
+              {item.priority}
+            </Text>
+          </View>
+          <View style={styles.categoryBadge}>
+            <Ionicons name={getCategoryIcon(item.category) as any} size={14} color="#6b7280" />
+            <Text style={styles.categoryBadgeText}>
+              {item.category.replace('_', ' ')}
+            </Text>
+          </View>
+        </View>
+
+        {/* Dropdown Menu */}
+        {activeMenu === item.id && (
+          <View style={styles.dropdownMenu}>
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuAction('share', item)}
+            >
+              <Ionicons name="share-outline" size={20} color="#333" />
+              <Text style={styles.menuItemText}>Share Issue</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuAction('copy_link', item)}
+            >
+              <Ionicons name="link-outline" size={20} color="#333" />
+              <Text style={styles.menuItemText}>Copy Link</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuAction('view_location', item)}
+            >
+              <Ionicons name="location-outline" size={20} color="#333" />
+              <Text style={styles.menuItemText}>View on Map</Text>
+            </TouchableOpacity>
+            
+            {user?.id === item.reported_by && (
+              <>
+                <View style={styles.menuDivider} />
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => handleMenuAction('edit', item)}
+                >
+                  <Ionicons name="create-outline" size={20} color="#333" />
+                  <Text style={styles.menuItemText}>Edit Issue</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => handleMenuAction('delete', item)}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#dc3545" />
+                  <Text style={[styles.menuItemText, { color: '#dc3545' }]}>Delete Issue</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            
+            {user?.id !== item.reported_by && (
+              <>
+                <View style={styles.menuDivider} />
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => handleMenuAction('report', item)}
+                >
+                  <Ionicons name="flag-outline" size={20} color="#dc3545" />
+                  <Text style={[styles.menuItemText, { color: '#dc3545' }]}>Report Issue</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+
+        {/* Post Content */}
+        <TouchableOpacity 
+          activeOpacity={0.7}
+          onPress={() => handleIssuePress(item)}
+        >
+          <Text style={styles.postTitle}>{item.title}</Text>
+          <Text style={styles.postText}>{item.description}</Text>
+          
+          {/* Image */}
+          {item.image_url && (
+            <Image 
+              source={{ uri: item.image_url }} 
+              style={styles.postImage}
+              resizeMode="cover"
+            />
+          )}
+
+        </TouchableOpacity>
+
+        {/* Post Footer */}
+        <View style={styles.postFooter}>
+          <View style={styles.engagementRow}>
+            <TouchableOpacity 
+              style={styles.engagementButton}
+              onPress={() => handleUpvote(item.id)}
+              activeOpacity={0.7}
+            >
+                <Ionicons 
+                  name={isUpvoted ? "heart" : "heart-outline"} 
+                  size={24} 
+                  color={isUpvoted ? "#ef4444" : "#000"} 
+                />
+                <Text style={styles.engagementText}>{upvoteCount}</Text>
+              </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.engagementButton}
+              onPress={() => handleIssuePress(item)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chatbubble-outline" size={24} color="#000" />
+              <Text style={styles.engagementText}>{commentCount}</Text>
+            </TouchableOpacity>
+            
+          </View>
+        </View>
+
+        {/* Location */}
+        <View style={styles.locationRow}>
+          <Ionicons name="location-outline" size={14} color="#666" />
+          <Text style={styles.locationText} numberOfLines={1}>
+            {item.address}
+          </Text>
+        </View>
+      </View>
+    );
+  }, [user, userUpvotes, handleUpvote, handleIssuePress, isBookmarked, activeMenu]);
 
   const renderEmptyState = () => {
     const hasActiveFilters = selectedStatusFilter !== 'all' || selectedPriorityFilter !== 'all';
@@ -537,33 +722,6 @@ const HomeScreen = memo(({ navigation }: HomeScreenProps) => {
   const mediumCount = issues.filter(i => i.priority === 'medium').length;
   const highCount = issues.filter(i => i.priority === 'high').length;
   const criticalCount = issues.filter(i => i.priority === 'critical').length;
-
-  // Show shimmer skeleton loading on initial load
-  if (loading && issues.length === 0) {
-    return (
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        
-        <View style={styles.skeletonHeader}>
-          <LoadingAnimation 
-            visible={true} 
-            size="medium" 
-            useCustomLoader={true}
-            animationType="breathe"
-            color="#1DA1F2"
-          />
-          <Text style={styles.skeletonHeaderText}>Loading community feed...</Text>
-        </View>
-        
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <IssueCardSkeleton />
-          <IssueCardSkeleton />
-          <IssueCardSkeleton />
-          <IssueCardSkeleton />
-        </ScrollView>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -663,16 +821,16 @@ const HomeScreen = memo(({ navigation }: HomeScreenProps) => {
         )}
 
         {/* Loading State */}
-        {loading && issues.length > 0 && (
+        {loading && (
           <View style={styles.loadingContainer}>
             <LoadingAnimation 
               visible={loading} 
-              size="medium" 
+              size="large" 
               useCustomLoader={true}
-              animationType="pulse"
-              color="#1DA1F2"
+              animationType="breathe"
+              color="#000"
             />
-            <Text style={styles.loadingText}>Refreshing feed...</Text>
+            <Text style={styles.loadingText}>Loading issues...</Text>
           </View>
         )}
 
@@ -1642,36 +1800,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginTop: 16,
-    fontWeight: '500',
-  },
-  fullScreenLoading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    paddingTop: 60,
-  },
-  fullScreenLoadingText: {
-    fontSize: 18,
-    color: '#666',
-    marginTop: 24,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  skeletonHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-    paddingTop: 80,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  skeletonHeaderText: {
-    fontSize: 16,
-    color: '#666',
-    marginLeft: 12,
     fontWeight: '500',
   },
 });

@@ -8,6 +8,8 @@ import * as Location from 'expo-location';
 import WebView from 'react-native-webview';
 import { getPriorityColor, getCategoryIcon, formatTimeAgo } from '../data/mockData';
 import { DataService } from '../services/dataService';
+import { CacheService } from '../services/cacheService';
+import { DiagnosticsService } from '../services/diagnostics';
 import type { Issue } from '../types/database';
 
 
@@ -25,14 +27,6 @@ const MapScreen = memo(() => {
   const navigation = useNavigation<MapScreenNavigationProp>();
   const route = useRoute<MapScreenRouteProp>();
   
-  // Refresh issues when screen comes into focus
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      console.log('Map screen focused, reloading issues');
-      loadIssues();
-    });
-    return unsubscribe;
-  }, [navigation]);
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(true);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
@@ -41,25 +35,18 @@ const MapScreen = memo(() => {
   const [mapReady, setMapReady] = useState(false);
   const webViewRef = useRef<WebView>(null);
 
-  useEffect(() => {
-    getCurrentLocation();
-    loadIssues();
-  }, []);
-
-  // Load issues again when map becomes ready
-  useEffect(() => {
-    if (mapReady && issues.length > 0) {
-      updateMapWithIssues(issues);
-    }
-  }, [mapReady, issues]);
-
   const updateMapWithIssues = useCallback((issuesData: Issue[]) => {
     if (webViewRef.current && mapReady) {
-      // Filter issues with valid coordinates
-      const validIssues = issuesData.filter(issue => 
-        issue.latitude && issue.longitude && 
-        !isNaN(issue.latitude) && !isNaN(issue.longitude)
-      );
+      // Filter issues with valid coordinates (handle string coordinates)
+      const validIssues = issuesData.filter(issue => {
+        const lat = typeof issue.latitude === 'string' ? parseFloat(issue.latitude) : issue.latitude;
+        const lng = typeof issue.longitude === 'string' ? parseFloat(issue.longitude) : issue.longitude;
+        return lat && lng && !isNaN(lat) && !isNaN(lng);
+      }).map(issue => ({
+        ...issue,
+        latitude: typeof issue.latitude === 'string' ? parseFloat(issue.latitude) : issue.latitude,
+        longitude: typeof issue.longitude === 'string' ? parseFloat(issue.longitude) : issue.longitude
+      }));
       
       console.log('Updating map with', validIssues.length, 'valid issues out of', issuesData.length, 'total');
       
@@ -78,8 +65,8 @@ const MapScreen = memo(() => {
           latitude: issue.latitude,
           longitude: issue.longitude,
           address: issue.address,
-          upvotes: issue.upvotes?.[0]?.count || 0,
-          reportedBy: issue.profiles?.name || 'Anonymous'
+          upvotes: (issue as any).upvotes?.[0]?.count || 0,
+          reportedBy: (issue as any).profiles?.name || 'Anonymous'
         }))
       });
       webViewRef.current.postMessage(message);
@@ -89,20 +76,36 @@ const MapScreen = memo(() => {
   const loadIssues = useCallback(async () => {
     try {
       setLoading(true);
+      console.log('MapScreen: Loading issues for map...');
       const issuesData = await DataService.getIssues();
-      console.log('Loaded issues from database:', issuesData.length);
-      setIssues(issuesData);
+      console.log('MapScreen: Loaded', issuesData.length, 'issues from database');
       
-      // Update map if it's ready
-      if (mapReady) {
-        updateMapWithIssues(issuesData);
-      }
+      // Additional debugging for coordinates (handle string coordinates)
+      const issuesWithCoords = issuesData.filter((issue: any) => {
+        const lat = typeof issue.latitude === 'string' ? parseFloat(issue.latitude) : issue.latitude;
+        const lng = typeof issue.longitude === 'string' ? parseFloat(issue.longitude) : issue.longitude;
+        return lat && lng && !isNaN(lat) && !isNaN(lng);
+      });
+      console.log('MapScreen: Issues with valid coordinates:', issuesWithCoords.length, 'out of', issuesData.length);
+      
+      // Show first few issues for debugging
+      issuesWithCoords.slice(0, 3).forEach((issue: any, i: number) => {
+        console.log(`MapScreen: Issue ${i + 1} coords:`, {
+          title: issue.title,
+          lat: issue.latitude,
+          lng: issue.longitude,
+          latType: typeof issue.latitude,
+          lngType: typeof issue.longitude
+        });
+      });
+      
+      setIssues(issuesData);
     } catch (error) {
-      console.error('Error loading issues:', error);
+      console.error('MapScreen: Error loading issues:', error);
     } finally {
       setLoading(false);
     }
-  }, [mapReady, updateMapWithIssues]);
+  }, []);
 
   const getCurrentLocation = async () => {
     try {
@@ -172,6 +175,36 @@ const MapScreen = memo(() => {
     setShowMap(!showMap);
   };
 
+  // Load issues again when map becomes ready
+  useEffect(() => {
+    if (mapReady && issues.length > 0) {
+      updateMapWithIssues(issues);
+    }
+  }, [mapReady, issues, updateMapWithIssues]);
+
+  // Initial load and location
+  useEffect(() => {
+    getCurrentLocation();
+    loadIssues();
+    
+    // Run diagnostics in development
+    if (__DEV__) {
+      setTimeout(() => {
+        DiagnosticsService.runMapDiagnostics();
+        DiagnosticsService.testCoordinateValidation();
+      }, 2000);
+    }
+  }, []);
+
+  // Refresh issues when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('Map screen focused, reloading issues');
+      loadIssues();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
@@ -182,7 +215,20 @@ const MapScreen = memo(() => {
           <Ionicons name="map" size={32} color="#000" style={styles.titleIcon} />
           <Text style={styles.title}>Issue Locations</Text>
           <View style={styles.headerButtons}>
-            <TouchableOpacity style={styles.refreshButton} onPress={loadIssues}>
+            <TouchableOpacity style={styles.refreshButton} onPress={async () => {
+              console.log('MapScreen: Manual refresh triggered - invalidating cache');
+              try {
+                setLoading(true);
+                await CacheService.invalidate('issues');
+                const freshIssues = await DataService.getIssues();
+                console.log('MapScreen: Force refreshed', freshIssues.length, 'issues');
+                setIssues(freshIssues);
+              } catch (error) {
+                console.error('MapScreen: Error during force refresh:', error);
+              } finally {
+                setLoading(false);
+              }
+            }}>
               <Ionicons name="refresh" size={20} color="#000" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.toggleButton} onPress={toggleView}>
@@ -554,7 +600,7 @@ const MapScreen = memo(() => {
                   <Text style={styles.categoryLabel}>{issue.category}</Text>
                 </View>
               </View>
-              <Text style={styles.upvotesText}>↑ {issue.upvotes?.[0]?.count || 0}</Text>
+              <Text style={styles.upvotesText}>↑ {(issue as any).upvotes?.[0]?.count || 0}</Text>
             </View>
             
             <Text style={styles.issueTitle}>{issue.title}</Text>

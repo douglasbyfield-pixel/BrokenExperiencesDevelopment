@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -12,6 +13,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import SearchResultsScreen from '../screens/SearchResultsScreen';
 import BookmarksScreen from '../screens/BookmarksScreen';
 import UserCommentsScreen from '../screens/UserCommentsScreen';
+import IssueDetailWrapper from '../screens/IssueDetailWrapper';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { BookmarkProvider } from '../context/BookmarkContext';
 import { CommentProvider } from '../context/CommentContext';
@@ -22,6 +24,7 @@ export type RootStackParamList = {
   SearchResults: { searchQuery?: string };
   Bookmarks: undefined;
   UserComments: undefined;
+  IssueDetail: { issueId: string };
 };
 
 export type MainTabParamList = {
@@ -35,6 +38,8 @@ const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function MainTabs() {
+  const insets = useSafeAreaInsets();
+  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -61,9 +66,18 @@ function MainTabs() {
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
           borderTopWidth: 1,
           borderTopColor: '#e0e0e0',
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
+          paddingBottom: Math.max(insets.bottom, 8),
+          paddingTop: 8,
+          height: 65 + Math.max(insets.bottom, 0),
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          elevation: 8, // Android shadow
+          shadowColor: '#000', // iOS shadow
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
         },
         headerShown: false,
       })}
@@ -88,6 +102,7 @@ function AppNavigatorInner() {
             <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
             <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
             <Stack.Screen name="UserComments" component={UserCommentsScreen} />
+            <Stack.Screen name="IssueDetail" component={IssueDetailWrapper} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={LoginScreen} />

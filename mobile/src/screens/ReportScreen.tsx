@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, StatusBar, ScrollView, Image, ActionSheetIOS, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { DataService } from '../services/dataService';
@@ -29,6 +30,7 @@ const categoryOptions: { value: Category; label: string; icon: string }[] = [
 
 export default function ReportScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category>('infrastructure');
@@ -210,7 +212,19 @@ export default function ReportScreen() {
 
       await DataService.createIssue(finalIssueData);
 
-      Alert.alert('Success!', 'Issue reported successfully! Thank you for helping improve Jamaica.', [
+      // Award points for reporting an issue
+      const pointsResult = await DataService.addPoints(user.id, 'REPORT_ISSUE');
+      let successMessage = 'Issue reported successfully! Thank you for helping improve Jamaica.';
+      
+      if (pointsResult) {
+        successMessage += ` You earned ${pointsResult.pointsAdded} points!`;
+        
+        if (pointsResult.leveledUp) {
+          successMessage += ` 🎉 Level Up! You've reached ${pointsResult.newLevel.title}!`;
+        }
+      }
+
+      Alert.alert('Success!', successMessage, [
         {
           text: 'Report Another',
           onPress: () => {
@@ -290,7 +304,10 @@ export default function ReportScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 65 + Math.max(insets.bottom, 0) + 25 }}
+      >
         <View style={styles.formContainer}>
           <View style={styles.formSection}>
             <Text style={styles.sectionTitle}>Issue Details</Text>

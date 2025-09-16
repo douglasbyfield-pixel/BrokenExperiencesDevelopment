@@ -26,7 +26,7 @@ export const getUserProfile = async (userId: string) => {
 export const createUserProfile = async (profile: Database['public']['Tables']['profiles']['Insert']) => {
   const { data, error } = await supabase
     .from('profiles')
-    .insert(profile)
+    .insert(profile as any)
     .select()
     .single()
   

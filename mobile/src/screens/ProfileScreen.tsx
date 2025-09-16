@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { DataService } from '../services/dataService';
+import { useGamification } from '../hooks/useGamification';
 
 interface ProfileScreenProps {
   navigation: any;
@@ -12,36 +14,34 @@ const { width } = Dimensions.get('window');
 
 export default function ProfileScreen({ navigation }: ProfileScreenProps) {
   const { user, profile, signOut } = useAuth();
-  const [userStats, setUserStats] = useState({
+  const insets = useSafeAreaInsets();
+  const { userStats, loading, calculateLevel, getNextLevel, getProgressToNextLevel } = useGamification();
+  const [basicStats, setBasicStats] = useState({
     issuesReported: 0,
     issuesResolved: 0,
     reputation: 0
   });
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
-      fetchUserStats();
+      fetchBasicStats();
     }
   }, [user]);
 
-  const fetchUserStats = async () => {
+  const fetchBasicStats = async () => {
     try {
-      setLoading(true);
       // Get user's reported issues
       const allIssues = await DataService.getIssues();
       const userIssues = allIssues.filter(issue => issue.reported_by === user?.id);
       const resolvedIssues = userIssues.filter(issue => issue.status === 'resolved');
       
-      setUserStats({
+      setBasicStats({
         issuesReported: userIssues.length,
         issuesResolved: resolvedIssues.length,
         reputation: profile?.reputation || 0
       });
     } catch (error) {
-      console.error('Error fetching user stats:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching basic user stats:', error);
     }
   };
 
@@ -69,54 +69,46 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
     navigation.navigate('UserComments');
   };
 
-  const getBadges = () => {
-    const badges = [];
-    
-    if (userStats.issuesReported >= 5) {
-      badges.push({
-        id: 'community_helper',
-        name: 'Community Helper',
-        description: 'Reported 5+ issues',
-        icon: 'medal-outline'
-      });
-    }
-    
-    if (userStats.issuesResolved >= 3) {
-      badges.push({
-        id: 'problem_solver',
-        name: 'Problem Solver',
-        description: 'Had 3+ reports resolved',
-        icon: 'checkmark-circle-outline'
-      });
-    }
-    
-    if (userStats.issuesReported >= 1) {
-      badges.push({
-        id: 'contributor',
-        name: 'Contributor',
-        description: 'Made your first report',
-        icon: 'star-outline'
-      });
-    }
-    
-    return badges;
+  // Helper functions for gamification
+  const getCurrentLevel = () => {
+    if (!userStats) return { level: 1, title: "New Citizen", badge: "🆕" };
+    return calculateLevel(userStats.experience);
   };
 
-  const renderBadge = (badge: { id: string; name: string; description: string; icon: string }) => {
-    return (
-      <View key={badge.id} style={styles.badge}>
-        <Ionicons name={badge.icon as any} size={24} color="#000" />
-        <Text style={styles.badgeName}>{badge.name}</Text>
-        <Text style={styles.badgeDescription}>{badge.description}</Text>
-      </View>
-    );
+  const getNextLevelInfo = () => {
+    if (!userStats) return null;
+    const currentLevel = getCurrentLevel();
+    return getNextLevel(currentLevel.level);
   };
+
+  const getProgressPercentage = () => {
+    if (!userStats) return 0;
+    const currentLevel = getCurrentLevel();
+    return getProgressToNextLevel(userStats.experience, currentLevel.level) * 100;
+  };
+
+  const getUserRank = () => {
+    // Calculate rank based on total points compared to other users
+    // For now, return a mock rank based on points
+    if (!userStats) return 999;
+    const pointRanks = [0, 100, 500, 1000, 2500, 5000, 10000];
+    for (let i = pointRanks.length - 1; i >= 0; i--) {
+      if (userStats.totalPoints >= pointRanks[i]) {
+        return i + 1;
+      }
+    }
+    return pointRanks.length;
+  };
+
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 65 + Math.max(insets.bottom, 0) + 25 }}
+      >
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <Ionicons name="person" size={24} color="#000" style={styles.titleIcon} />
@@ -145,7 +137,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
           <Text style={styles.userName}>{profile?.name || 'User'}</Text>
           <Text style={styles.userEmail}>{profile?.email || user?.email || ''}</Text>
           <Text style={styles.joinDate}>
-            Member since {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { 
+            Member since {profile?.joined_at ? new Date(profile.joined_at).toLocaleDateString('en-US', { 
               month: 'long', 
               year: 'numeric' 
             }) : 'Recently'}
@@ -155,29 +147,103 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Ionicons name="alert-circle" size={24} color="#000" />
-            <Text style={styles.statNumber}>{loading ? '...' : userStats.issuesReported}</Text>
+            <Text style={styles.statNumber}>{loading ? '...' : userStats?.issuesReported || basicStats.issuesReported}</Text>
             <Text style={styles.statLabel}>Issues Reported</Text>
           </View>
           
           <View style={styles.statCard}>
             <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
-            <Text style={styles.statNumber}>{loading ? '...' : userStats.issuesResolved}</Text>
+            <Text style={styles.statNumber}>{loading ? '...' : basicStats.issuesResolved}</Text>
             <Text style={styles.statLabel}>Issues Resolved</Text>
           </View>
           
           <View style={styles.statCard}>
             <Ionicons name="trophy" size={24} color="#ca8a04" />
-            <Text style={styles.statNumber}>{loading ? '...' : userStats.reputation}</Text>
-            <Text style={styles.statLabel}>Reputation</Text>
+            <Text style={styles.statNumber}>{loading ? '...' : userStats?.totalPoints || 0}</Text>
+            <Text style={styles.statLabel}>Total Points</Text>
+          </View>
+        </View>
+
+        {/* Gaming Stats Section */}
+        <View style={styles.gamingSection}>
+          <Text style={styles.sectionTitle}>Community Level</Text>
+          <View style={styles.levelCard}>
+            <View style={styles.levelInfo}>
+              <View style={styles.levelBadge}>
+                <Text style={styles.levelBadgeEmoji}>{getCurrentLevel().badge}</Text>
+                <Text style={styles.levelNumber}>{getCurrentLevel().level}</Text>
+              </View>
+              <View style={styles.levelDetails}>
+                <Text style={styles.levelTitle}>{getCurrentLevel().title}</Text>
+                <Text style={styles.levelPoints}>{userStats?.experience || 0} XP</Text>
+              </View>
+            </View>
+            
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View 
+                  style={[
+                    styles.progressFill, 
+                    { 
+                      width: `${getProgressPercentage()}%`,
+                      backgroundColor: '#4f46e5'
+                    }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.progressText}>
+                {getNextLevelInfo() ? 
+                  `${(getNextLevelInfo()?.requiredXP || 0) - (userStats?.experience || 0)} XP to ${getNextLevelInfo()?.title}` : 
+                  'Max level reached!'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.gamingStatsGrid}>
+            <View style={styles.gameStatCard}>
+              <Ionicons name="ribbon" size={20} color="#000" />
+              <Text style={styles.gameStatNumber}>#{getUserRank()}</Text>
+              <Text style={styles.gameStatLabel}>Community Rank</Text>
+            </View>
+            
+            <View style={styles.gameStatCard}>
+              <Ionicons name="flame" size={20} color="#ff6b35" />
+              <Text style={styles.gameStatNumber}>{userStats?.streak || 0}</Text>
+              <Text style={styles.gameStatLabel}>Activity Streak</Text>
+            </View>
+            
+            <View style={styles.gameStatCard}>
+              <Ionicons name="medal" size={20} color="#ffd700" />
+              <Text style={styles.gameStatNumber}>{userStats?.achievements?.length || 0}</Text>
+              <Text style={styles.gameStatLabel}>Achievements</Text>
+            </View>
           </View>
         </View>
 
         <View style={styles.badgesSection}>
           <Text style={styles.sectionTitle}>Achievements</Text>
           <View style={styles.badgesContainer}>
-            {getBadges().map((badge) => renderBadge(badge))}
-            {getBadges().length === 0 && (
-              <Text style={styles.noBadges}>No badges earned yet. Start reporting issues to earn achievements!</Text>
+            {userStats?.achievements && userStats.achievements.length > 0 ? (
+              userStats.achievements.map((achievement) => (
+                <View key={achievement.id} style={styles.achievementCard}>
+                  <View style={styles.achievementIcon}>
+                    <Text style={styles.achievementEmoji}>{achievement.icon}</Text>
+                  </View>
+                  <View style={styles.achievementInfo}>
+                    <Text style={styles.achievementTitle}>{achievement.title}</Text>
+                    <Text style={styles.achievementDescription}>{achievement.description}</Text>
+                    <Text style={styles.achievementPoints}>+{achievement.points} XP</Text>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View style={styles.noAchievements}>
+                <Ionicons name="trophy-outline" size={48} color="#ccc" />
+                <Text style={styles.noAchievementsText}>No achievements yet</Text>
+                <Text style={styles.noAchievementsSubtext}>
+                  Start reporting issues and engaging with the community to unlock achievements!
+                </Text>
+              </View>
             )}
           </View>
         </View>
@@ -411,5 +477,159 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  // Gaming section styles
+  gamingSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  levelCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  levelInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  levelBadge: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  levelNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  levelDetails: {
+    flex: 1,
+  },
+  levelTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 2,
+  },
+  levelPoints: {
+    fontSize: 14,
+    color: '#666',
+  },
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+  gamingStatsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  gameStatCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  gameStatNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  gameStatLabel: {
+    fontSize: 10,
+    color: '#666',
+    textAlign: 'center',
+    fontWeight: '400',
+  },
+  levelBadgeEmoji: {
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  achievementCard: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  achievementIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  achievementEmoji: {
+    fontSize: 24,
+  },
+  achievementInfo: {
+    flex: 1,
+  },
+  achievementTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 4,
+  },
+  achievementDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  achievementPoints: {
+    fontSize: 12,
+    color: '#4f46e5',
+    fontWeight: '600',
+  },
+  noAchievements: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noAchievementsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  noAchievementsSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

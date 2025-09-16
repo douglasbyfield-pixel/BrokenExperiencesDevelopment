@@ -2,107 +2,84 @@ import { InteractionManager, Platform } from 'react-native';
 
 export class PerformanceUtils {
   /**
-   * Delays heavy operations until after animations complete
+   * Defer execution until after interactions are complete
    */
-  static runAfterInteractions<T>(callback: () => T | Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      InteractionManager.runAfterInteractions(() => {
-        try {
-          const result = callback();
-          if (result instanceof Promise) {
-            result.then(resolve).catch(reject);
-          } else {
-            resolve(result);
-          }
-        } catch (error) {
-          reject(error);
-        }
-      });
+  static runAfterInteractions(callback: () => void): void {
+    InteractionManager.runAfterInteractions(() => {
+      callback();
     });
   }
 
   /**
-   * Debounce function calls to prevent excessive re-renders
-   */
-  static debounce<T extends (...args: any[]) => any>(
-    func: T,
-    wait: number
-  ): (...args: Parameters<T>) => void {
-    let timeout: NodeJS.Timeout | null = null;
-    
-    return (...args: Parameters<T>) => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        func(...args);
-      }, wait);
-    };
-  }
-
-  /**
-   * Throttle function calls to limit execution frequency
+   * Throttle function calls to improve performance
    */
   static throttle<T extends (...args: any[]) => any>(
     func: T,
     limit: number
   ): (...args: Parameters<T>) => void {
-    let inThrottle = false;
-    
-    return (...args: Parameters<T>) => {
+    let inThrottle: boolean;
+    return function (this: any, ...args: Parameters<T>) {
       if (!inThrottle) {
-        func(...args);
+        func.apply(this, args);
         inThrottle = true;
-        setTimeout(() => {
-          inThrottle = false;
-        }, limit);
+        setTimeout(() => (inThrottle = false), limit);
       }
     };
   }
 
   /**
-   * Request idle callback for non-critical operations
+   * Debounce function calls to improve performance
    */
-  static requestIdleCallback(callback: () => void, timeout = 1000): void {
-    if ('requestIdleCallback' in window && Platform.OS === 'web') {
-      (window as any).requestIdleCallback(callback, { timeout });
-    } else {
-      // Fallback for native platforms
-      setTimeout(callback, 16); // ~60fps
-    }
+  static debounce<T extends (...args: any[]) => any>(
+    func: T,
+    delay: number
+  ): (...args: Parameters<T>) => void {
+    let timeoutId: NodeJS.Timeout;
+    return function (this: any, ...args: Parameters<T>) {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
   }
 
   /**
-   * Batch multiple state updates to reduce re-renders
+   * Check if the device is low-end to adjust performance
    */
-  static batchUpdates<T>(updates: (() => void)[]): void {
-    InteractionManager.runAfterInteractions(() => {
-      updates.forEach(update => update());
-    });
+  static isLowEndDevice(): boolean {
+    // Simple heuristic - can be enhanced based on device capabilities
+    return Platform.OS === 'android' && Platform.Version < 21;
   }
 
   /**
-   * Memory-efficient array chunking for large lists
+   * Get optimized batch size based on device performance
    */
-  static chunkArray<T>(array: T[], chunkSize: number): T[][] {
-    const chunks: T[][] = [];
-    for (let i = 0; i < array.length; i += chunkSize) {
-      chunks.push(array.slice(i, i + chunkSize));
-    }
-    return chunks;
+  static getOptimalBatchSize(): number {
+    return this.isLowEndDevice() ? 5 : 10;
   }
 
   /**
-   * Lazy load components after initial render
+   * Get optimized window size for FlatList based on device performance
    */
-  static lazyLoadAfterMount<T>(
-    loadComponent: () => Promise<T>,
-    delay = 100
-  ): Promise<T> {
-    return new Promise((resolve) => {
-      InteractionManager.runAfterInteractions(() => {
-        setTimeout(() => {
-          loadComponent().then(resolve);
-        }, delay);
-      });
-    });
+  static getOptimalWindowSize(): number {
+    return this.isLowEndDevice() ? 5 : 10;
+  }
+
+  /**
+   * Memory-conscious image loading helper
+   */
+  static shouldLoadImage(index: number, visibleRange: { start: number; end: number }): boolean {
+    const buffer = 5; // Load images 5 items ahead/behind visible range
+    return index >= visibleRange.start - buffer && index <= visibleRange.end + buffer;
+  }
+
+  /**
+   * Optimize animation performance based on device capabilities
+   */
+  static getAnimationConfig() {
+    const isLowEnd = this.isLowEndDevice();
+    return {
+      useNativeDriver: true,
+      duration: isLowEnd ? 200 : 300,
+      enableReducedMotion: isLowEnd,
+    };
   }
 }
