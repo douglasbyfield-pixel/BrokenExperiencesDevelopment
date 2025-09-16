@@ -1,17 +1,41 @@
 {
-  "name": "brokenexp-basic-pwa",
+  "name": "brokenexp-react-pwa",
   "version": "1.0.0",
-  "description": "Basic PWA for BrokenExp - Report Community Issues",
-  "main": "index.html",
+  "description": "React PWA for BrokenExp - Report Community Issues",
+  "main": "src/index.js",
+  "homepage": "./",
   "scripts": {
-    "start": "npx http-server . -p 3000 -c-1",
-    "build": "echo 'No build process needed for basic PWA'",
-    "dev": "npx http-server . -p 3000 -c-1 -o"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "dev": "react-scripts start",
+    "serve": "npx serve -s build -l 3000"
   },
-  "keywords": ["pwa", "community", "issues", "jamaica"],
+  "keywords": ["react", "pwa", "community", "issues", "jamaica"],
   "author": "BrokenExp Team",
   "license": "MIT",
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.0",
+    "react-scripts": "5.0.1",
+    "@supabase/supabase-js": "^2.39.0",
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^4.2.1",
+    "styled-components": "^6.1.8"
+  },
   "devDependencies": {
-    "http-server": "^14.1.1"
+    "@types/leaflet": "^1.9.8"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }
