@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#FFFFFF">
+    <meta name="description" content="BROKEN EXPERIENCES - Stay informed about Jamaica">
+    
+    <title>Home - BROKEN EXPERIENCES</title>
+    
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/home.css">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="home-header">
+            <div class="header-content">
+                <div class="title-container">
+                    <svg class="title-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9,22 9,12 15,12 15,22"/>
+                    </svg>
+                    <h1 class="title">Jamaica Issues</h1>
+                    <div class="header-buttons">
+                        <button class="search-button" id="searchButton" aria-label="Search">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="M21 21l-4.35-4.35"/>
+                            </svg>
+                        </button>
+                        <button class="profile-button" id="profileButton" aria-label="Profile">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <p class="subtitle">Stay informed about Jamaica</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="home-main">
+            <!-- Community Stats -->
+            <section class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon-container">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                            </svg>
+                        </div>
+                        <div class="stat-number" id="impactScore">0</div>
+                        <div class="stat-label">Impact Score</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon-container">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <div class="stat-number" id="activeMembers">0</div>
+                        <div class="stat-label">Active Members</div>
+                    </div>
+                    
+                    <div class="stat-card resolved-stat">
+                        <div class="stat-icon-container">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2">
+                                <path d="M20 6L9 17l-5-5"/>
+                                <path d="M9 17l-5-5"/>
+                                <path d="M20 6L9 17"/>
+                            </svg>
+                        </div>
+                        <div class="stat-number" id="resolvedThisWeek">0</div>
+                        <div class="stat-label">Resolved This Week</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Filter Controls -->
+            <section class="filter-section">
+                <div class="filter-header">
+                    <h2 class="filter-title">Community Issues</h2>
+                    <button class="filter-button" id="filterButton">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"/>
+                        </svg>
+                        <span>Filter</span>
+                    </button>
+                </div>
+                
+                <!-- Active Filters Summary -->
+                <div class="filter-summary" id="filterSummary" style="display: none;">
+                    <span class="filter-summary-text" id="filterSummaryText">Showing 0 of 0 issues</span>
+                    <button class="clear-filters-link" id="clearFiltersButton">Clear filters</button>
+                </div>
+            </section>
+
+            <!-- Issues Feed -->
+            <section class="issues-feed">
+                <div class="issues-container" id="issuesContainer">
+                    <!-- Real issues from Supabase will be loaded here -->
+                </div>
+                
+                <!-- Loading State -->
+                <div class="loading-container" id="loadingContainer">
+                    <div class="loading-spinner"></div>
+                    <p class="loading-text">Loading community issues...</p>
+                </div>
+                
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyState" style="display: none;">
+                    <div class="empty-icon">
+                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14,2 14,8 20,8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10,9 9,9 8,9"/>
+                        </svg>
+                    </div>
+                    <h3 class="empty-title">No issues found</h3>
+                    <p class="empty-subtitle">Be the first to report an issue in Jamaica</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Floating Action Button -->
+        <button class="fab" id="reportButton" aria-label="Report new issue">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+        </button>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <a href="home-real.html" class="nav-item active">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9,22 9,12 15,12 15,22"/>
+                </svg>
+                <span>Home</span>
+            </a>
+            <a href="map.html" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="1,6 1,22 8,18 16,22 23,18 23,2 16,6 8,2"/>
+                    <line x1="8" y1="2" x2="8" y2="18"/>
+                    <line x1="16" y1="6" x2="16" y2="22"/>
+                </svg>
+                <span>Map</span>
+            </a>
+            <a href="bookmarks.html" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>Saved</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+                <span>Profile</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Filter Modal -->
+    <div class="modal-overlay" id="filterModal" style="display: none;">
+        <div class="modal-content filter-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Filter Issues</h3>
+                <button class="modal-close" id="closeFilterModal" aria-label="Close">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Status Filters -->
+                <div class="filter-group">
+                    <h4 class="filter-group-title">Status</h4>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="status" data-value="all">All</button>
+                        <button class="filter-btn" data-filter="status" data-value="pending">Pending</button>
+                        <button class="filter-btn" data-filter="status" data-value="in_progress">Active</button>
+                        <button class="filter-btn" data-filter="status" data-value="resolved">Resolved</button>
+                    </div>
+                </div>
+                
+                <!-- Priority Filters -->
+                <div class="filter-group">
+                    <h4 class="filter-group-title">Priority</h4>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="priority" data-value="all">All</button>
+                        <button class="filter-btn" data-filter="priority" data-value="low">Low</button>
+                        <button class="filter-btn" data-filter="priority" data-value="medium">Medium</button>
+                        <button class="filter-btn" data-filter="priority" data-value="high">High</button>
+                        <button class="filter-btn" data-filter="priority" data-value="critical">Critical</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn-secondary" id="clearAllFilters">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                    </svg>
+                    Clear All
+                </button>
+                <button class="btn-primary" id="applyFilters">Apply Filters</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Issue Context Menu -->
+    <div class="context-menu" id="contextMenu" style="display: none;">
+        <button class="menu-item" data-action="share">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"/>
+                <circle cx="6" cy="12" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            Share
+        </button>
+        <button class="menu-item" data-action="copy_link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            Copy Link
+        </button>
+        <button class="menu-item" data-action="view_location">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+            </svg>
+            View on Map
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" data-action="report">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                <line x1="4" y1="22" x2="4" y2="15"/>
+            </svg>
+            Report Issue
+        </button>
+    </div>
+
+    <!-- Scripts with ES6 modules for Supabase -->
+    <script type="module" src="js/home-real.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

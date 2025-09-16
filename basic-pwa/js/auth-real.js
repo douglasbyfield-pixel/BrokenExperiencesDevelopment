@@ -1,8 +1,13 @@
-// Authentication functionality for BrokenExp PWA
+// Real Supabase Authentication functionality for BrokenExp PWA
+import { AuthService } from './authService.js';
+import { supabase } from './supabase.js';
+
 class AuthManager {
     constructor() {
         this.isSignUpMode = false;
         this.isLoading = false;
+        this.authService = new AuthService();
+        
         this.initializeElements();
         this.attachEventListeners();
         this.loadRememberedCredentials();
@@ -99,36 +104,38 @@ class AuthManager {
     }
 
     async signUp(email, password) {
-        // Simulate API call - replace with actual Supabase integration
-        await this.simulateApiCall();
+        const result = await this.authService.signUpWithEmail(email, password);
         
-        this.showMessage('Account created successfully! You can now sign in.', 'success');
-        this.switchToSignIn();
+        if (result.success) {
+            this.showMessage('Account created successfully! Please check your email for verification.', 'success');
+            this.switchToSignIn();
+        } else {
+            throw new Error(result.error);
+        }
     }
 
     async signIn(email, password) {
-        // Simulate API call - replace with actual Supabase integration
-        await this.simulateApiCall();
+        const result = await this.authService.signInWithEmail(email, password);
         
-        // Handle remember me
-        if (this.rememberMeCheckbox.checked) {
-            localStorage.setItem('rememberedEmail', email);
-            localStorage.setItem('rememberedPassword', password);
+        if (result.success) {
+            // Handle remember me
+            if (this.rememberMeCheckbox.checked) {
+                localStorage.setItem('rememberedEmail', email);
+                localStorage.setItem('rememberedPassword', password);
+            } else {
+                localStorage.removeItem('rememberedEmail');
+                localStorage.removeItem('rememberedPassword');
+            }
+            
+            this.showMessage('Sign in successful! Redirecting...', 'success');
+            
+            // Wait a moment then redirect to home page
+            setTimeout(() => {
+                window.location.replace('home.html');
+            }, 1000);
         } else {
-            localStorage.removeItem('rememberedEmail');
-            localStorage.removeItem('rememberedPassword');
+            throw new Error(result.error);
         }
-        
-        this.showMessage('Sign in successful! Redirecting...', 'success');
-        
-        // Mark as authenticated
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('user', JSON.stringify({ email, loginTime: new Date().toISOString() }));
-        
-        // Redirect to main app
-        setTimeout(() => {
-            window.location.href = 'home.html';
-        }, 1500);
     }
 
     async handleGoogleSignIn() {
@@ -137,17 +144,14 @@ class AuthManager {
         this.setButtonLoading(this.googleButton, true);
         
         try {
-            // Simulate Google sign-in - replace with actual implementation
-            await this.simulateApiCall();
-            this.showMessage('Google sign-in successful! Redirecting...', 'success');
+            const result = await this.authService.signInWithGoogle();
             
-            // Mark as authenticated
-            localStorage.setItem('isAuthenticated', 'true');
-            localStorage.setItem('user', JSON.stringify({ email: 'user@gmail.com', provider: 'google', loginTime: new Date().toISOString() }));
-            
-            setTimeout(() => {
-                window.location.href = 'home.html';
-            }, 1500);
+            if (result.success) {
+                this.showMessage('Redirecting to Google...', 'info');
+                // OAuth will handle the redirect
+            } else {
+                throw new Error(result.error);
+            }
         } catch (error) {
             console.error('Google sign-in error:', error);
             this.showMessage('Failed to sign in with Google. Please try again.', 'error');
@@ -162,17 +166,14 @@ class AuthManager {
         this.setButtonLoading(this.appleButton, true);
         
         try {
-            // Simulate Apple sign-in - replace with actual implementation
-            await this.simulateApiCall();
-            this.showMessage('Apple sign-in successful! Redirecting...', 'success');
+            const result = await this.authService.signInWithApple();
             
-            // Mark as authenticated
-            localStorage.setItem('isAuthenticated', 'true');
-            localStorage.setItem('user', JSON.stringify({ email: 'user@icloud.com', provider: 'apple', loginTime: new Date().toISOString() }));
-            
-            setTimeout(() => {
-                window.location.href = 'home.html';
-            }, 1500);
+            if (result.success) {
+                this.showMessage('Redirecting to Apple...', 'info');
+                // OAuth will handle the redirect
+            } else {
+                throw new Error(result.error);
+            }
         } catch (error) {
             console.error('Apple sign-in error:', error);
             this.showMessage('Failed to sign in with Apple. Please try again.', 'error');
@@ -282,15 +283,15 @@ class AuthManager {
         button.disabled = loading;
         
         if (loading) {
-            span.textContent = 'Signing in...';
-            icon.style.display = 'none';
+            span.textContent = 'Redirecting...';
+            if (icon) icon.style.display = 'none';
         } else {
             if (button === this.googleButton) {
                 span.textContent = 'Continue with Google';
             } else if (button === this.appleButton) {
                 span.textContent = 'Continue with Apple';
             }
-            icon.style.display = 'block';
+            if (icon) icon.style.display = 'block';
         }
     }
 
@@ -339,21 +340,27 @@ class AuthManager {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
     }
-
-    async simulateApiCall() {
-        // Simulate network delay
-        return new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-    }
 }
 
 // Initialize auth manager when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if user is already authenticated
-    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-    if (isAuthenticated) {
-        window.location.href = 'home.html';
-        return;
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // Add a delay to prevent race conditions
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Check if user is already authenticated with Supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            console.log('User already authenticated, redirecting to home');
+            window.location.replace('home.html'); // Use replace to prevent back button issues
+            return;
+        }
+    } catch (error) {
+        console.error('Error checking auth state:', error);
     }
     
+    // User not authenticated, show login form
     new AuthManager();
 });
+
+console.log('Real Supabase Auth Manager loaded');
