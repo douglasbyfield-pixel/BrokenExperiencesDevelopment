@@ -1,0 +1,17 @@
+{
+  "name": "brokenexp-basic-pwa",
+  "version": "1.0.0",
+  "description": "Basic PWA for BrokenExp - Report Community Issues",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server . -p 3000 -c-1",
+    "build": "echo 'No build process needed for basic PWA'",
+    "dev": "npx http-server . -p 3000 -c-1 -o"
+  },
+  "keywords": ["pwa", "community", "issues", "jamaica"],
+  "author": "BrokenExp Team",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
