@@ -4,13 +4,21 @@ import { supabase } from './supabase.js';
 
 class AuthManager {
     constructor() {
+        console.log('AuthManager constructor called');
         this.isSignUpMode = false;
         this.isLoading = false;
         this.authService = new AuthService();
         
+        console.log('Initializing elements...');
         this.initializeElements();
+        console.log('Attaching event listeners...');
         this.attachEventListeners();
+        console.log('Loading remembered credentials...');
         this.loadRememberedCredentials();
+        console.log('AuthManager initialization complete');
+        
+        // Set global flag to indicate auth manager is ready
+        window.authManagerReady = true;
     }
 
     initializeElements() {
@@ -37,22 +45,47 @@ class AuthManager {
     }
 
     attachEventListeners() {
-        // Form submission
-        this.loginForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
+        // Form submission - ensure we prevent default
+        if (this.loginForm) {
+            console.log('Attaching form submit listener to:', this.loginForm);
+            this.loginForm.addEventListener('submit', (e) => {
+                console.log('Form submission intercepted by auth-real.js');
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleFormSubmit(e);
+                return false;
+            });
+        } else {
+            console.error('Login form not found when attaching event listeners');
+        }
         
         // Mode switching
-        this.switchModeButton.addEventListener('click', () => this.toggleMode());
+        if (this.switchModeButton) {
+            this.switchModeButton.addEventListener('click', () => this.toggleMode());
+        }
         
         // Password visibility toggles
-        this.passwordToggle.addEventListener('click', () => this.togglePasswordVisibility('password'));
-        this.confirmPasswordToggle.addEventListener('click', () => this.togglePasswordVisibility('confirmPassword'));
+        if (this.passwordToggle) {
+            this.passwordToggle.addEventListener('click', () => this.togglePasswordVisibility('password'));
+        }
+        if (this.confirmPasswordToggle) {
+            this.confirmPasswordToggle.addEventListener('click', () => this.togglePasswordVisibility('confirmPassword'));
+        }
+        
+        // Auth button will trigger form submission automatically
         
         // Social login buttons
-        this.googleButton.addEventListener('click', () => this.handleGoogleSignIn());
-        this.appleButton.addEventListener('click', () => this.handleAppleSignIn());
+        if (this.googleButton) {
+            this.googleButton.addEventListener('click', () => this.handleGoogleSignIn());
+        }
+        if (this.appleButton) {
+            this.appleButton.addEventListener('click', () => this.handleAppleSignIn());
+        }
         
         // Remember me
-        this.rememberMeCheckbox.addEventListener('change', () => this.handleRememberMeChange());
+        if (this.rememberMeCheckbox) {
+            this.rememberMeCheckbox.addEventListener('change', () => this.handleRememberMeChange());
+        }
     }
 
     async handleFormSubmit(e) {
@@ -344,6 +377,7 @@ class AuthManager {
 
 // Initialize auth manager when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOMContentLoaded - initializing AuthManager');
     try {
         // Add a delay to prevent race conditions
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -360,7 +394,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // User not authenticated, show login form
-    new AuthManager();
+    console.log('Creating new AuthManager instance');
+    const authManager = new AuthManager();
 });
 
 console.log('Real Supabase Auth Manager loaded');

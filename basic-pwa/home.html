@@ -272,8 +272,310 @@
         </button>
     </div>
 
-    <!-- Scripts with ES6 modules for Supabase -->
-    <script type="module" src="js/home-real.js"></script>
+    <!-- Enhanced functionality with Supabase data loading -->
+    <script type="module">
+        // Import Supabase modules
+        import { supabase } from './js/supabase.js';
+        
+        console.log('=== ENHANCED SCRIPT LOADING ===');
+        
+        class SimpleHomeManager {
+            constructor() {
+                this.issues = [];
+                this.user = null;
+                this.initializeElements();
+                this.loadData();
+            }
+            
+            initializeElements() {
+                this.searchButton = document.getElementById('searchButton');
+                this.profileButton = document.getElementById('profileButton');
+                this.filterButton = document.getElementById('filterButton');
+                this.issuesContainer = document.getElementById('issuesContainer');
+                this.loadingContainer = document.getElementById('loadingContainer');
+                this.impactScore = document.getElementById('impactScore');
+                this.activeMembers = document.getElementById('activeMembers');
+                this.resolvedThisWeek = document.getElementById('resolvedThisWeek');
+                
+                // Add event listeners
+                if (this.searchButton) {
+                    this.searchButton.addEventListener('click', () => this.handleSearch());
+                }
+                
+                if (this.profileButton) {
+                    this.profileButton.addEventListener('click', () => this.handleProfile());
+                }
+                
+                if (this.filterButton) {
+                    this.filterButton.addEventListener('click', () => this.handleFilter());
+                }
+                
+                console.log('Elements initialized successfully');
+            }
+            
+            async loadData() {
+                try {
+                    this.showLoading();
+                    
+                    // Get current user
+                    const { data: { user } } = await supabase.auth.getUser();
+                    this.user = user;
+                    console.log('Current user:', user?.email);
+                    
+                    // Load issues and stats in parallel
+                    await Promise.all([
+                        this.loadIssues(),
+                        this.loadCommunityStats()
+                    ]);
+                    
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    this.showError('Failed to load data: ' + error.message);
+                } finally {
+                    this.hideLoading();
+                }
+            }
+            
+            async loadIssues() {
+                try {
+                    console.log('Loading issues from Supabase...');
+                    
+                    const { data, error } = await supabase
+                        .from('issues')
+                        .select(`
+                            *,
+                            profiles:reported_by (
+                                id,
+                                name,
+                                avatar
+                            )
+                        `)
+                        .order('created_at', { ascending: false })
+                        .limit(10);
+                    
+                    if (error) throw error;
+                    
+                    this.issues = data || [];
+                    console.log('Loaded', this.issues.length, 'issues');
+                    
+                    this.renderIssues();
+                    
+                } catch (error) {
+                    console.error('Error loading issues:', error);
+                    this.showError('Failed to load issues: ' + error.message);
+                }
+            }
+            
+            async loadCommunityStats() {
+                try {
+                    console.log('Loading community stats...');
+                    
+                    // Get total issues count
+                    const { count: totalIssues } = await supabase
+                        .from('issues')
+                        .select('id', { count: 'exact', head: true });
+                    
+                    // Get resolved issues this week
+                    const oneWeekAgo = new Date();
+                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                    
+                    const { count: resolvedThisWeek } = await supabase
+                        .from('issues')
+                        .select('id', { count: 'exact', head: true })
+                        .eq('status', 'resolved')
+                        .gte('updated_at', oneWeekAgo.toISOString());
+                    
+                    // Get active members (users who created issues in last month)
+                    const oneMonthAgo = new Date();
+                    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                    
+                    const { data: activeUsers } = await supabase
+                        .from('issues')
+                        .select('reported_by')
+                        .gte('created_at', oneMonthAgo.toISOString())
+                        .not('reported_by', 'is', null);
+                    
+                    const uniqueUsers = new Set(activeUsers?.map(issue => issue.reported_by) || []);
+                    
+                    // Update stats
+                    this.updateStats({
+                        impactScore: totalIssues || 0,
+                        activeMembers: uniqueUsers.size,
+                        resolvedThisWeek: resolvedThisWeek || 0
+                    });
+                    
+                } catch (error) {
+                    console.error('Error loading stats:', error);
+                }
+            }
+            
+            updateStats(stats) {
+                if (this.impactScore) {
+                    this.animateNumber(this.impactScore, stats.impactScore);
+                }
+                if (this.activeMembers) {
+                    this.animateNumber(this.activeMembers, stats.activeMembers);
+                }
+                if (this.resolvedThisWeek) {
+                    this.animateNumber(this.resolvedThisWeek, stats.resolvedThisWeek);
+                }
+            }
+            
+            animateNumber(element, target) {
+                const start = 0;
+                const duration = 1000;
+                const startTime = performance.now();
+                
+                const animate = (currentTime) => {
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const current = Math.floor(start + (target - start) * progress);
+                    
+                    element.textContent = current;
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                requestAnimationFrame(animate);
+            }
+            
+            renderIssues() {
+                if (!this.issuesContainer) return;
+                
+                if (this.issues.length === 0) {
+                    this.issuesContainer.innerHTML = `
+                        <div style="text-align: center; padding: 60px 20px;">
+                            <h3 style="color: #6B7280; margin-bottom: 8px;">No issues found</h3>
+                            <p style="color: #9CA3AF;">Be the first to report an issue in Jamaica</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                this.issuesContainer.innerHTML = this.issues.map(issue => this.createIssueCard(issue)).join('');
+            }
+            
+            createIssueCard(issue) {
+                const timeAgo = this.formatTimeAgo(issue.created_at);
+                const authorName = issue.profiles?.name || 'Anonymous';
+                
+                return `
+                    <article style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px; overflow: hidden;">
+                        <div style="padding: 16px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 20px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-weight: 600; color: #666;">
+                                    ${authorName.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 600; color: #18181B;">${authorName}</div>
+                                    <div style="font-size: 12px; color: #6B7280;">${timeAgo}</div>
+                                </div>
+                            </div>
+                            
+                            <h3 style="font-size: 17px; font-weight: 700; color: #18181B; margin-bottom: 8px;">${issue.title}</h3>
+                            <p style="font-size: 15px; color: #374151; line-height: 1.5; margin-bottom: 12px;">${issue.description}</p>
+                            
+                            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                <span style="background: #f3f4f6; color: #6b7280; padding: 4px 8px; border-radius: 8px; font-size: 12px; font-weight: 600;">
+                                    ${issue.status}
+                                </span>
+                                <span style="background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 8px; font-size: 12px; font-weight: 600;">
+                                    ${issue.priority}
+                                </span>
+                            </div>
+                            
+                            <div style="display: flex; align-items: center; color: #6B7280; font-size: 12px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                                ${issue.address || issue.location || 'Jamaica'}
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }
+            
+            formatTimeAgo(dateString) {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffInSeconds = Math.floor((now - date) / 1000);
+                
+                if (diffInSeconds < 60) return 'Just now';
+                if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+                if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+                return `${Math.floor(diffInSeconds / 86400)}d ago`;
+            }
+            
+            showLoading() {
+                if (this.loadingContainer) {
+                    this.loadingContainer.style.display = 'flex';
+                    this.loadingContainer.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; padding: 60px 20px;">
+                            <div style="width: 40px; height: 40px; border: 3px solid #f0f0f0; border-top: 3px solid #1DA1F2; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
+                            <p style="color: #6B7280;">Loading community issues...</p>
+                        </div>
+                        <style>
+                            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                        </style>
+                    `;
+                }
+                if (this.issuesContainer) {
+                    this.issuesContainer.style.display = 'none';
+                }
+            }
+            
+            hideLoading() {
+                if (this.loadingContainer) {
+                    this.loadingContainer.style.display = 'none';
+                }
+                if (this.issuesContainer) {
+                    this.issuesContainer.style.display = 'block';
+                }
+            }
+            
+            showError(message) {
+                if (this.loadingContainer) {
+                    this.loadingContainer.innerHTML = `
+                        <div style="text-align: center; padding: 60px 20px;">
+                            <div style="color: #DC2626; font-size: 16px; font-weight: 600; margin-bottom: 8px;">Error</div>
+                            <p style="color: #6B7280;">${message}</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            handleSearch() {
+                console.log('Search clicked');
+                alert('Search functionality coming soon!');
+            }
+            
+            handleProfile() {
+                console.log('Profile clicked');
+                alert('Profile functionality coming soon!');
+            }
+            
+            handleFilter() {
+                console.log('Filter clicked');
+                alert('Filter functionality coming soon!');
+            }
+        }
+        
+        // Initialize when DOM is ready
+        function initializeApp() {
+            console.log('Initializing enhanced home with Supabase...');
+            new SimpleHomeManager();
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+    </script>
+    
     <script src="js/app.js"></script>
 </body>
 </html>

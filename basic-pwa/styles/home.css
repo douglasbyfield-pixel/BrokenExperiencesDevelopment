@@ -1,12 +1,30 @@
 /* Home Page Specific Styles */
 
+/* Force light gradient background and dark text for home page */
+body {
+    background: linear-gradient(180deg, #FFFFFF 0%, #E0EFFF 100%) !important;
+    background-attachment: fixed !important;
+    color: #18181B !important;
+    --primary-color: #18181B !important;
+    --secondary-color: #334155 !important;
+    --background-start: #FFFFFF !important;
+    --background-end: #E0EFFF !important;
+    --text-primary: #18181B !important;
+    --text-secondary: #475569 !important;
+    --text-muted: #6B7280 !important;
+}
+
+.app-container {
+    background: transparent !important;
+}
+
 /* Header Styles */
 .home-header {
-    background: linear-gradient(180deg, var(--background-start) 0%, var(--background-end) 100%);
+    background: transparent;
     padding: 0 24px;
     padding-top: max(env(safe-area-inset-top), 60px);
     padding-bottom: 20px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid rgba(240, 240, 240, 0.8);
 }
 
 .header-content {
@@ -71,7 +89,7 @@
 /* Main Content */
 .home-main {
     flex: 1;
-    background: #ffffff;
+    background: transparent;
     max-width: 800px;
     margin: 0 auto;
     width: 100%;
@@ -81,7 +99,7 @@
 /* Community Stats */
 .stats-section {
     padding: 16px 24px;
-    background: #ffffff;
+    background: transparent;
 }
 
 .stats-grid {
@@ -134,8 +152,8 @@
 /* Filter Section */
 .filter-section {
     padding: 16px 24px;
-    background: #ffffff;
-    border-bottom: 1px solid #f0f0f0;
+    background: transparent;
+    border-bottom: 1px solid rgba(240, 240, 240, 0.8);
 }
 
 .filter-header {
@@ -205,7 +223,7 @@
 
 /* Issues Feed */
 .issues-feed {
-    background: #f8f9fa;
+    background: transparent;
     min-height: 400px;
 }
 
@@ -845,42 +863,72 @@
     }
 }
 
-/* Dark mode support */
+/* Override dark mode - force light mode for home page */
 @media (prefers-color-scheme: dark) {
+    body {
+        background: linear-gradient(180deg, #FFFFFF 0%, #E0EFFF 100%) !important;
+        background-attachment: fixed !important;
+        color: #18181B !important;
+        --primary-color: #18181B !important;
+        --secondary-color: #334155 !important;
+        --background-start: #FFFFFF !important;
+        --background-end: #E0EFFF !important;
+        --text-primary: #18181B !important;
+        --text-secondary: #475569 !important;
+        --text-muted: #6B7280 !important;
+    }
+    
+    .app-container {
+        background: transparent !important;
+    }
+    
     .home-header {
-        background: linear-gradient(180deg, var(--background-start) 0%, var(--background-end) 100%);
+        background: transparent !important;
     }
     
     .search-button,
     .profile-button,
     .filter-button {
-        background: #27272A;
-        border-color: #3F3F46;
-        color: var(--text-primary);
+        background: #f8f9fa !important;
+        border-color: #e0e0e0 !important;
+        color: #18181B !important;
     }
     
     .search-button:hover,
     .profile-button:hover,
     .filter-button:hover {
-        background: #3F3F46;
+        background: #e9ecef !important;
     }
     
     .issue-card {
-        background: #27272A;
-        border-color: #3F3F46;
+        background: #ffffff !important;
+        border-color: rgba(0, 0, 0, 0.04) !important;
+        color: #18181B !important;
     }
     
     .bottom-nav {
-        background: #18181B;
-        border-color: #3F3F46;
+        background: #ffffff !important;
+        border-color: #f0f0f0 !important;
     }
     
     .modal-content {
-        background: #27272A;
+        background: #ffffff !important;
+        color: #18181B !important;
     }
     
     .context-menu {
-        background: #27272A;
-        border-color: #3F3F46;
+        background: #ffffff !important;
+        border-color: #f0f0f0 !important;
+        color: #18181B !important;
+    }
+    
+    /* Ensure all text is dark */
+    .title, .subtitle, .author-name, .issue-title, .issue-description,
+    .stat-number, .stat-label, .filter-title, .modal-title, .menu-item {
+        color: #18181B !important;
+    }
+    
+    .issue-time, .location-row, .filter-summary-text {
+        color: #475569 !important;
     }
 }

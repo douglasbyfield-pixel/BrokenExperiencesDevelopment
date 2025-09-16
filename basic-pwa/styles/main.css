@@ -33,7 +33,8 @@ html {
 body {
     height: 100%;
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(180deg, var(--background-start) 0%, var(--background-end) 100%);
+    background: linear-gradient(180deg, #FFFFFF 0%, #E0EFFF 100%);
+    background-attachment: fixed;
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -46,8 +47,8 @@ body {
     display: flex;
     flex-direction: column;
     padding: 0 24px;
-    padding-top: max(env(safe-area-inset-top), 80px);
-    padding-bottom: max(env(safe-area-inset-bottom), 20px);
+    padding-top: max(env(safe-area-inset-top), 60px);
+    padding-bottom: max(env(safe-area-inset-bottom), 40px);
 }
 
 /* Login Container */
@@ -55,20 +56,20 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: center;
     max-width: 400px;
     margin: 0 auto;
     width: 100%;
+    gap: 40px;
 }
 
 /* Header Section */
 .header {
     text-align: center;
-    margin-bottom: 40px;
 }
 
 .logo-container {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
 .logo {
@@ -78,38 +79,40 @@ body {
 }
 
 .title {
-    font-size: 42px;
+    font-size: 38px;
     font-weight: 700;
-    line-height: 1;
+    line-height: 1.1;
     color: var(--text-primary);
-    letter-spacing: -2px;
+    letter-spacing: -1.5px;
+    margin-bottom: 4px;
 }
 
 .title-secondary {
-    font-size: 42px;
+    font-size: 38px;
     font-weight: 700;
-    line-height: 1;
+    line-height: 1.1;
     color: var(--text-primary);
-    letter-spacing: -2px;
-    margin-bottom: 12px;
+    letter-spacing: -1.5px;
+    margin-bottom: 16px;
 }
 
 .subtitle {
-    font-size: 18px;
+    font-size: 16px;
     color: var(--secondary-color);
-    padding: 0 20px;
-    line-height: 1.4;
+    line-height: 1.5;
+    max-width: 300px;
+    margin: 0 auto;
 }
 
 /* Form Section */
 .form-section {
-    margin-bottom: 40px;
+    width: 100%;
 }
 
 .login-form {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
 }
 
 .input-group {
@@ -223,11 +226,11 @@ body {
 .auth-button {
     background-color: var(--primary-color);
     color: white;
-    padding: 12px 24px;
+    padding: 16px 24px;
     border: none;
     border-radius: var(--border-radius-full);
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 600;
     font-family: inherit;
     cursor: pointer;
     transition: var(--transition);
@@ -237,6 +240,7 @@ body {
     justify-content: center;
     gap: 8px;
     margin-top: 8px;
+    min-height: 52px;
 }
 
 .auth-button:hover {
@@ -273,21 +277,22 @@ body {
 /* Social Section */
 .social-section {
     text-align: center;
+    width: 100%;
 }
 
 .social-buttons {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: 12px;
+    margin-bottom: 24px;
 }
 
 .social-button {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 10px 32px;
+    gap: 12px;
+    padding: 14px 32px;
     background-color: var(--input-background);
     border: 1px solid var(--input-border);
     border-radius: var(--border-radius-full);
@@ -298,6 +303,7 @@ body {
     cursor: pointer;
     transition: var(--transition);
     box-shadow: var(--shadow-sm);
+    min-height: 52px;
 }
 
 .social-button:hover {
@@ -329,14 +335,15 @@ body {
 .switch-mode {
     background: none;
     border: none;
-    font-size: 14px;
+    font-size: 15px;
     color: var(--text-secondary);
     font-weight: 500;
     font-family: inherit;
     cursor: pointer;
     text-decoration: underline;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     transition: var(--transition);
+    padding: 8px;
 }
 
 .switch-mode:hover {
@@ -345,42 +352,108 @@ body {
 
 /* Terms Text */
 .terms-text {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--text-secondary);
-    line-height: 1.4;
-    padding: 0 20px;
+    line-height: 1.5;
+    text-align: center;
+    max-width: 280px;
+    margin: 0 auto;
 }
 
 /* Responsive Design */
 @media (max-width: 480px) {
     .app-container {
-        padding: 0 16px;
-        padding-top: max(env(safe-area-inset-top), 60px);
-    }
-    
-    .title,
-    .title-secondary {
-        font-size: 36px;
-    }
-    
-    .subtitle {
-        font-size: 16px;
+        padding: 0 20px;
+        padding-top: max(env(safe-area-inset-top), 40px);
+        padding-bottom: max(env(safe-area-inset-bottom), 20px);
     }
     
     .login-container {
         gap: 32px;
+        justify-content: space-between;
+        min-height: calc(100vh - 80px);
+    }
+    
+    .title,
+    .title-secondary {
+        font-size: 32px;
+        letter-spacing: -1px;
+    }
+    
+    .subtitle {
+        font-size: 15px;
+    }
+    
+    .logo {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .input-field {
+        padding: 14px 16px;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .auth-button {
+        padding: 18px 24px;
+        font-size: 16px;
+        min-height: 56px;
+    }
+    
+    .social-button {
+        padding: 16px 32px;
+        font-size: 15px;
+        min-height: 56px;
+    }
+    
+    .switch-mode {
+        font-size: 14px;
+        margin-bottom: 16px;
+    }
+    
+    .terms-text {
+        font-size: 12px;
+        padding: 0 10px;
     }
 }
 
 @media (max-width: 360px) {
+    .app-container {
+        padding: 0 16px;
+        padding-top: max(env(safe-area-inset-top), 30px);
+    }
+    
+    .login-container {
+        gap: 24px;
+    }
+    
     .title,
     .title-secondary {
-        font-size: 32px;
+        font-size: 28px;
+    }
+    
+    .subtitle {
+        font-size: 14px;
+    }
+    
+    .logo {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .input-field {
+        padding: 12px 14px;
+    }
+    
+    .auth-button {
+        padding: 16px 20px;
+        min-height: 52px;
     }
     
     .social-button {
-        padding: 10px 24px;
+        padding: 14px 24px;
         font-size: 14px;
+        min-height: 52px;
     }
 }
 
@@ -397,27 +470,75 @@ body {
     }
 }
 
-/* Dark Mode Support */
+/* Keyboard avoidance for iOS */
+@supports (-webkit-appearance: none) and (stroke: initial) {
+    .login-container {
+        padding-bottom: env(keyboard-inset-height, 0);
+    }
+    
+    @media (max-width: 480px) {
+        .login-container {
+            min-height: calc(100vh - env(keyboard-inset-height, 0) - 80px);
+        }
+    }
+}
+
+/* Force Light Mode - Override Dark Mode */
 @media (prefers-color-scheme: dark) {
     :root {
-        --primary-color: #FFFFFF;
-        --secondary-color: #A1A1AA;
-        --background-start: #18181B;
-        --background-end: #27272A;
-        --input-background: #27272A;
-        --input-border: #3F3F46;
-        --text-primary: #FFFFFF;
-        --text-secondary: #A1A1AA;
-        --text-muted: #71717A;
+        --primary-color: #18181B !important;
+        --secondary-color: #334155 !important;
+        --background-start: #FFFFFF !important;
+        --background-end: #E0EFFF !important;
+        --input-background: #FFFFFF !important;
+        --input-border: #E4E4E7 !important;
+        --text-primary: #18181B !important;
+        --text-secondary: #475569 !important;
+        --text-muted: #6B7280 !important;
+    }
+    
+    body {
+        background: linear-gradient(180deg, #FFFFFF 0%, #E0EFFF 100%) !important;
+        background-attachment: fixed !important;
+        color: #18181B !important;
+    }
+    
+    .app-container {
+        background: transparent !important;
     }
     
     .auth-button {
-        background-color: #FFFFFF;
-        color: #18181B;
+        background-color: #18181B !important;
+        color: #FFFFFF !important;
     }
     
     .auth-button:hover {
-        background-color: #F4F4F5;
+        background-color: #000 !important;
+        color: #FFFFFF !important;
+    }
+    
+    .input-field {
+        background-color: #FFFFFF !important;
+        border-color: #E4E4E7 !important;
+        color: #18181B !important;
+    }
+    
+    .social-button {
+        background-color: #FFFFFF !important;
+        border-color: #E4E4E7 !important;
+        color: #18181B !important;
+    }
+    
+    .title, .title-secondary, .subtitle, .label-text, .terms-text, .switch-mode {
+        color: #18181B !important;
+    }
+    
+    .switch-mode {
+        color: #475569 !important;
+    }
+    
+    .password-toggle {
+        color: #6B7280 !important;
     }
 }
 

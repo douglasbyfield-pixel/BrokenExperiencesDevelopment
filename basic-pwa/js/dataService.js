@@ -26,8 +26,16 @@ export class DataService {
 
       if (error) {
         console.error('DataService: Error fetching issues:', error);
+        console.error('DataService: Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
+
+      console.log('DataService: Successfully fetched', data?.length || 0, 'issues');
 
       // Get counts separately to avoid caching issues
       const issuesWithCounts = await Promise.all(

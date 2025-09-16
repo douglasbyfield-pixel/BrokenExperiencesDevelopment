@@ -71,21 +71,46 @@ class HomeManager {
         
         // Context menu
         this.contextMenu = document.getElementById('contextMenu');
+        
+        // Debug: Log missing elements
+        const requiredElements = [
+            'searchButton', 'profileButton', 'impactScore', 'activeMembers', 
+            'resolvedThisWeek', 'filterButton', 'issuesContainer', 'loadingContainer'
+        ];
+        
+        const missingElements = requiredElements.filter(id => !document.getElementById(id));
+        if (missingElements.length > 0) {
+            console.warn('Missing DOM elements:', missingElements);
+        }
     }
 
     attachEventListeners() {
         // Header actions
-        this.searchButton.addEventListener('click', () => this.handleSearch());
-        this.profileButton.addEventListener('click', () => this.handleProfile());
+        if (this.searchButton) {
+            this.searchButton.addEventListener('click', () => this.handleSearch());
+        }
+        if (this.profileButton) {
+            this.profileButton.addEventListener('click', () => this.handleProfile());
+        }
         
         // Filter actions
-        this.filterButton.addEventListener('click', () => this.showFilterModal());
-        this.clearFiltersButton.addEventListener('click', () => this.clearAllFiltersAction());
+        if (this.filterButton) {
+            this.filterButton.addEventListener('click', () => this.showFilterModal());
+        }
+        if (this.clearFiltersButton) {
+            this.clearFiltersButton.addEventListener('click', () => this.clearAllFiltersAction());
+        }
         
         // Modal actions
-        this.closeFilterModal.addEventListener('click', () => this.hideFilterModal());
-        this.clearAllFilters.addEventListener('click', () => this.clearAllFiltersAction());
-        this.applyFilters.addEventListener('click', () => this.applyFiltersAction());
+        if (this.closeFilterModal) {
+            this.closeFilterModal.addEventListener('click', () => this.hideFilterModal());
+        }
+        if (this.clearAllFilters) {
+            this.clearAllFilters.addEventListener('click', () => this.clearAllFiltersAction());
+        }
+        if (this.applyFilters) {
+            this.applyFilters.addEventListener('click', () => this.applyFiltersAction());
+        }
         
         // Filter buttons
         document.addEventListener('click', (e) => {
@@ -95,7 +120,9 @@ class HomeManager {
         });
         
         // FAB
-        this.reportButton.addEventListener('click', () => this.handleReport());
+        if (this.reportButton) {
+            this.reportButton.addEventListener('click', () => this.handleReport());
+        }
         
         // Context menu
         document.addEventListener('click', (e) => {
@@ -106,11 +133,11 @@ class HomeManager {
         
         // Close modals and menus on outside click
         document.addEventListener('click', (e) => {
-            if (e.target === this.filterModal) {
+            if (this.filterModal && e.target === this.filterModal) {
                 this.hideFilterModal();
             }
             
-            if (!this.contextMenu.contains(e.target) && !e.target.closest('.action-btn[data-action="menu"]')) {
+            if (this.contextMenu && !this.contextMenu.contains(e.target) && !e.target.closest('.action-btn[data-action="menu"]')) {
                 this.hideContextMenu();
             }
         });
@@ -161,12 +188,15 @@ class HomeManager {
 
     async loadIssues() {
         try {
+            console.log('HomeManager: Starting to load issues...');
             this.issues = await DataService.getIssues();
-            console.log('Loaded', this.issues.length, 'issues from Supabase');
+            console.log('HomeManager: Loaded', this.issues.length, 'issues from Supabase');
             this.renderIssues();
         } catch (error) {
-            console.error('Error loading issues:', error);
+            console.error('HomeManager: Error loading issues:', error);
+            console.error('HomeManager: Full error details:', JSON.stringify(error, null, 2));
             this.issues = [];
+            this.showError(`Failed to load community issues: ${error.message}`);
         }
     }
 
@@ -735,24 +765,42 @@ class HomeManager {
 
     // UI state management (same as before)
     showLoading() {
-        this.loadingContainer.style.display = 'flex';
-        this.issuesContainer.style.display = 'none';
-        this.emptyState.style.display = 'none';
+        if (this.loadingContainer) {
+            this.loadingContainer.style.display = 'flex';
+        }
+        if (this.issuesContainer) {
+            this.issuesContainer.style.display = 'none';
+        }
+        if (this.emptyState) {
+            this.emptyState.style.display = 'none';
+        }
     }
 
     hideLoading() {
-        this.loadingContainer.style.display = 'none';
-        this.issuesContainer.style.display = 'block';
+        if (this.loadingContainer) {
+            this.loadingContainer.style.display = 'none';
+        }
+        if (this.issuesContainer) {
+            this.issuesContainer.style.display = 'block';
+        }
     }
 
     showEmptyState() {
-        this.emptyState.style.display = 'flex';
-        this.issuesContainer.style.display = 'none';
+        if (this.emptyState) {
+            this.emptyState.style.display = 'flex';
+        }
+        if (this.issuesContainer) {
+            this.issuesContainer.style.display = 'none';
+        }
     }
 
     hideEmptyState() {
-        this.emptyState.style.display = 'none';
-        this.issuesContainer.style.display = 'block';
+        if (this.emptyState) {
+            this.emptyState.style.display = 'none';
+        }
+        if (this.issuesContainer) {
+            this.issuesContainer.style.display = 'block';
+        }
     }
 
     showError(message) {
@@ -832,12 +880,55 @@ class HomeManager {
     }
 }
 
-// Initialize home manager when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    // Add small delay to ensure Supabase auth is ready
-    setTimeout(() => {
-        new HomeManager();
-    }, 100);
-});
+// Prevent multiple initializations
+if (window.homeManagerInitialized) {
+    console.log('HomeManager already initialized, skipping...');
+} else {
+    window.homeManagerInitialized = true;
+    
+    // Initialize home manager when DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOMContentLoaded fired, checking DOM elements...');
+        console.log('Current document:', document.location.href);
+        console.log('Document readyState:', document.readyState);
+        
+        // Wait for DOM to be fully ready and Supabase to initialize
+        const initializeHome = () => {
+            // Check if all required elements exist
+            const requiredElements = [
+                'searchButton', 'profileButton', 'impactScore', 'activeMembers', 
+                'resolvedThisWeek', 'filterButton', 'issuesContainer', 'loadingContainer'
+            ];
+            
+            console.log('Checking for elements in document:', document.title);
+            requiredElements.forEach(id => {
+                const element = document.getElementById(id);
+                console.log(`Element ${id}:`, element ? 'FOUND' : 'MISSING');
+            });
+            
+            const missingElements = requiredElements.filter(id => !document.getElementById(id));
+            
+            if (missingElements.length > 0) {
+                console.warn('Still missing DOM elements:', missingElements);
+                
+                // Stop retrying after too many attempts
+                initializeHome.attempts = (initializeHome.attempts || 0) + 1;
+                if (initializeHome.attempts > 50) {
+                    console.error('Giving up after 50 attempts. Elements not found.');
+                    return;
+                }
+                
+                setTimeout(initializeHome, 100);
+                return;
+            }
+            
+            console.log('All DOM elements found, initializing HomeManager');
+            new HomeManager();
+        };
+        
+        // Start initialization with delay for Supabase auth
+        setTimeout(initializeHome, 200);
+    });
+}
 
 console.log('Real Supabase Home Manager loaded');
