@@ -18,13 +18,14 @@
     "db:down": "docker compose down"
   },
   "dependencies": {
-    "dotenv": "^17.2.1",
-    "zod": "^4.0.2",
-    "elysia": "^1.3.21",
     "@elysiajs/cors": "^1.3.3",
+    "better-auth": "^1.3.10",
+    "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.2",
+    "drizzle-typebox": "^0.3.3",
+    "elysia": "^1.3.21",
     "pg": "^8.14.1",
-    "better-auth": "^1.3.10"
+    "zod": "^4.0.2"
   },
   "devDependencies": {
     "tsdown": "^0.15.1",

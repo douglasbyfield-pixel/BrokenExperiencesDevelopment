@@ -23,7 +23,9 @@
     "db:stop": "bun run --filter server db:stop",
     "db:down": "bun run --filter server db:down"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@t3-oss/env-core": "^0.13.8"
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.2.0"
   },
