@@ -2,6 +2,7 @@ import "dotenv/config";
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { auth } from "./lib/auth";
+import { appRouter } from "./module";
 
 const app = new Elysia()
 	.use(
@@ -17,9 +18,9 @@ const app = new Elysia()
 		if (["POST", "GET"].includes(request.method)) {
 			return auth.handler(request);
 		}
-		context.error(405);
+		context.status = 405;
 	})
-	.get("/", () => "OK")
+	.use(appRouter)
 	.listen(3000, () => {
 		console.log("Server is running on http://localhost:3000");
 	});
