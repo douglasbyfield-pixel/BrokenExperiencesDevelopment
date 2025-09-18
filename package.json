@@ -24,6 +24,7 @@
     "db:down": "bun run --filter server db:down"
   },
   "dependencies": {
+    "@elysiajs/html": "^1.4.0",
     "@t3-oss/env-core": "^0.13.8"
   },
   "devDependencies": {
