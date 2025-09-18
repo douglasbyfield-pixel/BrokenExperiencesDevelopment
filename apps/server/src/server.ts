@@ -1,10 +1,14 @@
 import "dotenv/config";
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
+import { openapi } from "@elysiajs/openapi";
 import { auth } from "./lib/auth";
 import { appRouter } from "./module";
+import logixlysia from "logixlysia";
 
 export const app = new Elysia()
+    .use(openapi())
+    .use(logixlysia())
 	.use(
 		cors({
 			origin: process.env.CORS_ORIGIN || "",
@@ -15,6 +19,5 @@ export const app = new Elysia()
 	)
 	.mount(auth.handler)
 	.use(appRouter)
-	.listen(3000, () => console.log("Server is running on http://localhost:3000"));
 
-export type AppRouter = typeof appRouter;
+export type App = typeof app;
