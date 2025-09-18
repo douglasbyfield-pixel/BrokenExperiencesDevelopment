@@ -4,7 +4,7 @@ import { createCategory, deleteCategory, getCategories, getCategory, updateCateg
 
 export const categoryRouter = new Elysia({
     prefix: '/category',
-    tags: ['category'],
+    tags: ['Category'],
 })
     .use(categoryModel)
 	.get("/", () => {

@@ -4,7 +4,7 @@ import { createExperience, deleteExperience, getExperience, getExperiences, upda
 
 export const experienceRouter = new Elysia({
         prefix: '/experience',
-        tags: ['experience'],
+        tags: ['Experience'],
     })
     .use(experienceModel)
 	.get("/", () => {
