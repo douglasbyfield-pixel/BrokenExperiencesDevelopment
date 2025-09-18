@@ -28,7 +28,7 @@ bun install
 This project uses PostgreSQL with Drizzle ORM.
 
 1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
+2. Update your `backend/server/.env` file with your PostgreSQL connection details.
 
 3. Apply the schema to your database:
 ```bash
@@ -53,9 +53,10 @@ The API is running at [http://localhost:3000](http://localhost:3000).
 
 ```
 broken-experiences/
-├── apps/
-│   ├── web/         # Frontend application (Next.js)
+├── frontend/        # Frontend application (Next.js)
+├── backend/
 │   └── server/      # Backend API (Elysia)
+└── old-code/        # Legacy/deprecated code
 ```
 
 ## Available Scripts
@@ -68,4 +69,4 @@ broken-experiences/
 - `bun db:push`: Push schema changes to database
 - `bun db:studio`: Open database studio UI
 - `bun check`: Run Biome formatting and linting
-- `cd apps/web && bun generate-pwa-assets`: Generate PWA assets
+- `cd frontend && bun generate-pwa-assets`: Generate PWA assets
