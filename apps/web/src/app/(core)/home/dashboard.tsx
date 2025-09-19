@@ -91,31 +91,31 @@ export default function Dashboard({
 
 	return (
 		<div className="min-h-screen bg-white dark:bg-black">
-			<div className="container mx-auto px-4 py-8 max-w-7xl">
+			<div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-7xl">
 				{/* Header Section */}
-				<div className="mb-8 p-8 bg-white dark:bg-black border-2 border-gray-300 dark:border-gray-700 rounded-xl shadow-lg">
-					<div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+				<div className="mb-4 sm:mb-8 p-4 sm:p-8 bg-white dark:bg-black border-2 border-gray-300 dark:border-gray-700 rounded-xl shadow-lg">
+					<div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
 						<div>
-							<h1 className="text-4xl font-bold mb-2 text-black dark:text-white">
+							<h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 text-black dark:text-white">
 								Welcome back, {user.name}!
 							</h1>
-							<p className="text-lg text-gray-600 dark:text-gray-400">
+							<p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-400">
 								Start making a difference in your community
 							</p>
 						</div>
 						
-						<div className="flex items-center gap-4">
-							<div className="text-right">
-								<p className="font-semibold text-lg text-black dark:text-white">{user.name}</p>
-								<p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+						<div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+							<div className="text-center sm:text-right">
+								<p className="font-semibold text-base sm:text-lg text-black dark:text-white">{user.name}</p>
+								<p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
 								<div className="mt-1 flex items-center gap-1">
-									<Award className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+									<Award className="h-3 w-3 sm:h-4 sm:w-4 text-gray-600 dark:text-gray-400" />
 									<span className="text-xs font-medium text-gray-600 dark:text-gray-400">Community Helper</span>
 								</div>
 							</div>
-							<Avatar className="h-16 w-16 border-2 border-gray-300 dark:border-gray-700">
+							<Avatar className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 border-2 border-gray-300 dark:border-gray-700">
 								<AvatarImage src={user.image || undefined} alt={user.name || 'User'} />
-								<AvatarFallback className="text-lg font-bold bg-black dark:bg-white text-white dark:text-black">
+								<AvatarFallback className="text-sm sm:text-base lg:text-lg font-bold bg-black dark:bg-white text-white dark:text-black">
 									{initials}
 								</AvatarFallback>
 							</Avatar>
@@ -124,12 +124,12 @@ export default function Dashboard({
 				</div>
 
 				{/* Features Section */}
-				<div className="mb-8">
-					<div className="text-center mb-8">
-						<h2 className="text-3xl font-bold mb-2 text-black dark:text-white">Available Features</h2>
-						<p className="text-gray-600 dark:text-gray-400">Choose your role and start contributing to your community</p>
+				<div className="mb-4 sm:mb-8">
+					<div className="text-center mb-4 sm:mb-8">
+						<h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 text-black dark:text-white">Available Features</h2>
+						<p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Choose your role and start contributing to your community</p>
 					</div>
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+					<div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 						{upcomingFeatures.map((feature) => {
 							const Icon = feature.icon;
 							const hasRole = userRoles.includes(feature.role);
@@ -151,10 +151,10 @@ export default function Dashboard({
 										<CardTitle className="text-xl font-bold text-black dark:text-white mb-2">{feature.title}</CardTitle>
 										<CardDescription className="text-gray-600 dark:text-gray-400">{feature.description}</CardDescription>
 									</CardHeader>
-									<CardContent className="p-6 pt-0">
+									<CardContent className="p-4 sm:p-6 pt-0">
 										{hasRole ? (
 											<Button 
-												className="w-full h-12 bg-black hover:bg-gray-800 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl" 
+												className="w-full h-10 sm:h-12 bg-black hover:bg-gray-800 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base" 
 												onClick={() => router.push(feature.route as any)}
 											>
 												Go to {feature.title}
@@ -162,7 +162,7 @@ export default function Dashboard({
 										) : (
 											<Button 
 												variant="outline" 
-												className="w-full h-12 font-medium border-2 border-gray-300 dark:border-gray-700 rounded-xl hover:bg-black hover:text-white hover:border-black dark:hover:bg-white dark:hover:text-black dark:hover:border-white transition-all duration-200"
+												className="w-full h-10 sm:h-12 font-medium border-2 border-gray-300 dark:border-gray-700 rounded-xl hover:bg-black hover:text-white hover:border-black dark:hover:bg-white dark:hover:text-black dark:hover:border-white transition-all duration-200 text-sm sm:text-base"
 												onClick={() => handleRoleSelection(feature.role)}
 												disabled={loading}
 											>
@@ -178,19 +178,19 @@ export default function Dashboard({
 
 				{/* Impact Section */}
 				<Card className="border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-black rounded-xl shadow-lg">
-					<CardHeader className="p-8">
+					<CardHeader className="p-4 sm:p-8">
 						<div className="text-center">
-							<div className="w-16 h-16 mx-auto mb-4 border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-black rounded-xl flex items-center justify-center">
-								<TrendingUp className="h-8 w-8 text-black dark:text-white" />
+							<div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 mx-auto mb-3 sm:mb-4 border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-black rounded-xl flex items-center justify-center">
+								<TrendingUp className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-black dark:text-white" />
 							</div>
-							<CardTitle className="text-3xl font-bold text-black dark:text-white mb-2">Your Impact</CardTitle>
-							<CardDescription className="text-gray-600 dark:text-gray-400">
+							<CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold text-black dark:text-white mb-2">Your Impact</CardTitle>
+							<CardDescription className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
 								Track your contributions to the Jamaica community
 							</CardDescription>
 						</div>
 					</CardHeader>
-					<CardContent className="p-8 pt-0 space-y-8">
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+					<CardContent className="p-4 sm:p-8 pt-0 space-y-4 sm:space-y-8">
+						<div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 							<div className="p-6 border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-black rounded-xl text-center">
 								<div className="w-12 h-12 mx-auto mb-4 border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-black rounded-xl flex items-center justify-center">
 									<MapPin className="h-6 w-6 text-black dark:text-white" />

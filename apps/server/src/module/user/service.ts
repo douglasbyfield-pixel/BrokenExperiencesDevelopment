@@ -6,12 +6,22 @@
 export const userService = {
 	async getUserProfile(userId: string) {
 		try {
-			// For now, return mock data since authentication isn't set up
+			// Mock profile data with more details
 			return {
 				id: userId,
-				name: "Test User",
-				email: "test@example.com",
-				roles: []
+				name: "Demo User",
+				email: "demo@brokenexp.com",
+				image: null,
+				bio: "Community helper in Jamaica working to improve local infrastructure",
+				location: "Kingston, Jamaica",
+				joinedAt: "2024-01-01",
+				stats: {
+					issuesReported: 5,
+					issuesFixed: 3,
+					totalSponsored: 250,
+					impactScore: 85
+				},
+				roles: ["reporter", "fixer"]
 			};
 		} catch (error) {
 			console.error("Error fetching user profile:", error);
@@ -21,8 +31,9 @@ export const userService = {
 	
 	async getUserRoles(userId: string) {
 		try {
-			// For now, return empty array since database isn't set up
-			return [];
+			// Return roles from mock profile
+			const profile = await this.getUserProfile(userId);
+			return profile.roles;
 		} catch (error) {
 			console.error("Error fetching user roles:", error);
 			return [];

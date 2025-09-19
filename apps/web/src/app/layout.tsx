@@ -26,9 +26,11 @@ export default function RootLayout(props: LayoutProps<'/'>) {
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
 				<Providers>
-					<div className="grid h-svh grid-rows-[auto_1fr]">
+					<div className="flex flex-col h-dvh w-full">
 						<Header />
-						{props.children}
+						<main className="flex-1 min-h-0 w-full relative">
+							{props.children}
+						</main>
 					</div>
 				</Providers>
 			</body>
