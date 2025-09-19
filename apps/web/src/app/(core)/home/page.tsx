@@ -10,15 +10,28 @@ export default async function DashboardPage() {
 		},
 	});
 
-	if (!session.data) {
-		redirect("/login");
-	}
+	// Allow demo access without authentication
+	const demoSession = {
+		user: {
+			id: "demo-user",
+			name: "Demo User",
+			email: "demo@example.com",
+			image: null,
+			emailVerified: true,
+			createdAt: new Date(),
+			updatedAt: new Date()
+		},
+		session: {
+			id: "demo-session",
+			userId: "demo-user",
+			expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24 hours
+			token: "demo-token",
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			ipAddress: null,
+			userAgent: null
+		}
+	};
 
-	return (
-		<div>
-			<h1>Dashboard</h1>
-			<p>Welcome {session.data.user.name}</p>
-			<Dashboard session={session.data} />
-		</div>
-	);
+	return <Dashboard session={session.data || demoSession} />;
 }
