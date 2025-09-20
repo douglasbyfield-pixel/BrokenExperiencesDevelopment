@@ -114,4 +114,44 @@ export const issueRouter = new Elysia({ prefix: "/issue", tags: ["Issue"] })
 			summary: "Vote on issue",
 			description: "Upvote or downvote an issue"
 		}
+	})
+	.get("/user/:userId", async ({ params: { userId } }) => {
+		const issues = await issueService.getIssuesByUser(userId);
+		return issues;
+	}, {
+		params: t.Object({
+			userId: t.String()
+		}),
+		detail: {
+			summary: "Get user's issues",
+			description: "Get all issues reported by a specific user"
+		}
+	})
+	.get("/nearby", async ({ query }) => {
+		const { lat, lng, radius } = query;
+		const issues = await issueService.getNearbyIssues(
+			parseFloat(lat),
+			parseFloat(lng),
+			parseFloat(radius || "5")
+		);
+		return issues;
+	}, {
+		query: t.Object({
+			lat: t.String(),
+			lng: t.String(),
+			radius: t.Optional(t.String())
+		}),
+		detail: {
+			summary: "Get nearby issues",
+			description: "Get issues within a specified radius (km) of a location"
+		}
+	})
+	.get("/stats", async () => {
+		const stats = await issueService.getIssueStats();
+		return stats;
+	}, {
+		detail: {
+			summary: "Get issue statistics",
+			description: "Get overall statistics about issues"
+		}
 	});

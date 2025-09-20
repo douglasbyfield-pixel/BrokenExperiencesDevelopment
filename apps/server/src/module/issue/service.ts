@@ -273,5 +273,90 @@ export const issueService = {
 			issue.updatedAt = new Date();
 		}
 		return issue;
+	},
+	
+	async getIssuesByUser(userId: string) {
+		return mockIssues.filter(issue => issue.reporterId === userId);
+	},
+	
+	async getNearbyIssues(lat: number, lng: number, radiusKm: number) {
+		// Calculate distance between two coordinates using Haversine formula
+		const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+			const R = 6371; // Earth's radius in kilometers
+			const dLat = (lat2 - lat1) * Math.PI / 180;
+			const dLng = (lng2 - lng1) * Math.PI / 180;
+			const a = 
+				Math.sin(dLat/2) * Math.sin(dLat/2) +
+				Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+				Math.sin(dLng/2) * Math.sin(dLng/2);
+			const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+			const distance = R * c;
+			return distance;
+		};
+		
+		return mockIssues.filter(issue => {
+			const distance = calculateDistance(
+				lat,
+				lng,
+				issue.latitude,
+				issue.longitude
+			);
+			return distance <= radiusKm;
+		}).map(issue => ({
+			...issue,
+			distance: calculateDistance(lat, lng, issue.latitude, issue.longitude)
+		})).sort((a, b) => a.distance - b.distance);
+	},
+	
+	async getIssueStats() {
+		const total = mockIssues.length;
+		const reported = mockIssues.filter(i => i.status === "reported").length;
+		const pending = mockIssues.filter(i => i.status === "pending").length;
+		const resolved = mockIssues.filter(i => i.status === "resolved").length;
+		
+		const byCategory: Record<string, number> = {};
+		const bySeverity: Record<string, number> = {
+			low: 0,
+			medium: 0,
+			high: 0,
+			critical: 0
+		};
+		
+		mockIssues.forEach(issue => {
+			// Count by category
+			const category = issue.categoryId || "other";
+			byCategory[category] = (byCategory[category] || 0) + 1;
+			
+			// Count by severity
+			bySeverity[issue.severity]++;
+		});
+		
+		// Calculate resolution rate
+		const resolutionRate = total > 0 ? (resolved / total) * 100 : 0;
+		
+		// Calculate average resolution time
+		const resolvedIssues = mockIssues.filter(i => i.status === "resolved" && i.resolvedAt);
+		const avgResolutionTime = resolvedIssues.length > 0
+			? resolvedIssues.reduce((sum, issue) => {
+				const resolutionTime = issue.resolvedAt!.getTime() - issue.createdAt.getTime();
+				return sum + resolutionTime;
+			}, 0) / resolvedIssues.length / (1000 * 60 * 60 * 24) // Convert to days
+			: 0;
+		
+		return {
+			total,
+			byStatus: {
+				reported,
+				pending,
+				resolved
+			},
+			byCategory,
+			bySeverity,
+			resolutionRate: Math.round(resolutionRate),
+			avgResolutionDays: Math.round(avgResolutionTime),
+			mostReportedCategory: Object.entries(byCategory)
+				.sort((a, b) => b[1] - a[1])[0]?.[0] || "none",
+			totalUpvotes: mockIssues.reduce((sum, issue) => sum + issue.upvotes, 0)
+		};
 	}
 };

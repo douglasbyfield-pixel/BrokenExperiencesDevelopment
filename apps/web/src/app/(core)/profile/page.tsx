@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Calendar, Award, TrendingUp, Wrench, DollarSign, Edit, Mail, Shield, Settings, LogOut, Camera } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { MapPin, Calendar, Award, TrendingUp, Wrench, DollarSign, Edit, Mail, Shield, Settings, LogOut, Camera, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface UserProfile {
@@ -30,6 +32,7 @@ export default function ProfilePage() {
 	const [loading, setLoading] = useState(true);
 	const [isEditing, setIsEditing] = useState(false);
 	const [currentAchievement, setCurrentAchievement] = useState(0);
+	const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
 	const router = useRouter();
 
 	const achievements = [
@@ -120,8 +123,45 @@ export default function ProfilePage() {
 	const initials = profile.name.split(' ').map(n => n[0]).join('').toUpperCase();
 
 	// Handler functions
-	const handleEditProfile = () => {
-		setIsEditing(!isEditing);
+	const handleEditProfile = async () => {
+		if (isEditing) {
+			// Save changes
+			try {
+				const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/user/profile`, {
+					method: 'PATCH',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(editedProfile),
+				});
+
+				if (response.ok) {
+					const updatedProfile = await response.json();
+					setProfile(updatedProfile);
+					setIsEditing(false);
+					setEditedProfile({});
+				}
+			} catch (error) {
+				console.error('Failed to update profile:', error);
+				// For demo, just update locally
+				setProfile(prev => prev ? { ...prev, ...editedProfile } : null);
+				setIsEditing(false);
+				setEditedProfile({});
+			}
+		} else {
+			// Enter edit mode
+			setEditedProfile({
+				name: profile?.name,
+				bio: profile?.bio,
+				location: profile?.location,
+			});
+			setIsEditing(true);
+		}
+	};
+
+	const handleCancelEdit = () => {
+		setIsEditing(false);
+		setEditedProfile({});
 	};
 
 	const handleSettings = () => {
@@ -193,14 +233,49 @@ export default function ProfilePage() {
 								<div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
 									<div className="space-y-4">
 										<div>
-											<h1 className="text-3xl font-bold text-black dark:text-white mb-2">{profile.name}</h1>
-											<p className="text-gray-600 dark:text-gray-400 text-lg">{profile.bio}</p>
+											{isEditing ? (
+												<div className="space-y-4">
+													<div>
+														<Label htmlFor="name" className="text-sm text-gray-600 dark:text-gray-400">Name</Label>
+														<Input
+															id="name"
+															value={editedProfile.name || ''}
+															onChange={(e) => setEditedProfile({ ...editedProfile, name: e.target.value })}
+															className="text-xl font-bold text-black dark:text-white bg-white dark:bg-black"
+														/>
+													</div>
+													<div>
+														<Label htmlFor="bio" className="text-sm text-gray-600 dark:text-gray-400">Bio</Label>
+														<Input
+															id="bio"
+															value={editedProfile.bio || ''}
+															onChange={(e) => setEditedProfile({ ...editedProfile, bio: e.target.value })}
+															className="text-gray-700 dark:text-gray-300 bg-white dark:bg-black"
+															placeholder="Tell us about yourself..."
+														/>
+													</div>
+												</div>
+											) : (
+												<>
+													<h1 className="text-3xl font-bold text-black dark:text-white mb-2">{profile.name}</h1>
+													<p className="text-gray-600 dark:text-gray-400 text-lg">{profile.bio}</p>
+												</>
+											)}
 										</div>
 										
 										<div className="flex flex-wrap gap-6 text-sm text-gray-600 dark:text-gray-400">
 											<div className="flex items-center gap-2">
 												<MapPin className="h-4 w-4" />
-												<span>{profile.location}</span>
+												{isEditing ? (
+													<Input
+														value={editedProfile.location || ''}
+														onChange={(e) => setEditedProfile({ ...editedProfile, location: e.target.value })}
+														className="h-7 text-sm text-black dark:text-white bg-white dark:bg-black"
+														placeholder="Your location..."
+													/>
+												) : (
+													<span>{profile.location}</span>
+												)}
 											</div>
 											<div className="flex items-center gap-2">
 												<Calendar className="h-4 w-4" />
@@ -229,21 +304,43 @@ export default function ProfilePage() {
 									
 									{/* Action Buttons */}
 									<div className="flex flex-col sm:flex-row gap-3">
-										<Button 
-											variant="outline" 
-											className="border-gray-300 dark:border-gray-700"
-											onClick={handleSettings}
-										>
-											<Settings className="h-4 w-4 mr-2" />
-											Settings
-										</Button>
-										<Button 
-											className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
-											onClick={handleEditProfile}
-										>
-											<Edit className="h-4 w-4 mr-2" />
-											{isEditing ? 'Save Changes' : 'Edit Profile'}
-										</Button>
+										{isEditing ? (
+											<>
+												<Button 
+													variant="outline" 
+													className="border-gray-300 dark:border-gray-700"
+													onClick={handleCancelEdit}
+												>
+													<X className="h-4 w-4 mr-2" />
+													Cancel
+												</Button>
+												<Button 
+													className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
+													onClick={handleEditProfile}
+												>
+													<Save className="h-4 w-4 mr-2" />
+													Save Changes
+												</Button>
+											</>
+										) : (
+											<>
+												<Button 
+													variant="outline" 
+													className="border-gray-300 dark:border-gray-700"
+													onClick={handleSettings}
+												>
+													<Settings className="h-4 w-4 mr-2" />
+													Settings
+												</Button>
+												<Button 
+													className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
+													onClick={handleEditProfile}
+												>
+													<Edit className="h-4 w-4 mr-2" />
+													Edit Profile
+												</Button>
+											</>
+										)}
 									</div>
 								</div>
 							</div>
