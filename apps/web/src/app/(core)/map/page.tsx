@@ -22,7 +22,9 @@ import {
 	Zap,
 	Droplets,
 	Shield,
-	Building
+	Building,
+	ChevronUp,
+	ChevronDown
 } from "lucide-react";
 
 interface Issue {
@@ -155,6 +157,7 @@ export default function MapPage() {
 	const [showFilters, setShowFilters] = useState(false);
 	const [showLegend, setShowLegend] = useState(false);
 	const [mapLoaded, setMapLoaded] = useState(false);
+	const [showSearchPanel, setShowSearchPanel] = useState(true);
 
 	// Function to calculate distance between two coordinates
 	const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -732,72 +735,104 @@ export default function MapPage() {
 	};
 
 	return (
-		<div className="mobile-map-page md:absolute md:inset-0 w-full h-full">
+		<div className={`mobile-map-page md:absolute md:inset-0 w-full h-full ${showSearchPanel ? 'search-visible' : ''}`}>
 			{/* Mapbox Container */}
 			<div ref={mapContainer} className="w-full h-full" />
 
+			{/* Toggle Search Button (visible when search is hidden) */}
+			{!showSearchPanel && (
+				<div className="absolute top-2 left-2 z-10">
+					<Button
+						variant="default"
+						size="sm"
+						onClick={() => setShowSearchPanel(true)}
+						className="shadow-lg bg-white text-black border border-gray-200 hover:bg-gray-50"
+					>
+						<Search className="h-4 w-4 mr-2" />
+						<span>Show Search</span>
+					</Button>
+				</div>
+			)}
+
 			{/* Search Bar */}
-			<div className="absolute top-1 left-1 right-1 sm:top-4 sm:left-4 sm:right-4 z-10 w-auto sm:max-w-md">
-				<Card className="shadow-lg bg-white border border-gray-200">
-					<CardContent className="p-1.5 sm:p-3">
-						<div className="flex gap-1 sm:gap-2 mb-1 sm:mb-3">
-							<div className="relative flex-1">
-								<Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
-								<Input
-									placeholder="Search issues..."
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-									className="pl-7 sm:pl-10 text-sm sm:text-base h-7 sm:h-10"
-								/>
+			{showSearchPanel && (
+				<div className="absolute top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-10 w-auto sm:max-w-md">
+					<Card className="shadow-lg bg-white border border-gray-200">
+						<CardContent className="p-2 sm:p-3">
+						<div className="space-y-2">
+							{/* Search and Hide Button Row */}
+							<div className="flex gap-2">
+								<div className="relative flex-1">
+									<Search className="absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+									<Input
+										placeholder="Search issues..."
+										value={searchQuery}
+										onChange={(e) => setSearchQuery(e.target.value)}
+										className="pl-8 sm:pl-10 text-sm sm:text-base h-9 sm:h-10"
+									/>
+								</div>
+								<Button
+									variant="default"
+									size="icon"
+									onClick={() => setShowSearchPanel(false)}
+									className="shrink-0 h-9 w-9 sm:h-10 sm:w-10 bg-gray-800 hover:bg-gray-700 text-white"
+									title="Hide Search"
+								>
+									<ChevronUp className="h-4 w-4" />
+								</Button>
 							</div>
-							<Button
-								variant="outline"
-								size="icon"
-								onClick={() => setShowFilters(!showFilters)}
-								className="relative shrink-0 h-7 w-7 sm:h-10 sm:w-10 border-gray-400 hover:border-gray-600"
-							>
-								<Filter className="h-3 w-3 sm:h-4 sm:w-4 text-black" />
-								{(activeFilters.status.length + activeFilters.severity.length) > 0 && (
-									<div className="absolute -top-0.5 -right-0.5 w-2 h-2 sm:w-3 sm:h-3 bg-primary rounded-full" />
-								)}
-							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								onClick={() => setShowLegend(!showLegend)}
-								className="shrink-0 h-7 w-7 sm:h-10 sm:w-10 border-gray-400 hover:border-gray-600"
-								title="Show Legend"
-							>
-								<MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-black" />
-							</Button>
+							{/* Filter and Legend Buttons */}
+							<div className="flex gap-2">
+								<Button
+									variant="outline"
+									size="icon"
+									onClick={() => setShowFilters(!showFilters)}
+									className="relative shrink-0 h-9 w-9 sm:h-10 sm:w-10 border-gray-400 hover:border-gray-600"
+								>
+									<Filter className="h-4 w-4 text-black" />
+									{(activeFilters.status.length + activeFilters.severity.length) > 0 && (
+										<div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-primary rounded-full" />
+									)}
+								</Button>
+								<Button
+									variant="outline"
+									size="icon"
+									onClick={() => setShowLegend(!showLegend)}
+									className="shrink-0 h-9 w-9 sm:h-10 sm:w-10 border-gray-400 hover:border-gray-600"
+									title="Show Legend"
+								>
+									<MapPin className="h-4 w-4 text-black" />
+								</Button>
+							</div>
 						</div>
 						{/* Status Legend in Search Area */}
-						<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs gap-1 sm:gap-0">
-							<span className="text-black text-xs font-medium">
+						<div className="mt-2 space-y-2">
+							<span className="text-black text-xs font-medium block">
 								Showing {filteredIssues.length} of {issues.length} issues
 							</span>
-							<div className="flex items-center gap-1.5 sm:gap-3 flex-wrap">
+							<div className="flex items-center gap-2 sm:gap-3 flex-wrap">
 								<div className="flex items-center gap-1">
-									<div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-red-500" />
-									<span className="text-xs text-black font-medium">Reported</span>
+									<div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+									<span className="text-[11px] sm:text-xs text-black">Reported</span>
 								</div>
 								<div className="flex items-center gap-1">
-									<div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-amber-500" />
-									<span className="text-xs text-black font-medium">In Progress</span>
+									<div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+									<span className="text-[11px] sm:text-xs text-black">In Progress</span>
 								</div>
 								<div className="flex items-center gap-1">
-									<div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-emerald-500" />
-									<span className="text-xs text-black font-medium">Resolved</span>
+									<div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+									<span className="text-[11px] sm:text-xs text-black">Resolved</span>
 								</div>
 							</div>
 						</div>
 					</CardContent>
 				</Card>
 			</div>
+			)}
 
 			{/* Filters Panel */}
 			{showFilters && (
-				<div className="absolute top-12 sm:top-20 left-1 right-1 sm:left-auto sm:right-4 z-10 w-auto sm:w-80">
+				<div className="absolute top-[120px] sm:top-24 left-2 right-2 sm:left-auto sm:right-4 z-10 w-auto sm:w-80 max-h-[calc(100vh-140px)] sm:max-h-[calc(100vh-120px)] overflow-y-auto">
 					<Card className="shadow-lg bg-gray-50 border border-gray-300">
 						<CardHeader className="pb-2 sm:pb-3">
 							<div className="flex items-center justify-between">
@@ -855,7 +890,7 @@ export default function MapPage() {
 
 			{/* Legend Panel */}
 			{showLegend && (
-				<div className="absolute top-12 sm:top-20 left-1 right-1 sm:left-4 sm:right-auto z-10 w-auto sm:w-72">
+				<div className="absolute top-[120px] sm:top-24 left-2 right-2 sm:left-4 sm:right-auto z-10 w-auto sm:w-72 max-h-[calc(100vh-140px)] sm:max-h-[calc(100vh-120px)] overflow-y-auto">
 					<Card className="shadow-lg bg-gray-50 border border-gray-300">
 						<CardHeader className="pb-2 sm:pb-3">
 							<div className="flex items-center justify-between">
@@ -931,8 +966,8 @@ export default function MapPage() {
 
 			{/* Issue Detail Popup */}
 			{selectedIssue && (
-				<div className="absolute top-2 left-1 right-1 sm:top-1/2 sm:left-1/2 sm:right-auto sm:transform sm:-translate-x-1/2 sm:-translate-y-1/2 z-20">
-					<Card className="shadow-xl border w-full sm:min-w-[320px] sm:max-w-[400px] sm:w-auto bg-white border-gray-200">
+				<div className="fixed bottom-0 left-0 right-0 sm:absolute sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:transform sm:-translate-x-1/2 sm:-translate-y-1/2 z-20 p-2 sm:p-0">
+					<Card className="shadow-xl border w-full sm:min-w-[320px] sm:max-w-[400px] sm:w-auto bg-white border-gray-200 max-h-[50vh] sm:max-h-none overflow-y-auto">
 						<CardContent className="p-3 sm:p-4">
 							<div className="flex items-start justify-between mb-3">
 								<h3 className="font-semibold text-base sm:text-lg text-black pr-2">{selectedIssue.title}</h3>

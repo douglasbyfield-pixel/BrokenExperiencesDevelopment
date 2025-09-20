@@ -164,3 +164,48 @@ body {
     }
   }
 }
+
+/* Mapbox Controls Visibility Fix */
+.mapboxgl-ctrl-top-right {
+  top: 10px;
+  right: 10px;
+}
+
+.mapboxgl-ctrl-top-left {
+  top: 10px;
+  left: 10px;
+}
+
+.mapboxgl-ctrl-bottom-right {
+  bottom: 10px;
+  right: 10px;
+}
+
+.mapboxgl-ctrl-bottom-left {
+  bottom: 10px;
+  left: 10px;
+}
+
+/* Ensure navigation controls are visible */
+.mapboxgl-ctrl-nav-compass,
+.mapboxgl-ctrl-zoom-in,
+.mapboxgl-ctrl-zoom-out,
+.mapboxgl-ctrl-geolocate {
+  background-color: white !important;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Mobile specific adjustments for controls */
+@media (max-width: 768px) {
+  .mapboxgl-ctrl-top-right {
+    top: 10px;
+    right: 10px;
+  }
+  
+  /* When search panel is visible, move controls down */
+  .search-visible .mapboxgl-ctrl-top-right {
+    top: auto;
+    bottom: 20px;
+    right: 10px;
+  }
+}
