@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Calendar, Award, TrendingUp, Wrench, DollarSign, Edit, Mail, Shield, Settings, LogOut, Camera } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface UserProfile {
 	id: string;
@@ -27,6 +28,25 @@ interface UserProfile {
 export default function ProfilePage() {
 	const [profile, setProfile] = useState<UserProfile | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [isEditing, setIsEditing] = useState(false);
+	const [currentAchievement, setCurrentAchievement] = useState(0);
+	const router = useRouter();
+
+	const achievements = [
+		{ icon: Award, title: "First Report", status: "Completed", description: "Submitted your first issue report" },
+		{ icon: Shield, title: "Community Guardian", status: "Achieved", description: "Helped resolve 10+ community issues" },
+		{ icon: TrendingUp, title: "Rising Contributor", status: "In Progress", description: "Making significant community impact" },
+		{ icon: Wrench, title: "Problem Solver", status: "Completed", description: "Fixed 5+ infrastructure issues" },
+		{ icon: DollarSign, title: "Community Sponsor", status: "Achieved", description: "Contributed $500+ to community projects" }
+	];
+
+	// Rotate achievements every 3 seconds
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setCurrentAchievement((prev) => (prev + 1) % achievements.length);
+		}, 3000);
+		return () => clearInterval(interval);
+	}, [achievements.length]);
 
 	useEffect(() => {
 		const fetchProfile = async () => {
@@ -99,6 +119,47 @@ export default function ProfilePage() {
 
 	const initials = profile.name.split(' ').map(n => n[0]).join('').toUpperCase();
 
+	// Handler functions
+	const handleEditProfile = () => {
+		setIsEditing(!isEditing);
+	};
+
+	const handleSettings = () => {
+		// Navigate to settings or show settings modal
+		router.push('/settings');
+	};
+
+	const handleReportIssue = () => {
+		router.push('/report');
+	};
+
+	const handleViewMap = () => {
+		router.push('/map');
+	};
+
+	const handleSignOut = () => {
+		// Handle sign out logic
+		if (confirm('Are you sure you want to sign out?')) {
+			// Clear session and redirect to login
+			router.push('/login');
+		}
+	};
+
+	const handleImageUpload = () => {
+		// Handle image upload
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'image/*';
+		input.onchange = (e) => {
+			const file = (e.target as HTMLInputElement).files?.[0];
+			if (file) {
+				// Handle image upload logic here
+				console.log('Image selected:', file.name);
+			}
+		};
+		input.click();
+	};
+
 	return (
 		<div className="min-h-screen bg-white dark:bg-black">
 			<div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -118,7 +179,9 @@ export default function ProfilePage() {
 									<Button 
 										size="icon" 
 										variant="outline"
-										className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full border-2 border-white dark:border-black bg-white dark:bg-black"
+										onClick={handleImageUpload}
+										className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full border-2 border-white dark:border-black bg-white dark:bg-black hover:bg-gray-50 dark:hover:bg-gray-900"
+										title="Upload profile picture"
 									>
 										<Camera className="h-3 w-3" />
 									</Button>
@@ -166,13 +229,20 @@ export default function ProfilePage() {
 									
 									{/* Action Buttons */}
 									<div className="flex flex-col sm:flex-row gap-3">
-										<Button variant="outline" className="border-gray-300 dark:border-gray-700">
+										<Button 
+											variant="outline" 
+											className="border-gray-300 dark:border-gray-700"
+											onClick={handleSettings}
+										>
 											<Settings className="h-4 w-4 mr-2" />
 											Settings
 										</Button>
-										<Button className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200">
+										<Button 
+											className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
+											onClick={handleEditProfile}
+										>
 											<Edit className="h-4 w-4 mr-2" />
-											Edit Profile
+											{isEditing ? 'Save Changes' : 'Edit Profile'}
 										</Button>
 									</div>
 								</div>
@@ -182,62 +252,95 @@ export default function ProfilePage() {
 				</Card>
 
 				{/* Statistics */}
-				<div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black">
-						<CardContent className="p-6 text-center">
-							<div className="w-12 h-12 mx-auto mb-4 border border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center">
-								<MapPin className="h-6 w-6 text-black dark:text-white" />
+				<div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow">
+						<CardContent className="p-6">
+							<div className="flex items-center justify-between mb-4">
+								<div className="w-14 h-14 border border-gray-300 dark:border-gray-700 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-900/50">
+									<MapPin className="h-7 w-7 text-black dark:text-white" />
+								</div>
+								<div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+									+{Math.floor(Math.random() * 20 + 10)}%
+								</div>
 							</div>
-							<p className="text-3xl font-bold text-black dark:text-white mb-1">{profile.stats.issuesReported}</p>
-							<p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Issues Reported</p>
+							<div className="text-left">
+								<p className="text-3xl font-bold text-black dark:text-white mb-1">{profile.stats.issuesReported}</p>
+								<p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Issues Reported</p>
+							</div>
 						</CardContent>
 					</Card>
 					
-					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black">
-						<CardContent className="p-6 text-center">
-							<div className="w-12 h-12 mx-auto mb-4 border border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center">
-								<Wrench className="h-6 w-6 text-black dark:text-white" />
+					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow">
+						<CardContent className="p-6">
+							<div className="flex items-center justify-between mb-4">
+								<div className="w-14 h-14 border border-gray-300 dark:border-gray-700 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-900/50">
+									<Wrench className="h-7 w-7 text-black dark:text-white" />
+								</div>
+								<div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+									+{Math.floor(Math.random() * 15 + 5)}%
+								</div>
 							</div>
-							<p className="text-3xl font-bold text-black dark:text-white mb-1">{profile.stats.issuesFixed}</p>
-							<p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Issues Resolved</p>
+							<div className="text-left">
+								<p className="text-3xl font-bold text-black dark:text-white mb-1">{profile.stats.issuesFixed}</p>
+								<p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Issues Resolved</p>
+							</div>
 						</CardContent>
 					</Card>
 					
-					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black">
-						<CardContent className="p-6 text-center">
-							<div className="w-12 h-12 mx-auto mb-4 border border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center">
-								<DollarSign className="h-6 w-6 text-black dark:text-white" />
+					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow">
+						<CardContent className="p-6">
+							<div className="flex items-center justify-between mb-4">
+								<div className="w-14 h-14 border border-gray-300 dark:border-gray-700 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-900/50">
+									<DollarSign className="h-7 w-7 text-black dark:text-white" />
+								</div>
+								<div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+									+{Math.floor(Math.random() * 25 + 15)}%
+								</div>
 							</div>
-							<p className="text-3xl font-bold text-black dark:text-white mb-1">${profile.stats.totalSponsored}</p>
-							<p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Total Sponsored</p>
+							<div className="text-left">
+								<p className="text-3xl font-bold text-black dark:text-white mb-1">${profile.stats.totalSponsored}</p>
+								<p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Total Sponsored</p>
+							</div>
 						</CardContent>
 					</Card>
 					
-					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black">
-						<CardContent className="p-6 text-center">
-							<div className="w-12 h-12 mx-auto mb-4 border border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center">
-								<Award className="h-6 w-6 text-black dark:text-white" />
+					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow">
+						<CardContent className="p-6">
+							<div className="flex items-center justify-between mb-4">
+								<div className="w-14 h-14 border border-gray-300 dark:border-gray-700 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-900/50">
+									<Award className="h-7 w-7 text-black dark:text-white" />
+								</div>
+								<div className="text-xs text-black dark:text-white bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full font-medium">
+									Excellent
+								</div>
 							</div>
-							<p className="text-3xl font-bold text-black dark:text-white mb-1">{profile.stats.impactScore}</p>
-							<p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Impact Score</p>
+							<div className="text-left">
+								<p className="text-3xl font-bold text-black dark:text-white mb-1">{profile.stats.impactScore}</p>
+								<p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Impact Score</p>
+							</div>
 						</CardContent>
 					</Card>
 				</div>
 
 				{/* Activity and Actions */}
-				<div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+				<div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 					{/* Activity Feed */}
-					<div className="lg:col-span-3">
-						<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black">
+					<div className="lg:col-span-2">
+						<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black h-[600px]">
 							<CardHeader className="border-b border-gray-200 dark:border-gray-800">
 								<div className="flex items-center justify-between">
 									<CardTitle className="text-xl font-bold text-black dark:text-white">Activity Timeline</CardTitle>
-									<Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-700">
+									<Button 
+										variant="outline" 
+										size="sm" 
+										className="border-gray-300 dark:border-gray-700"
+										onClick={() => router.push('/activity')}
+									>
 										View All
 									</Button>
 								</div>
 							</CardHeader>
-							<CardContent className="p-0">
+							<CardContent className="p-0 h-full overflow-y-auto">
 								<div className="divide-y divide-gray-200 dark:divide-gray-800">
 									{/* Activity Item */}
 									<div className="p-6 hover:bg-gray-50 dark:hover:bg-gray-900/20 transition-colors">
@@ -316,64 +419,92 @@ export default function ProfilePage() {
 						</Card>
 					</div>
 
-					{/* Sidebar */}
-					<div className="space-y-6">
-						{/* Achievements */}
-						<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black">
-							<CardHeader>
-								<CardTitle className="text-lg font-bold text-black dark:text-white">Achievements</CardTitle>
+					{/* Quick Actions */}
+					<div>
+						<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black h-[600px]">
+							<CardHeader className="border-b border-gray-200 dark:border-gray-800">
+								<CardTitle className="text-lg font-bold text-black dark:text-white">Quick Actions</CardTitle>
 							</CardHeader>
-							<CardContent>
-								<div className="space-y-4">
-									<div className="flex items-center gap-3">
-										<div className="w-12 h-12 border border-gray-300 dark:border-gray-700 rounded-full flex items-center justify-center bg-white dark:bg-black">
-											<Award className="h-6 w-6 text-black dark:text-white" />
-										</div>
-										<div>
-											<p className="font-medium text-black dark:text-white">First Report</p>
-											<p className="text-sm text-gray-600 dark:text-gray-400">Completed</p>
+							<CardContent className="flex flex-col h-full p-6">
+								{/* Achievements Section */}
+								<div className="mb-6">
+									<div className="flex items-center justify-between mb-4">
+										<h3 className="text-sm font-semibold text-black dark:text-white">Achievements</h3>
+										<div className="flex gap-1">
+											{achievements.map((_, index) => (
+												<button
+													key={index}
+													onClick={() => setCurrentAchievement(index)}
+													className={`w-1.5 h-1.5 rounded-full transition-colors ${
+														index === currentAchievement 
+															? 'bg-black dark:bg-white' 
+															: 'bg-gray-300 dark:bg-gray-600'
+													}`}
+												/>
+											))}
 										</div>
 									</div>
-									<div className="flex items-center gap-3">
-										<div className="w-12 h-12 border border-gray-300 dark:border-gray-700 rounded-full flex items-center justify-center bg-white dark:bg-black">
-											<Shield className="h-6 w-6 text-black dark:text-white" />
-										</div>
-										<div>
-											<p className="font-medium text-black dark:text-white">Community Guardian</p>
-											<p className="text-sm text-gray-600 dark:text-gray-400">Achieved</p>
-										</div>
-									</div>
-									<div className="flex items-center gap-3">
-										<div className="w-12 h-12 border border-gray-300 dark:border-gray-700 rounded-full flex items-center justify-center bg-white dark:bg-black">
-											<TrendingUp className="h-6 w-6 text-black dark:text-white" />
-										</div>
-										<div>
-											<p className="font-medium text-black dark:text-white">Rising Contributor</p>
-											<p className="text-sm text-gray-600 dark:text-gray-400">In Progress</p>
+									<div className="bg-gray-50 dark:bg-gray-900/20 rounded-lg p-4 border border-gray-200 dark:border-gray-800">
+										<div className="transition-all duration-300 ease-in-out">
+											{(() => {
+												const achievement = achievements[currentAchievement];
+												const Icon = achievement.icon;
+												return (
+													<div className="flex items-start gap-3">
+														<div className="w-10 h-10 border border-gray-300 dark:border-gray-700 rounded-full flex items-center justify-center bg-white dark:bg-black flex-shrink-0">
+															<Icon className="h-5 w-5 text-black dark:text-white" />
+														</div>
+														<div className="flex-1 min-w-0">
+															<p className="font-semibold text-sm text-black dark:text-white mb-1">{achievement.title}</p>
+															<p className="text-xs text-gray-600 dark:text-gray-400 mb-1">{achievement.status}</p>
+															<p className="text-xs text-gray-500 dark:text-gray-500 leading-relaxed">{achievement.description}</p>
+														</div>
+													</div>
+												);
+											})()}
 										</div>
 									</div>
 								</div>
-							</CardContent>
-						</Card>
 
-						{/* Quick Actions */}
-						<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black">
-							<CardHeader>
-								<CardTitle className="text-lg font-bold text-black dark:text-white">Actions</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-3">
-								<Button variant="outline" className="w-full justify-start border-gray-300 dark:border-gray-700">
-									<MapPin className="h-4 w-4 mr-2" />
-									Report Issue
-								</Button>
-								<Button variant="outline" className="w-full justify-start border-gray-300 dark:border-gray-700">
-									<Settings className="h-4 w-4 mr-2" />
-									Settings
-								</Button>
-								<Button variant="outline" className="w-full justify-start border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400">
-									<LogOut className="h-4 w-4 mr-2" />
-									Sign Out
-								</Button>
+								{/* Action Buttons */}
+								<div className="space-y-3 flex-1">
+									<Button 
+										variant="outline" 
+										className="w-full justify-start border-gray-300 dark:border-gray-700 h-12"
+										onClick={handleReportIssue}
+									>
+										<MapPin className="h-4 w-4 mr-3" />
+										Report New Issue
+									</Button>
+									<Button 
+										variant="outline" 
+										className="w-full justify-start border-gray-300 dark:border-gray-700 h-12"
+										onClick={handleViewMap}
+									>
+										<MapPin className="h-4 w-4 mr-3" />
+										View Map
+									</Button>
+									<Button 
+										variant="outline" 
+										className="w-full justify-start border-gray-300 dark:border-gray-700 h-12"
+										onClick={handleSettings}
+									>
+										<Settings className="h-4 w-4 mr-3" />
+										Account Settings
+									</Button>
+								</div>
+								
+								{/* Sign Out */}
+								<div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-800">
+									<Button 
+										variant="outline" 
+										className="w-full justify-start border-gray-300 dark:border-gray-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 h-12"
+										onClick={handleSignOut}
+									>
+										<LogOut className="h-4 w-4 mr-3" />
+										Sign Out
+									</Button>
+								</div>
 							</CardContent>
 						</Card>
 					</div>

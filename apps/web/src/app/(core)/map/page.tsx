@@ -768,7 +768,7 @@ export default function MapPage() {
 										placeholder="Search issues..."
 										value={searchQuery}
 										onChange={(e) => setSearchQuery(e.target.value)}
-										className="pl-8 sm:pl-10 text-sm sm:text-base h-9 sm:h-10"
+										className="pl-8 sm:pl-10 text-sm sm:text-base h-9 sm:h-10 text-black bg-white border-gray-300 focus:border-gray-500 focus:ring-0"
 									/>
 								</div>
 								<Button
@@ -966,8 +966,10 @@ export default function MapPage() {
 
 			{/* Issue Detail Popup */}
 			{selectedIssue && (
-				<div className="fixed bottom-0 left-0 right-0 sm:absolute sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:transform sm:-translate-x-1/2 sm:-translate-y-1/2 z-20 p-2 sm:p-0">
-					<Card className="shadow-xl border w-full sm:min-w-[320px] sm:max-w-[400px] sm:w-auto bg-white border-gray-200 max-h-[50vh] sm:max-h-none overflow-y-auto">
+				<div className="fixed bottom-0 left-0 right-0 sm:absolute sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:transform sm:-translate-x-1/2 sm:-translate-y-1/2 z-10 p-2 sm:p-0 pointer-events-none">
+					<Card 
+						className="shadow-xl border w-full sm:min-w-[320px] sm:max-w-[400px] sm:w-auto bg-white border-gray-200 max-h-[50vh] sm:max-h-none overflow-y-auto pointer-events-auto"
+					>
 						<CardContent className="p-3 sm:p-4">
 							<div className="flex items-start justify-between mb-3">
 								<h3 className="font-semibold text-base sm:text-lg text-black pr-2">{selectedIssue.title}</h3>
@@ -976,11 +978,13 @@ export default function MapPage() {
 										{statusConfig[selectedIssue.status].label}
 									</Badge>
 									<Button
-										variant="ghost"
+										variant="outline"
 										size="sm"
 										onClick={() => setSelectedIssue(null)}
+										className="border-gray-300 hover:border-gray-500 hover:bg-gray-50 shrink-0"
+										title="Close"
 									>
-										<X className="h-4 w-4" />
+										<X className="h-4 w-4 text-gray-600" />
 									</Button>
 								</div>
 							</div>
