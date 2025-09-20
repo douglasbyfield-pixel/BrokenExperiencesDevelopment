@@ -974,7 +974,7 @@ export default function MapPage() {
 							<div className="flex items-start justify-between mb-3">
 								<h3 className="font-semibold text-base sm:text-lg text-black pr-2">{selectedIssue.title}</h3>
 								<div className="flex items-center gap-2">
-									<Badge className={`${statusConfig[selectedIssue.status].bgColor} ${statusConfig[selectedIssue.status].textColor} shrink-0`}>
+									<Badge className={`${statusConfig[selectedIssue.status].bgColor} ${statusConfig[selectedIssue.status].textColor} shrink-0 hover:bg-current transition-none`}>
 										{statusConfig[selectedIssue.status].label}
 									</Badge>
 									<Button
