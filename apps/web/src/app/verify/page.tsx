@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import Loader from "@/components/loader";
 
 export default function VerifyPage() {
@@ -13,6 +16,8 @@ export default function VerifyPage() {
     const [email, setEmail] = useState<string>(emailFromQuery);
     const [resending, setResending] = useState(false);
     const [justResent, setJustResent] = useState(false);
+    const [code, setCode] = useState("");
+    const [verifying, setVerifying] = useState(false);
 
     useEffect(() => {
         // If user completes email confirmation, Supabase will sign them in and
@@ -83,6 +88,38 @@ export default function VerifyPage() {
                     {justResent ? (
                         <p className="text-xs text-green-600">Verification email sent.</p>
                     ) : null}
+                </div>
+                <div className="space-y-3 pt-6 text-left max-w-sm mx-auto">
+                    <Label htmlFor="otp">Or enter the 6-digit code from the email</Label>
+                    <Input
+                        id="otp"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        placeholder="123456"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                    />
+                    <Button
+                        disabled={code.length !== 6 || verifying}
+                        onClick={async () => {
+                            setVerifying(true);
+                            const { error } = await supabase.auth.verifyOtp({
+                                email,
+                                token: code,
+                                type: 'signup',
+                            });
+                            setVerifying(false);
+                            if (error) {
+                                toast.error(error.message);
+                                return;
+                            }
+                            toast.success('Verification successful');
+                            router.replace('/onboarding/participation');
+                        }}
+                    >
+                        {verifying ? 'Verifying...' : 'Verify code'}
+                    </Button>
                 </div>
                 <div className="pt-4 text-xs text-muted-foreground">
                     After confirming, you&apos;ll be redirected automatically.
