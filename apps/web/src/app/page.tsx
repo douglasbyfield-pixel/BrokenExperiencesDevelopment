@@ -1,9 +1,19 @@
 "use client";
 
-export default function Home() {
-	return (
-		<div className="container mx-auto max-w-7xl px-4 py-2">
-			<h1>Home</h1>
-		</div>
-	);
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSupabaseSession } from "@/lib/use-supabase-session";
+import Loader from "@/components/loader";
+
+export default function RootRedirect() {
+    const router = useRouter();
+    const { user, loading } = useSupabaseSession();
+
+    useEffect(() => {
+        if (loading) return;
+        if (user) router.replace("/home");
+        else router.replace("/login");
+    }, [loading, user, router]);
+
+    return <Loader />;
 }

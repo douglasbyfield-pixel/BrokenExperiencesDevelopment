@@ -7,6 +7,8 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useRouter } from "next/navigation";
 import { useSupabaseSession } from "@/lib/use-supabase-session";
+import { useState } from "react";
+import { Eye, EyeOff, Apple } from "lucide-react";
 
 export default function SignUpForm({
 	onSwitchToSignIn,
@@ -14,7 +16,8 @@ export default function SignUpForm({
 	onSwitchToSignIn: () => void;
 }) {
 	const router = useRouter();
-    const { loading } = useSupabaseSession();
+	const { loading } = useSupabaseSession();
+	const [showPassword, setShowPassword] = useState(false);
 
 	const form = useForm({
 		defaultValues: {
@@ -23,7 +26,7 @@ export default function SignUpForm({
 			name: "",
 		},
         onSubmit: async ({ value }) => {
-            const { error } = await supabase.auth.signUp({
+            const { data, error } = await supabase.auth.signUp({
                 email: value.email,
                 password: value.password,
                 options: {
@@ -35,7 +38,7 @@ export default function SignUpForm({
                 return;
             }
             toast.success("Sign up successful. Check your email to confirm.");
-            router.push("/home");
+            router.push(`/verify?email=${encodeURIComponent(value.email)}`);
         },
 		validators: {
 			onSubmit: z.object({
@@ -51,8 +54,8 @@ export default function SignUpForm({
 	return (
 		<div className="w-full">
 			<div className="text-center mb-8">
-				<h2 className="text-2xl font-bold text-black mb-2">Create account</h2>
-				<p className="text-gray-600">Get started with Broken Experiences</p>
+				<h2 className="text-2xl font-bold text-black mb-2">Welcome to Broken Experience</h2>
+				<p className="text-gray-600">It only takes a minute to start making an impact.</p>
 			</div>
 
 			<form
@@ -123,24 +126,42 @@ export default function SignUpForm({
 								<Label htmlFor={field.name} className="text-sm font-medium text-black">
 									Password
 								</Label>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="password"
-									placeholder="Create a password"
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-									className="w-full h-12 px-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black bg-white transition-all duration-200"
-								/>
+								<div className="relative">
+									<Input
+										id={field.name}
+										name={field.name}
+										type={showPassword ? "text" : "password"}
+										placeholder="Your password"
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										className="w-full h-12 pr-12 px-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black bg-white transition-all duration-200"
+									/>
+									<button
+										type="button"
+										aria-label="Toggle password visibility"
+										className="absolute inset-y-0 right-3 flex items-center text-gray-500"
+										onClick={() => setShowPassword((v) => !v)}
+									>
+										{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+									</button>
+								</div>
 								{field.state.meta.errors.map((error) => (
 									<p key={error?.message} className="text-sm text-red-500 mt-1">
 										{error?.message}
 									</p>
 								))}
-								<p className="text-xs text-gray-500 mt-1">
-									Must be at least 8 characters long
-								</p>
+								<div className="grid grid-cols-2 gap-x-6 text-xs text-gray-500 mt-2 text-left">
+									<ul className="list-disc list-inside space-y-1">
+										<li>minimum 8 characters</li>
+										<li>one special character</li>
+										<li>one number</li>
+									</ul>
+									<ul className="list-disc list-inside space-y-1">
+										<li>one uppercase character</li>
+										<li>one lowercase character</li>
+									</ul>
+								</div>
 							</div>
 						)}
 					</form.Field>
@@ -150,25 +171,64 @@ export default function SignUpForm({
 					{(state) => (
 						<Button
 							type="submit"
-							className="w-full h-12 bg-black hover:bg-gray-800 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+							className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
 							disabled={!state.canSubmit || state.isSubmitting}
 						>
-							{state.isSubmitting ? "Creating account..." : "Create Account"}
+							{state.isSubmitting ? "Creating account..." : "Create an account"}
 						</Button>
 					)}
 				</form.Subscribe>
 			</form>
 
+			<div className="text-center text-sm mt-3">
+				I already have an account.{' '}
+				<button onClick={onSwitchToSignIn} className="text-black font-medium underline">Log in</button>
+			</div>
+
+			<div className="relative my-5">
+				<div className="absolute inset-0 flex items-center" aria-hidden="true">
+					<div className="w-full border-t" />
+				</div>
+				<div className="relative flex justify-center text-xs">
+					<span className="bg-white px-2 text-gray-500">OR</span>
+				</div>
+			</div>
+
+			<div className="space-y-3">
+				<Button
+					variant="outline"
+					className="w-full h-12 justify-center"
+					onClick={async () => {
+						const { error } = await supabase.auth.signInWithOAuth({
+							provider: "apple",
+							options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined },
+						});
+						if (error) toast.error(error.message);
+					}}
+				>
+					<Apple className="mr-2" size={18} /> Sign Up with Apple
+				</Button>
+				<Button
+					variant="outline"
+					className="w-full h-12 justify-center"
+					onClick={async () => {
+						const { error } = await supabase.auth.signInWithOAuth({
+							provider: "google",
+							options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined },
+						});
+						if (error) toast.error(error.message);
+					}}
+				>
+					Sign Up with Google
+				</Button>
+			</div>
+
 			<div className="mt-6">
 				<p className="text-xs text-gray-500 text-center leading-relaxed">
-					By creating an account, you agree to our{" "}
-					<a href="#" className="text-black hover:text-gray-700 underline">
-						Terms of Service
-					</a>{" "}
-					and{" "}
-					<a href="#" className="text-black hover:text-gray-700 underline">
-						Privacy Policy
-					</a>
+					By continuing, you agree to Broken Experience{' '}
+					<a href="#" className="text-black hover:text-gray-700 underline">Terms of Service</a>{' '}
+					and{' '}
+					<a href="#" className="text-black hover:text-gray-700 underline">Privacy Policy</a>.
 				</p>
 			</div>
 
