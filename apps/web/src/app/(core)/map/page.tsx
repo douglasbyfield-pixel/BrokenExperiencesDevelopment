@@ -324,90 +324,8 @@ export default function MapPage() {
 		markersRef.current.forEach(marker => marker.remove());
 		markersRef.current = [];
 
-		// Remove existing layers
-		try {
-			if (map.current.getLayer('issues-layer')) {
-				map.current.removeLayer('issues-layer');
-			}
-			if (map.current.getSource('issues')) {
-				map.current.removeSource('issues');
-			}
-		} catch (e) {
-			console.log('No existing layers to remove');
-		}
-
-		// Create GeoJSON features from issues
-		const geojsonData = {
-			type: 'FeatureCollection',
-			features: filteredIssues.map((issue) => ({
-				type: 'Feature',
-				properties: {
-					id: issue.id,
-					title: issue.title,
-					description: issue.description,
-					status: issue.status,
-					severity: issue.severity,
-					categoryId: issue.categoryId,
-					address: issue.address,
-					upvotes: issue.upvotes,
-					downvotes: issue.downvotes,
-					color: statusConfig[issue.status].color
-				},
-				geometry: {
-					type: 'Point',
-					coordinates: [issue.longitude, issue.latitude]
-				}
-			}))
-		};
-
-		console.log('Adding GeoJSON source with', geojsonData.features.length, 'features');
-
-		// Add source
-		map.current.addSource('issues', {
-			type: 'geojson',
-			data: geojsonData
-		});
-
-		// Add circle layer for markers with zoom-based sizing
-		map.current.addLayer({
-			id: 'issues-layer',
-			type: 'circle',
-			source: 'issues',
-			paint: {
-				'circle-radius': [
-					'interpolate',
-					['linear'],
-					['zoom'],
-					8, // At zoom 8
-					[
-						'case',
-						['==', ['get', 'severity'], 'critical'], 10,
-						['==', ['get', 'severity'], 'high'], 8,
-						['==', ['get', 'severity'], 'medium'], 6,
-						5 // low
-					],
-					12, // At zoom 12
-					[
-						'case',
-						['==', ['get', 'severity'], 'critical'], 25,
-						['==', ['get', 'severity'], 'high'], 20,
-						['==', ['get', 'severity'], 'medium'], 15,
-						12 // low
-					]
-				],
-				'circle-color': ['get', 'color'],
-				'circle-stroke-width': [
-					'interpolate',
-					['linear'],
-					['zoom'],
-					8, 2,
-					12, 4
-				],
-				'circle-stroke-color': '#ffffff',
-				'circle-opacity': 0.95,
-				'circle-stroke-opacity': 1
-			}
-		});
+		// Clear existing HTML markers only
+		console.log('Clearing existing markers, creating new ones');
 
 		// Create simple HTML markers that work across all browsers
 		console.log('Creating HTML markers for all browsers');
@@ -477,26 +395,7 @@ export default function MapPage() {
 			markersRef.current.push(marker);
 		});
 
-		// Add click handler for markers
-		map.current.on('click', 'issues-layer', (e) => {
-			if (e.features && e.features.length > 0) {
-				const feature = e.features[0];
-				const issue = filteredIssues.find(i => i.id === feature.properties.id);
-				if (issue) {
-					console.log('Native marker clicked:', issue.title);
-					setSelectedIssue(issue);
-				}
-			}
-		});
-
-		// Add hover effects
-		map.current.on('mouseenter', 'issues-layer', () => {
-			map.current.getCanvas().style.cursor = 'pointer';
-		});
-
-		map.current.on('mouseleave', 'issues-layer', () => {
-			map.current.getCanvas().style.cursor = '';
-		});
+		// Click handlers are now on individual HTML markers
 
 		console.log('✅ Zoom-responsive markers created successfully');
 
