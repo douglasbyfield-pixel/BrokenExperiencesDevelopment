@@ -8,7 +8,10 @@ import { Label } from "./ui/label";
 import { useRouter } from "next/navigation";
 import { useSupabaseSession } from "@/lib/use-supabase-session";
 import { useState } from "react";
-import { Eye, EyeOff, Apple } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import { AppleLogo } from "./icons/apple-logo";
+import { GoogleLogo } from "./icons/google-logo";
+import { checkEmailExists } from "@/lib/api";
 
 export default function SignUpForm({
 	onSwitchToSignIn,
@@ -16,8 +19,9 @@ export default function SignUpForm({
 	onSwitchToSignIn: () => void;
 }) {
 	const router = useRouter();
-	const { loading } = useSupabaseSession();
+    const { loading } = useSupabaseSession();
 	const [showPassword, setShowPassword] = useState(false);
+    const [serverEmailError, setServerEmailError] = useState<string | null>(null);
 
 	const form = useForm({
 		defaultValues: {
@@ -26,15 +30,33 @@ export default function SignUpForm({
 			name: "",
 		},
         onSubmit: async ({ value }) => {
+            // hard pre-check against server to avoid async race UX
+            const exists = await checkEmailExists(value.email);
+            if (exists) {
+                setServerEmailError("Email already in use. Try logging in or reset password.");
+                await supabase.auth.resend({ type: "signup", email: value.email });
+                return;
+            }
             const { data, error } = await supabase.auth.signUp({
                 email: value.email,
                 password: value.password,
                 options: {
                     data: { name: value.name },
+                    emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
                 },
             });
             if (error) {
-                toast.error(error.message);
+                const msg = error.message?.toLowerCase() ?? "";
+                const looksLikeExisting = error?.status === 422 || /already|exists|duplicate/.test(msg);
+                if (looksLikeExisting) {
+                    // If the email already exists (possibly unconfirmed), resend verification
+                    await supabase.auth.resend({ type: "signup", email: value.email });
+                    setServerEmailError("Email already in use. Try logging in or check your inbox for verification.");
+                    toast.success("If this email wasn’t confirmed, we re‑sent the verification link.");
+                } else {
+                    setServerEmailError(error.message);
+                    toast.error(error.message);
+                }
                 return;
             }
             toast.success("Sign up successful. Check your email to confirm.");
@@ -93,7 +115,7 @@ export default function SignUpForm({
 				</div>
 
 				<div>
-					<form.Field name="email">
+                    <form.Field name="email">
 						{(field) => (
 							<div className="space-y-2">
 								<Label htmlFor={field.name} className="text-sm font-medium text-black">
@@ -106,14 +128,20 @@ export default function SignUpForm({
 									placeholder="Enter your email"
 									value={field.state.value}
 									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-									className="w-full h-12 px-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black bg-white transition-all duration-200"
+                                    onChange={(e) => {
+                                        setServerEmailError(null);
+                                        field.handleChange(e.target.value);
+                                    }}
+                                    className={`w-full h-12 px-4 border-2 rounded-xl focus:ring-2 focus:ring-black bg-white transition-all duration-200 ${serverEmailError ? 'border-red-500' : 'border-gray-300 focus:border-black'}`}
 								/>
 								{field.state.meta.errors.map((error) => (
 									<p key={error?.message} className="text-sm text-red-500 mt-1">
 										{error?.message}
 									</p>
 								))}
+                                {serverEmailError ? (
+                                    <p className="text-sm text-red-500 mt-1">{serverEmailError}</p>
+                                ) : null}
 							</div>
 						)}
 					</form.Field>
@@ -198,28 +226,32 @@ export default function SignUpForm({
 				<Button
 					variant="outline"
 					className="w-full h-12 justify-center"
-					onClick={async () => {
-						const { error } = await supabase.auth.signInWithOAuth({
-							provider: "apple",
-							options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined },
-						});
+                    onClick={async () => {
+                        const { error } = await supabase.auth.signInWithOAuth({
+                            provider: "apple",
+                            options: {
+                                redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+                            },
+                        });
 						if (error) toast.error(error.message);
 					}}
 				>
-					<Apple className="mr-2" size={18} /> Sign Up with Apple
+					<AppleLogo className="mr-2" /> Sign Up with Apple
 				</Button>
 				<Button
 					variant="outline"
 					className="w-full h-12 justify-center"
-					onClick={async () => {
-						const { error } = await supabase.auth.signInWithOAuth({
-							provider: "google",
-							options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined },
-						});
+                    onClick={async () => {
+                        const { error } = await supabase.auth.signInWithOAuth({
+                            provider: "google",
+                            options: {
+                                redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+                            },
+                        });
 						if (error) toast.error(error.message);
 					}}
 				>
-					Sign Up with Google
+					<GoogleLogo className="mr-2" /> Sign Up with Google
 				</Button>
 			</div>
 

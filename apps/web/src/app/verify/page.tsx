@@ -16,17 +16,17 @@ export default function VerifyPage() {
 
     useEffect(() => {
         // If user completes email confirmation, Supabase will sign them in and
-        // we'll see an auth state change → redirect to /home.
+        // we'll see an auth state change → redirect to onboarding.
         const sub = supabase.auth.onAuthStateChange((event, session) => {
             if (event === "SIGNED_IN" && session) {
-                router.replace("/home");
+                router.replace("/onboarding/participation");
             }
         });
 
         // Also check current session in case email confirmation is disabled.
         supabase.auth.getSession().then(({ data }) => {
             if (data.session) {
-                router.replace("/home");
+                router.replace("/onboarding/participation");
             }
         });
 
@@ -79,6 +79,7 @@ export default function VerifyPage() {
                             {resending ? "Resending..." : "Resend email"}
                         </Button>
                     </div>
+                    <p className="text-xs text-gray-500">After clicking the link, you will be brought back to the app automatically.</p>
                     {justResent ? (
                         <p className="text-xs text-green-600">Verification email sent.</p>
                     ) : null}

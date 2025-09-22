@@ -1,6 +1,8 @@
 import { html } from '@elysiajs/html';
 import Elysia from "elysia";
 import { MiscPage } from './page';
+import { supabaseAdmin } from "../../lib/supabase-admin";
+import { t } from "elysia";
 
 export const miscRouter = new Elysia()
     .use(html())
@@ -14,4 +16,16 @@ export const miscRouter = new Elysia()
         return {
             version: "1.0.0",
         };
+    })
+    .post("/auth/email-exists", async ({ body }) => {
+        const email = (body as { email: string }).email;
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1, email });
+        if (error) {
+            return { exists: false };
+        }
+        const exists = (data?.users ?? []).some((u) => (u.email ?? "").toLowerCase() === email.toLowerCase());
+        return { exists };
+    }, {
+        body: t.Object({ email: t.String({ format: "email" }) }),
+        detail: { summary: "Check if auth user email exists" },
     });

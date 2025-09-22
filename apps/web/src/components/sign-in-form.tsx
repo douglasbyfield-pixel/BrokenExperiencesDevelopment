@@ -7,6 +7,8 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useRouter } from "next/navigation";
 import { useSupabaseSession } from "@/lib/use-supabase-session";
+import { Dialog } from "./ui/dialog";
+import { useState } from "react";
 
 export default function SignInForm({
 	onSwitchToSignUp,
@@ -15,6 +17,9 @@ export default function SignInForm({
 }) {
 	const router = useRouter();
     const { loading } = useSupabaseSession();
+    const [forgotOpen, setForgotOpen] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState("");
+    const [sending, setSending] = useState(false);
 
 	const form = useForm({
 		defaultValues: {
@@ -112,14 +117,15 @@ export default function SignInForm({
 					</form.Field>
 				</div>
 
-				<div className="flex items-center justify-end">
-					<button
-						type="button"
-						className="text-sm text-black hover:text-gray-700 font-medium underline"
-					>
-						Forgot password?
-					</button>
-				</div>
+                <div className="flex items-center justify-end">
+                    <button
+                        type="button"
+                        onClick={() => setForgotOpen(true)}
+                        className="text-sm text-black hover:text-gray-700 font-medium underline"
+                    >
+                        Forgot password?
+                    </button>
+                </div>
 
 				<form.Subscribe>
 					{(state) => (
@@ -145,6 +151,64 @@ export default function SignInForm({
 					</button>
 				</div>
 			</div>
+
+			{/* Forgot Password Modal */}
+			<ForgotPasswordDialog open={forgotOpen} onOpenChange={setForgotOpen} />
 		</div>
 	);
+}
+
+// Inline modal for forgot password
+function ForgotPasswordDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+    const [email, setEmail] = useState("");
+    const [sending, setSending] = useState(false);
+    const [touched, setTouched] = useState(false);
+    const isValidEmail = z.string().email().safeParse(email).success;
+    const showError = touched && !isValidEmail;
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange} title="Reset your password">
+            <div className="space-y-3">
+                <div className="space-y-2">
+                    <Label htmlFor="fp-email">Email</Label>
+                    <Input
+                        id="fp-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onBlur={() => setTouched(true)}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className={`${showError ? 'border-red-500' : ''}`}
+                    />
+                    {showError ? (
+                        <p className="text-xs text-red-500">Enter a valid email address</p>
+                    ) : null}
+                </div>
+                <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button
+                        disabled={!isValidEmail || sending}
+                        onClick={async () => {
+                            setSending(true);
+                            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                                redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined,
+                            });
+                            setSending(false);
+                            if (error) {
+                                toast.error(error.message);
+                                return;
+                            }
+                            onOpenChange(false);
+                            // Show toast after closing modal to avoid any overlay stacking issues
+                            setTimeout(() => {
+                                toast.success("If an account exists for this email, a reset link has been sent.");
+                            }, 0);
+                        }}
+                    >
+                        {sending ? "Sending..." : "Send link"}
+                    </Button>
+                </div>
+            </div>
+        </Dialog>
+    );
 }
