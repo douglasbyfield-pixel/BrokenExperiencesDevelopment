@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -160,6 +160,33 @@ export default function MapPage() {
 	const [showLegend, setShowLegend] = useState(false);
 	const [mapLoaded, setMapLoaded] = useState(false);
 	const [showSearchPanel, setShowSearchPanel] = useState(true);
+	const [isLoading, setIsLoading] = useState(true);
+	const [mapError, setMapError] = useState<string | null>(null);
+
+	// Debounced search to improve performance
+	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+	
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedSearchQuery(searchQuery);
+		}, 300);
+		
+		return () => clearTimeout(timer);
+	}, [searchQuery]);
+
+	// Memoized category labels for performance
+	const categoryLabels = useMemo(() => ({
+		lighting: '💡',
+		roads: '🚗',
+		water: '💧',
+		traffic: '🚦',
+		sanitation: '🗑️',
+		environment: '🌲',
+		utilities: '⚡',
+		infrastructure: '🏗️',
+		safety: '🛡️',
+		other: '📍'
+	}), []);
 
 	// Function to calculate distance between two coordinates
 	const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -252,7 +279,9 @@ export default function MapPage() {
 
 			} catch (error) {
 				console.error('Failed to load Mapbox:', error);
-				setMapLoaded(true); // Still show the interface
+				setMapError('Failed to load map. Please check your internet connection and try again.');
+				setMapLoaded(true);
+				setIsLoading(false);
 			}
 		};
 
@@ -336,19 +365,17 @@ export default function MapPage() {
 			lng: i.longitude 
 		})));
 		
-		// Create markers immediately - no browser detection needed
-		filteredIssues.forEach((issue) => {
-			console.log(`Creating marker for ${issue.title} at [${issue.longitude}, ${issue.latitude}]`);
-			
-			// Create a simple, reliable marker element
+		// Optimize marker creation with performance improvements
+		const createOptimizedMarker = (issue: Issue) => {
 			const el = document.createElement('div');
 			el.className = 'custom-marker';
 			
-			// Simple, reliable styling
+			// Calculate size based on severity
 			const size = issue.severity === 'critical' ? 30 : 
 						issue.severity === 'high' ? 25 : 
 						issue.severity === 'medium' ? 22 : 18;
 			
+			// Use optimized CSS assignment
 			el.style.cssText = `
 				width: ${size}px;
 				height: ${size}px;
@@ -363,37 +390,64 @@ export default function MapPage() {
 				font-weight: bold;
 				color: white;
 				font-size: ${size * 0.4}px;
+				transition: transform 0.2s ease;
 			`;
 			
-			// Add a simple text indicator based on category
-			const categoryLabels: { [key: string]: string } = {
-				lighting: '💡',
-				roads: '🚗',
-				water: '💧',
-				traffic: '🚦',
-				sanitation: '🗑️',
-				environment: '🌲',
-				utilities: '⚡',
-				infrastructure: '🏗️',
-				safety: '🛡️',
-				other: '📍'
-			};
-			
+			// Use memoized category labels
 			el.innerHTML = categoryLabels[issue.categoryId || 'other'] || '📍';
 			
-			// Add click handler
-			el.addEventListener('click', () => {
-				console.log('Marker clicked:', issue.title);
-				setSelectedIssue(issue);
-			});
+			// Add optimized click handler
+			el.addEventListener('click', () => setSelectedIssue(issue), { passive: true });
 			
-			// Create the marker with explicit anchor
-			const marker = new (window as any).mapboxgl.Marker(el)
+			// Add hover effect without position shifting
+			el.addEventListener('mouseenter', () => {
+				el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)';
+				el.style.filter = 'brightness(1.1)';
+				el.style.zIndex = '1000';
+			}, { passive: true });
+			
+			el.addEventListener('mouseleave', () => {
+				el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+				el.style.filter = 'brightness(1)';
+				el.style.zIndex = 'auto';
+			}, { passive: true });
+			
+			return new (window as any).mapboxgl.Marker(el)
 				.setLngLat([issue.longitude, issue.latitude])
 				.addTo(map.current);
+		};
+
+		// Create markers in batches for better performance with many markers
+		const batchSize = 20;
+		let currentBatch = 0;
+		
+		const createMarkerBatch = () => {
+			const start = currentBatch * batchSize;
+			const end = Math.min(start + batchSize, filteredIssues.length);
 			
-			markersRef.current.push(marker);
-		});
+			for (let i = start; i < end; i++) {
+				const marker = createOptimizedMarker(filteredIssues[i]);
+				markersRef.current.push(marker);
+			}
+			
+			currentBatch++;
+			
+			if (end < filteredIssues.length) {
+				// Use requestAnimationFrame for smooth rendering
+				requestAnimationFrame(createMarkerBatch);
+			} else {
+				setIsLoading(false);
+				console.log(`✅ Created ${filteredIssues.length} markers successfully`);
+			}
+		};
+		
+		// Start creating markers
+		if (filteredIssues.length > 0) {
+			setIsLoading(true);
+			createMarkerBatch();
+		} else {
+			setIsLoading(false);
+		}
 
 		// Click handlers are now on individual HTML markers
 
@@ -588,14 +642,8 @@ export default function MapPage() {
 		console.log('✅ Mock data set, issues state updated');
 	};
 
-	// Apply filters whenever issues or filters change
-	useEffect(() => {
-		console.log('Filter effect triggered:', { 
-			issuesCount: issues.length, 
-			activeFilters, 
-			searchQuery 
-		});
-		
+	// Memoized filtering function for better performance
+	const filteredIssuesMemo = useMemo(() => {
 		let filtered = [...issues];
 		
 		// Apply status filters
@@ -608,18 +656,23 @@ export default function MapPage() {
 			filtered = filtered.filter(issue => activeFilters.severity.includes(issue.severity));
 		}
 		
-		// Apply search query
-		if (searchQuery) {
+		// Apply debounced search query
+		if (debouncedSearchQuery) {
+			const searchLower = debouncedSearchQuery.toLowerCase();
 			filtered = filtered.filter(issue => 
-				issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				issue.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				issue.address?.toLowerCase().includes(searchQuery.toLowerCase())
+				issue.title.toLowerCase().includes(searchLower) ||
+				issue.description.toLowerCase().includes(searchLower) ||
+				issue.address?.toLowerCase().includes(searchLower)
 			);
 		}
 		
-		console.log('✅ Filter result:', filtered.length, 'issues filtered from', issues.length, 'total');
-		setFilteredIssues(filtered);
-	}, [issues, activeFilters, searchQuery]);
+		return filtered;
+	}, [issues, activeFilters, debouncedSearchQuery]);
+
+	// Update filtered issues when memoized result changes
+	useEffect(() => {
+		setFilteredIssues(filteredIssuesMemo);
+	}, [filteredIssuesMemo]);
 
 	const fetchIssues = async () => {
 		try {
@@ -676,6 +729,30 @@ export default function MapPage() {
 
 	return (
 		<div className={`mobile-map-page md:absolute md:inset-0 w-full h-full ${showSearchPanel ? 'search-visible' : ''}`}>
+			{/* Loading Overlay */}
+			{isLoading && (
+				<div className="absolute inset-0 bg-white/80 flex items-center justify-center z-50">
+					<div className="text-center">
+						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+						<p className="mt-4 text-gray-600">Loading map markers...</p>
+					</div>
+				</div>
+			)}
+
+			{/* Error Overlay */}
+			{mapError && (
+				<div className="absolute inset-0 bg-red-50 flex items-center justify-center z-50">
+					<div className="text-center p-6">
+						<div className="text-red-600 text-6xl mb-4">⚠️</div>
+						<h3 className="text-lg font-semibold text-red-800 mb-2">Map Error</h3>
+						<p className="text-red-600 mb-4">{mapError}</p>
+						<Button onClick={() => window.location.reload()} variant="outline">
+							Reload Page
+						</Button>
+					</div>
+				</div>
+			)}
+
 			{/* Mapbox Container */}
 			<div ref={mapContainer} className="w-full h-full" />
 
@@ -865,15 +942,23 @@ export default function MapPage() {
 							<div>
 								<h4 className="font-medium mb-3 text-black">Issue Categories</h4>
 								<div className="grid grid-cols-2 gap-2">
-									{Object.entries(categoryConfig).map(([categoryId, config]) => {
-										const Icon = config.icon;
-										return (
-											<div key={categoryId} className="flex items-center gap-2">
-												<Icon className="h-4 w-4 text-black" />
-												<span className="text-xs text-black">{config.label}</span>
-											</div>
-										);
-									})}
+									{Object.entries({
+										lighting: { emoji: '💡', label: 'Lighting' },
+										roads: { emoji: '🚗', label: 'Roads' },
+										water: { emoji: '💧', label: 'Water' },
+										traffic: { emoji: '🚦', label: 'Traffic' },
+										sanitation: { emoji: '🗑️', label: 'Sanitation' },
+										environment: { emoji: '🌲', label: 'Environment' },
+										utilities: { emoji: '⚡', label: 'Utilities' },
+										infrastructure: { emoji: '🏗️', label: 'Infrastructure' },
+										safety: { emoji: '🛡️', label: 'Safety' },
+										other: { emoji: '📍', label: 'Other' }
+									}).map(([categoryId, config]) => (
+										<div key={categoryId} className="flex items-center gap-2">
+											<span className="text-sm">{config.emoji}</span>
+											<span className="text-xs text-black">{config.label}</span>
+										</div>
+									))}
 								</div>
 							</div>
 
