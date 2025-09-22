@@ -1,31 +1,42 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import Loader from "@/components/loader";
+import { toast } from "sonner";
 
 export default function AuthCallbackPage() {
     const router = useRouter();
+    const [message, setMessage] = useState<string>("Finishing sign in…");
 
     useEffect(() => {
         const run = async () => {
             try {
-                const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
-                if (error) {
-                    // If exchange fails, send back to login
-                    router.replace("/login");
-                    return;
+                // Implicit flow: session is in URL fragment and auto-parsed by the client
+                const { data } = await supabase.auth.getSession();
+                if (data.session) {
+                    router.replace("/onboarding/participation");
+                } else {
+                    setMessage("No session found. Returning to login…");
+                    setTimeout(() => router.replace("/login"), 800);
                 }
-                router.replace("/onboarding/participation");
-            } catch {
-                router.replace("/login");
+            } catch (e) {
+                console.error(e);
+                toast.error("Unexpected error during sign in");
+                setMessage("Unexpected error. Returning to login…");
+                setTimeout(() => router.replace("/login"), 800);
             }
         };
         run();
     }, [router]);
 
-    return <Loader />;
+    return (
+        <div className="flex flex-col items-center justify-center h-svh gap-3">
+            <Loader />
+            <p className="text-sm text-gray-600">{message}</p>
+        </div>
+    );
 }
 
 

@@ -71,7 +71,7 @@ export default function ParticipationPage() {
                                     window.localStorage.setItem("be.role", role);
                                 }
                             } catch {}
-                            router.replace("/home");
+                            router.replace("/onboarding/profile");
                         }}
                     >
                         Next

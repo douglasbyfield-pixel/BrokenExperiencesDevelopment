@@ -231,6 +231,7 @@ export default function SignUpForm({
                             provider: "apple",
                             options: {
                                 redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+                                preferRedirect: true,
                             },
                         });
 						if (error) toast.error(error.message);
@@ -246,6 +247,7 @@ export default function SignUpForm({
                             provider: "google",
                             options: {
                                 redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+                                preferRedirect: true,
                             },
                         });
 						if (error) toast.error(error.message);
