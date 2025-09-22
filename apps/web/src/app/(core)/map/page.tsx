@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useSettings } from "@/context/SettingsContext";
 import { 
 	MapPin, 
 	Filter, 
@@ -140,6 +141,7 @@ const getCategoryIcon = (categoryId: string) => {
 };
 
 export default function MapPage() {
+	const { settings } = useSettings();
 	const mapContainer = useRef<HTMLDivElement>(null);
 	const map = useRef<any>(null);
 	const [issues, setIssues] = useState<Issue[]>([]);
@@ -197,6 +199,14 @@ export default function MapPage() {
 		setMockData();
 	}, []);
 
+	// Force markers to render when map loads and we have issues
+	useEffect(() => {
+		if (mapLoaded && issues.length > 0 && filteredIssues.length === 0) {
+			console.log('Map loaded but no filtered issues, forcing filter update');
+			setFilteredIssues([...issues]);
+		}
+	}, [mapLoaded, issues.length, filteredIssues.length]);
+
 	// Initialize Mapbox map
 	useEffect(() => {
 		const initializeMap = async () => {
@@ -211,11 +221,12 @@ export default function MapPage() {
 				
 				mapboxgl.default.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
+				const mapStyle = settings?.display?.mapStyle || 'streets-v12';
 				map.current = new mapboxgl.default.Map({
 					container: mapContainer.current,
-					style: 'mapbox://styles/mapbox/streets-v12',
+					style: `mapbox://styles/mapbox/${mapStyle}`,
 					center: [-77.2975, 18.1096], // Jamaica center
-					zoom: 9, // Better zoom for Jamaica
+					zoom: 8.5, // Better initial zoom for Jamaica
 					maxBounds: [
 						[-78.5, 17.5], // Southwest coordinates of Jamaica
 						[-76.0, 18.8]  // Northeast coordinates of Jamaica
@@ -232,50 +243,9 @@ export default function MapPage() {
 
 				map.current.on('load', () => {
 					console.log('Map loaded successfully');
-					// Fit map to Jamaica bounds
-					map.current.fitBounds([
-						[-78.5, 17.5], // Southwest coordinates of Jamaica
-						[-76.0, 18.8]  // Northeast coordinates of Jamaica
-					], {
-						padding: 20
-					});
-
-					// Create and load custom SVG icons as images
-					const createSVGIcon = (iconPath: string, color: string = '#000000') => {
-						const svg = `
-							<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-								<circle cx="12" cy="12" r="10" fill="white" opacity="0.9"/>
-								<path d="${iconPath}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-							</svg>
-						`;
-						const blob = new Blob([svg], { type: 'image/svg+xml' });
-						return URL.createObjectURL(blob);
-					};
-
-					// Load category icons
-					const categoryIcons = {
-						lighting: getIconPath('lighting'),
-						roads: getIconPath('roads'),
-						water: getIconPath('water'),
-						traffic: getIconPath('traffic'),
-						sanitation: getIconPath('sanitation'),
-						environment: getIconPath('environment'),
-						utilities: getIconPath('utilities'),
-						infrastructure: getIconPath('infrastructure'),
-						safety: getIconPath('safety'),
-						other: getIconPath('other')
-					};
-
-					// Load each icon into Mapbox
-					Object.entries(categoryIcons).forEach(([category, iconPath]) => {
-						const img = new Image();
-						img.onload = () => {
-							if (!map.current.hasImage(`icon-${category}`)) {
-								map.current.addImage(`icon-${category}`, img);
-							}
-						};
-						img.src = createSVGIcon(iconPath);
-					});
+					
+					// Skip loading custom icons - we'll use the circle markers only
+					// Chrome has issues with dynamically created SVG blob URLs
 
 					setMapLoaded(true);
 				});
@@ -296,9 +266,6 @@ export default function MapPage() {
 			if (map.current) {
 				// Remove layers if they exist
 				try {
-					if (map.current.getLayer('issues-labels')) {
-						map.current.removeLayer('issues-labels');
-					}
 					if (map.current.getLayer('issues-layer')) {
 						map.current.removeLayer('issues-layer');
 					}
@@ -311,14 +278,45 @@ export default function MapPage() {
 				map.current.remove();
 			}
 		};
-	}, []);
+	}, []); // Remove settings dependency to prevent map recreation
+
+	// Update map style when settings change
+	useEffect(() => {
+		if (map.current && mapLoaded && settings?.display?.mapStyle) {
+			const newStyle = `mapbox://styles/mapbox/${settings.display.mapStyle}`;
+			const currentStyle = map.current.getStyle();
+			
+			// Only change style if it's different
+			if (!currentStyle.name || !currentStyle.name.includes(settings.display.mapStyle)) {
+				console.log('Changing map style to:', settings.display.mapStyle);
+				map.current.setStyle(newStyle);
+				
+				// Re-add markers after style change
+				map.current.once('styledata', () => {
+					console.log('Map style loaded, re-adding markers');
+					// Trigger markers to be re-added by updating filteredIssues
+					setFilteredIssues(prev => [...prev]);
+				});
+			}
+		}
+	}, [settings?.display?.mapStyle, mapLoaded]);
 
 	// Store markers for cleanup
 	const markersRef = useRef<any[]>([]);
 
 	// Native Mapbox layers with zoom-responsive markers
 	useEffect(() => {
-		if (!map.current || !mapLoaded || filteredIssues.length === 0) return;
+		console.log('Marker creation effect triggered:', { 
+			mapExists: !!map.current, 
+			mapLoaded, 
+			issueCount: filteredIssues.length,
+			issuesData: filteredIssues.map(i => ({ id: i.id, title: i.title }))
+		});
+		
+		if (!map.current || !mapLoaded || filteredIssues.length === 0) {
+			console.log('Markers not created - requirements not met');
+			return;
+		}
 
 		console.log('Creating zoom-responsive markers for', filteredIssues.length, 'Jamaica issues');
 
@@ -328,9 +326,6 @@ export default function MapPage() {
 
 		// Remove existing layers
 		try {
-			if (map.current.getLayer('issues-icons')) {
-				map.current.removeLayer('issues-icons');
-			}
 			if (map.current.getLayer('issues-layer')) {
 				map.current.removeLayer('issues-layer');
 			}
@@ -386,17 +381,17 @@ export default function MapPage() {
 					8, // At zoom 8
 					[
 						'case',
-						['==', ['get', 'severity'], 'critical'], 8,
-						['==', ['get', 'severity'], 'high'], 6,
-						['==', ['get', 'severity'], 'medium'], 5,
-						4 // low
+						['==', ['get', 'severity'], 'critical'], 10,
+						['==', ['get', 'severity'], 'high'], 8,
+						['==', ['get', 'severity'], 'medium'], 6,
+						5 // low
 					],
 					12, // At zoom 12
 					[
 						'case',
-						['==', ['get', 'severity'], 'critical'], 20,
-						['==', ['get', 'severity'], 'high'], 16,
-						['==', ['get', 'severity'], 'medium'], 14,
+						['==', ['get', 'severity'], 'critical'], 25,
+						['==', ['get', 'severity'], 'high'], 20,
+						['==', ['get', 'severity'], 'medium'], 15,
 						12 // low
 					]
 				],
@@ -406,43 +401,80 @@ export default function MapPage() {
 					['linear'],
 					['zoom'],
 					8, 2,
-					12, 3
+					12, 4
 				],
 				'circle-stroke-color': '#ffffff',
-				'circle-opacity': 0.9,
+				'circle-opacity': 0.95,
 				'circle-stroke-opacity': 1
 			}
 		});
 
-		// Add custom SVG icon symbols with zoom-based sizing
-		map.current.addLayer({
-			id: 'issues-icons',
-			type: 'symbol',
-			source: 'issues',
-			layout: {
-				'icon-image': [
-					'case',
-					['==', ['get', 'categoryId'], 'lighting'], 'icon-lighting',
-					['==', ['get', 'categoryId'], 'roads'], 'icon-roads',
-					['==', ['get', 'categoryId'], 'water'], 'icon-water',
-					['==', ['get', 'categoryId'], 'traffic'], 'icon-traffic',
-					['==', ['get', 'categoryId'], 'sanitation'], 'icon-sanitation',
-					['==', ['get', 'categoryId'], 'environment'], 'icon-environment',
-					['==', ['get', 'categoryId'], 'utilities'], 'icon-utilities',
-					['==', ['get', 'categoryId'], 'infrastructure'], 'icon-infrastructure',
-					['==', ['get', 'categoryId'], 'safety'], 'icon-safety',
-					'icon-other' // default
-				],
-				'icon-size': [
-					'interpolate',
-					['linear'],
-					['zoom'],
-					8, 0.6,
-					12, 1.2
-				],
-				'icon-allow-overlap': true,
-				'icon-ignore-placement': true
-			}
+		// Create simple HTML markers that work across all browsers
+		console.log('Creating HTML markers for all browsers');
+		console.log('Issues to create markers for:', filteredIssues.map(i => ({ 
+			id: i.id, 
+			title: i.title, 
+			lat: i.latitude, 
+			lng: i.longitude 
+		})));
+		
+		// Create markers immediately - no browser detection needed
+		filteredIssues.forEach((issue) => {
+			console.log(`Creating marker for ${issue.title} at [${issue.longitude}, ${issue.latitude}]`);
+			
+			// Create a simple, reliable marker element
+			const el = document.createElement('div');
+			el.className = 'custom-marker';
+			
+			// Simple, reliable styling
+			const size = issue.severity === 'critical' ? 30 : 
+						issue.severity === 'high' ? 25 : 
+						issue.severity === 'medium' ? 22 : 18;
+			
+			el.style.cssText = `
+				width: ${size}px;
+				height: ${size}px;
+				background-color: ${statusConfig[issue.status].color};
+				border: 2px solid white;
+				border-radius: 50%;
+				cursor: pointer;
+				box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-weight: bold;
+				color: white;
+				font-size: ${size * 0.4}px;
+			`;
+			
+			// Add a simple text indicator based on category
+			const categoryLabels: { [key: string]: string } = {
+				lighting: '💡',
+				roads: '🚗',
+				water: '💧',
+				traffic: '🚦',
+				sanitation: '🗑️',
+				environment: '🌲',
+				utilities: '⚡',
+				infrastructure: '🏗️',
+				safety: '🛡️',
+				other: '📍'
+			};
+			
+			el.innerHTML = categoryLabels[issue.categoryId || 'other'] || '📍';
+			
+			// Add click handler
+			el.addEventListener('click', () => {
+				console.log('Marker clicked:', issue.title);
+				setSelectedIssue(issue);
+			});
+			
+			// Create the marker with explicit anchor
+			const marker = new (window as any).mapboxgl.Marker(el)
+				.setLngLat([issue.longitude, issue.latitude])
+				.addTo(map.current);
+			
+			markersRef.current.push(marker);
 		});
 
 		// Add click handler for markers
@@ -471,6 +503,7 @@ export default function MapPage() {
 	}, [filteredIssues, mapLoaded]);
 
 	const setMockData = () => {
+		console.log('Setting Jamaica mock data...');
 		// Clear existing issues and set new Jamaica-specific issues (matching server data)
 		const mockIssues: Issue[] = [
 			{
@@ -651,12 +684,19 @@ export default function MapPage() {
 				downvotes: 3
 			}
 		];
-		console.log('Setting Jamaica mock data with', mockIssues.length, 'issues');
+		console.log('✅ Setting Jamaica mock data with', mockIssues.length, 'issues');
 		setIssues(mockIssues);
+		console.log('✅ Mock data set, issues state updated');
 	};
 
 	// Apply filters whenever issues or filters change
 	useEffect(() => {
+		console.log('Filter effect triggered:', { 
+			issuesCount: issues.length, 
+			activeFilters, 
+			searchQuery 
+		});
+		
 		let filtered = [...issues];
 		
 		// Apply status filters
@@ -678,6 +718,7 @@ export default function MapPage() {
 			);
 		}
 		
+		console.log('✅ Filter result:', filtered.length, 'issues filtered from', issues.length, 'total');
 		setFilteredIssues(filtered);
 	}, [issues, activeFilters, searchQuery]);
 

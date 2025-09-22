@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MapPin, Calendar, Award, TrendingUp, Wrench, DollarSign, Edit, Mail, Shield, Settings, LogOut, Camera, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSettings } from "@/context/SettingsContext";
+import { useTranslation } from "react-i18next";
 
 interface UserProfile {
 	id: string;
@@ -28,6 +30,8 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
+	const { settings } = useSettings();
+	const { t } = useTranslation();
 	const [profile, setProfile] = useState<UserProfile | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [isEditing, setIsEditing] = useState(false);
@@ -312,14 +316,14 @@ export default function ProfilePage() {
 													onClick={handleCancelEdit}
 												>
 													<X className="h-4 w-4 mr-2" />
-													Cancel
+													{t('profile.cancel')}
 												</Button>
 												<Button 
 													className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
 													onClick={handleEditProfile}
 												>
 													<Save className="h-4 w-4 mr-2" />
-													Save Changes
+													{t('profile.saveChanges')}
 												</Button>
 											</>
 										) : (
@@ -330,14 +334,14 @@ export default function ProfilePage() {
 													onClick={handleSettings}
 												>
 													<Settings className="h-4 w-4 mr-2" />
-													Settings
+													{t('nav.settings')}
 												</Button>
 												<Button 
 													className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
 													onClick={handleEditProfile}
 												>
 													<Edit className="h-4 w-4 mr-2" />
-													Edit Profile
+													{t('profile.editProfile')}
 												</Button>
 											</>
 										)}
@@ -349,6 +353,7 @@ export default function ProfilePage() {
 				</Card>
 
 				{/* Statistics */}
+				{settings?.privacy?.showStats !== false && (
 				<div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
 					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-sm hover:shadow-md transition-shadow">
 						<CardContent className="p-6">
@@ -418,10 +423,12 @@ export default function ProfilePage() {
 						</CardContent>
 					</Card>
 				</div>
+				)}
 
 				{/* Activity and Actions */}
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+				<div className={`grid grid-cols-1 gap-8 items-start ${settings?.privacy?.showActivity !== false ? 'lg:grid-cols-3' : 'lg:grid-cols-1 max-w-md mx-auto'}`}>
 					{/* Activity Feed */}
+					{settings?.privacy?.showActivity !== false && (
 					<div className="lg:col-span-2">
 						<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black h-[600px]">
 							<CardHeader className="border-b border-gray-200 dark:border-gray-800">
@@ -515,6 +522,7 @@ export default function ProfilePage() {
 							</CardContent>
 						</Card>
 					</div>
+					)}
 
 					{/* Quick Actions */}
 					<div>

@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Trash2, Bell, Eye, Palette, Globe } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Bell, Eye, Palette, Globe, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSettings } from "@/context/SettingsContext";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 interface UserSettings {
 	notifications: {
@@ -29,89 +31,23 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
-	const [settings, setSettings] = useState<UserSettings | null>(null);
-	const [loading, setLoading] = useState(true);
+	const { settings, updateSettings, loading } = useSettings();
+	const { t } = useTranslation();
 	const [saving, setSaving] = useState(false);
 	const [deletePassword, setDeletePassword] = useState("");
 	const [showDeleteSection, setShowDeleteSection] = useState(false);
+	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 	const router = useRouter();
 
-	useEffect(() => {
-		fetchSettings();
-	}, []);
-
-	const fetchSettings = async () => {
-		try {
-			const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`);
-			if (response.ok) {
-				const data = await response.json();
-				setSettings(data);
-			} else {
-				// Set mock data if API fails
-				setSettings({
-					notifications: {
-						email: true,
-						push: true,
-						issueUpdates: true,
-						weeklyReport: false
-					},
-					privacy: {
-						showProfile: true,
-						showActivity: true,
-						showStats: true
-					},
-					display: {
-						theme: "system",
-						language: "en",
-						mapStyle: "streets-v12"
-					}
-				});
-			}
-		} catch (error) {
-			console.error("Failed to fetch settings:", error);
-			// Set mock data on error
-			setSettings({
-				notifications: {
-					email: true,
-					push: true,
-					issueUpdates: true,
-					weeklyReport: false
-				},
-				privacy: {
-					showProfile: true,
-					showActivity: true,
-					showStats: true
-				},
-				display: {
-					theme: "system",
-					language: "en",
-					mapStyle: "streets-v12"
-				}
-			});
-		} finally {
-			setLoading(false);
-		}
-	};
-
 	const handleSaveSettings = async () => {
-		if (!settings) return;
-		
 		setSaving(true);
 		try {
-			const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`, {
-				method: 'PATCH',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(settings),
-			});
-
-			if (response.ok) {
-				// Settings saved successfully
-				console.log("Settings saved successfully");
-			}
+			// Settings are already updated via context
+			toast.success("Settings saved successfully!");
+			setHasUnsavedChanges(false);
 		} catch (error) {
 			console.error("Failed to save settings:", error);
+			toast.error("Failed to save settings");
 		} finally {
 			setSaving(false);
 		}
@@ -148,16 +84,35 @@ export default function SettingsPage() {
 		}
 	};
 
-	const updateSetting = (section: keyof UserSettings, key: string, value: any) => {
+	const updateSetting = async (section: keyof UserSettings, key: string, value: any) => {
 		if (!settings) return;
 		
-		setSettings({
-			...settings,
+		const newSettings = {
 			[section]: {
 				...settings[section],
 				[key]: value
 			}
-		});
+		};
+		
+		await updateSettings(newSettings);
+		
+		// Show immediate feedback for certain settings
+		if (section === 'display') {
+			if (key === 'theme') {
+				toast.success(`${t('settings.theme')} changed to ${t(`theme.${value}`)}`);
+			} else if (key === 'language') {
+				const langName = value === 'en' ? t('lang.english') : value === 'es' ? t('lang.spanish') : t('lang.french');
+				toast.success(`${t('settings.language')} changed to ${langName}`);
+			} else if (key === 'mapStyle') {
+				toast.success(`${t('settings.mapStyle')} changed to ${value.replace('-', ' ')}`);
+			}
+		} else if (section === 'notifications') {
+			const setting = key.replace(/([A-Z])/g, ' $1').toLowerCase();
+			toast.success(`${setting} ${value ? 'enabled' : 'disabled'}`);
+		} else if (section === 'privacy') {
+			const setting = key.replace(/([A-Z])/g, ' $1').toLowerCase();
+			toast.success(`${setting} ${value ? 'enabled' : 'disabled'}`);
+		}
 	};
 
 	if (loading) {
@@ -189,7 +144,7 @@ export default function SettingsPage() {
 					>
 						<ArrowLeft className="h-4 w-4" />
 					</Button>
-					<h1 className="text-3xl font-bold text-black dark:text-white">Settings</h1>
+					<h1 className="text-3xl font-bold text-black dark:text-white">{t('settings.title')}</h1>
 				</div>
 
 				<div className="space-y-6">
@@ -198,7 +153,7 @@ export default function SettingsPage() {
 						<CardHeader>
 							<div className="flex items-center gap-2">
 								<Bell className="h-5 w-5 text-black dark:text-white" />
-								<CardTitle className="text-black dark:text-white">Notifications</CardTitle>
+								<CardTitle className="text-black dark:text-white">{t('settings.notifications')}</CardTitle>
 							</div>
 						</CardHeader>
 						<CardContent className="space-y-4">
@@ -323,21 +278,6 @@ export default function SettingsPage() {
 									<option value="light">Light</option>
 									<option value="dark">Dark</option>
 									<option value="system">System</option>
-								</select>
-							</div>
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="text-black dark:text-white font-medium">Language</Label>
-									<p className="text-sm text-gray-600 dark:text-gray-400">Select your preferred language</p>
-								</div>
-								<select
-									value={settings.display.language}
-									onChange={(e) => updateSetting('display', 'language', e.target.value)}
-									className="border border-gray-300 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-black text-black dark:text-white"
-								>
-									<option value="en">English</option>
-									<option value="es">Español</option>
-									<option value="fr">Français</option>
 								</select>
 							</div>
 							<div className="flex items-center justify-between">
