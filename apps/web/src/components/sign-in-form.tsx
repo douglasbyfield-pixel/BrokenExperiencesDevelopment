@@ -1,12 +1,12 @@
-import { authClient } from "@/lib/auth-client";
+import { supabase } from "@/lib/supabase-client";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import z from "zod";
-import Loader from "./loader";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useRouter } from "next/navigation";
+import { useSupabaseSession } from "@/lib/use-supabase-session";
 
 export default function SignInForm({
 	onSwitchToSignUp,
@@ -14,30 +14,25 @@ export default function SignInForm({
 	onSwitchToSignUp: () => void;
 }) {
 	const router = useRouter();
-	const { isPending } = authClient.useSession();
+    const { loading } = useSupabaseSession();
 
 	const form = useForm({
 		defaultValues: {
 			email: "",
 			password: "",
 		},
-		onSubmit: async ({ value }) => {
-			await authClient.signIn.email(
-				{
-					email: value.email,
-					password: value.password,
-				},
-				{
-					onSuccess: () => {
-						router.push("/home");
-						toast.success("Sign in successful");
-					},
-					onError: (error) => {
-						toast.error(error.error.message || error.error.statusText);
-					},
-				},
-			);
-		},
+        onSubmit: async ({ value }) => {
+            const { error } = await supabase.auth.signInWithPassword({
+                email: value.email,
+                password: value.password,
+            });
+            if (error) {
+                toast.error(error.message);
+                return;
+            }
+            toast.success("Sign in successful");
+            router.push("/home");
+        },
 		validators: {
 			onSubmit: z.object({
 				email: z.email("Invalid email address"),
@@ -46,9 +41,7 @@ export default function SignInForm({
 		},
 	});
 
-	if (isPending) {
-		return <Loader />;
-	}
+    // Show form even if loading; Supabase session loads lazily
 
 	return (
 		<div className="w-full">

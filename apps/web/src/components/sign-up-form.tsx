@@ -1,12 +1,12 @@
-import { authClient } from "@/lib/auth-client";
+import { supabase } from "@/lib/supabase-client";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import z from "zod";
-import Loader from "./loader";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useRouter } from "next/navigation";
+import { useSupabaseSession } from "@/lib/use-supabase-session";
 
 export default function SignUpForm({
 	onSwitchToSignIn,
@@ -14,7 +14,7 @@ export default function SignUpForm({
 	onSwitchToSignIn: () => void;
 }) {
 	const router = useRouter();
-	const { isPending } = authClient.useSession();
+    const { loading } = useSupabaseSession();
 
 	const form = useForm({
 		defaultValues: {
@@ -22,24 +22,21 @@ export default function SignUpForm({
 			password: "",
 			name: "",
 		},
-		onSubmit: async ({ value }) => {
-			await authClient.signUp.email(
-				{
-					email: value.email,
-					password: value.password,
-					name: value.name,
-				},
-				{
-					onSuccess: () => {
-						router.push("/home");
-						toast.success("Sign up successful");
-					},
-					onError: (error) => {
-						toast.error(error.error.message || error.error.statusText);
-					},
-				},
-			);
-		},
+        onSubmit: async ({ value }) => {
+            const { error } = await supabase.auth.signUp({
+                email: value.email,
+                password: value.password,
+                options: {
+                    data: { name: value.name },
+                },
+            });
+            if (error) {
+                toast.error(error.message);
+                return;
+            }
+            toast.success("Sign up successful. Check your email to confirm.");
+            router.push("/home");
+        },
 		validators: {
 			onSubmit: z.object({
 				name: z.string().min(2, "Name must be at least 2 characters"),
@@ -49,9 +46,7 @@ export default function SignUpForm({
 		},
 	});
 
-	if (isPending) {
-		return <Loader />;
-	}
+    // Show form even if loading
 
 	return (
 		<div className="w-full">

@@ -1,24 +1,13 @@
-import { authClient } from "@/lib/auth-client";
-import { redirect } from "next/navigation";
 import Dashboard from "./dashboard";
-import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
-	const session = await authClient.getSession({
-		fetchOptions: {
-			headers: await headers(),
-		},
-	});
-
-	if (!session.data) {
-		redirect("/login");
-	}
-
-	return (
-		<div>
-			<h1>Dashboard</h1>
-			<p>Welcome {session.data.user.name}</p>
-			<Dashboard session={session.data} />
-		</div>
-	);
+    // Supabase client runs on client; redirect to login and let client fetch user
+    // For now, render the dashboard shell; the client component will handle session
+    return (
+        <div>
+            <h1>Dashboard</h1>
+            <Dashboard />
+        </div>
+    );
 }
