@@ -7,10 +7,19 @@ export const categoryRouter = new Elysia({
     tags: ['Category'],
 })
     .use(categoryModel)
-	.get("/", () => {
-		const results = getCategories()
+	.get("/", async ({ query }) => {
+        try {
+		const results = await getCategories({ query: query })
         return results
+        } catch (error) {
+            console.log(error)
+            return {
+                status: 500,
+                message: 'Internal server error'
+            }
+        }
 	}, {
+        query: 'category.query',
         detail: {
             summary: 'Get all categories',
             description: 'Returns a list of all categories in the database.',

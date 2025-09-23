@@ -1,0 +1,8 @@
+{
+	"extends": "@broken-experiences/config/typescript/base.json",
+	"compilerOptions": {
+		"module": "preserve"
+	},
+	"include": ["src"],
+	"exclude": ["node_modules", "dist"]
+}

@@ -7,8 +7,8 @@ export const experienceRouter = new Elysia({
         tags: ['Experience'],
     })
     .use(experienceModel)
-	.get("/", () => {
-        const result = getExperiences()
+	.get("/", ({ query }) => {
+        const result = getExperiences({query: query})
         return result
     }, {
         query: 'experience.query',

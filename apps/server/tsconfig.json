@@ -1,4 +1,5 @@
 {
+	"extends": "@broken-experiences/config/typescript/base.json",
 	"compilerOptions": {
 		"target": "ESNext",
 		"module": "ESNext",
@@ -13,6 +14,7 @@
 		"outDir": "./dist",
 		"types": ["bun"],
 		"composite": true,
+		"incremental": true,
 		"jsx": "react",
 		"jsxFactory": "Html.createElement",
 		"jsxFragmentFactory": "Html.Fragment",

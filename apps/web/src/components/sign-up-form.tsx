@@ -181,6 +181,7 @@ export default function SignUpForm({
 				<div className="text-center">
 					<span className="text-gray-600">Already have an account? </span>
 					<button
+						type="button"
 						onClick={onSwitchToSignIn}
 						className="text-black hover:text-gray-700 font-medium underline transition-colors duration-200"
 					>

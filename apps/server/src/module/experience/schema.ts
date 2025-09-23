@@ -1,14 +1,16 @@
 import { createInsertSchema } from "drizzle-typebox";
 import Elysia, { type Static, t } from "elysia";
-import { experience } from "../../db/schema/experience";
+import { ExperiencePriorityEnum, ExperienceStatusEnum, experience } from "../../db/schema/experience";
 
 const baseExperienceInsertSchema = createInsertSchema(experience);
 
 const experienceQuerySchema = t.Object({
-    limit: t.Number({ default: 10 }),
-    offset: t.Number({ default: 0 }),
-    query: t.Optional(t.String({ default: undefined })),
-    page: t.Optional(t.Number({ default: 1 })),
+    severity: t.Optional(t.String()),
+    status: t.Optional(t.String()),
+    north: t.Optional(t.String()),
+    south: t.Optional(t.String()),
+    east: t.Optional(t.String()),
+    west: t.Optional(t.String())
 });
 
 export const experienceCreateSchema = t.Object({
@@ -17,13 +19,13 @@ export const experienceCreateSchema = t.Object({
 	latitude: baseExperienceInsertSchema.properties.latitude,
 	longitude: baseExperienceInsertSchema.properties.longitude,
 	address: baseExperienceInsertSchema.properties.address,
-	category: baseExperienceInsertSchema.properties.category,
-	status: baseExperienceInsertSchema.properties.status,
-	priority: baseExperienceInsertSchema.properties.priority,
+	category_id: baseExperienceInsertSchema.properties.category_id,
+	status: t.Enum(ExperienceStatusEnum, {default: ExperienceStatusEnum.pending}),
+	priority: t.Enum(ExperiencePriorityEnum, {default: ExperiencePriorityEnum.medium}),
+	experience_images: t.Files()
 });
 
 export const experienceUpdateSchema = t.Partial(experienceCreateSchema);
-
 
 export type ExperienceCreate = Static<typeof experienceCreateSchema>;
 export type ExperienceUpdate = Static<typeof experienceUpdateSchema>;

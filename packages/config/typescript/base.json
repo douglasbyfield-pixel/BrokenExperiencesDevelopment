@@ -1,0 +1,28 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"display": "Default",
+	"compilerOptions": {
+		"allowJs": true,
+		"declaration": true,
+		"declarationMap": true,
+		"esModuleInterop": true,
+		"incremental": false,
+		"isolatedModules": true,
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
+		"module": "NodeNext",
+		"moduleDetection": "force",
+		"moduleResolution": "Bundler",
+		"noUncheckedIndexedAccess": false,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"target": "ES2022",
+		"baseUrl": "../../../",
+		"paths": {
+			"@server": ["apps/server/src/index.ts"],
+			"@server/*": ["apps/server/src/*"],
+			"@web/*": ["apps/web/src/*"]
+		}
+	},
+	"exclude": ["coverage", ".storybook", "node_modules"]
+}

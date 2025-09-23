@@ -446,7 +446,7 @@ export default function MapPage() {
 		});
 
 		// Add click handler for markers
-		map.current.on('click', 'issues-layer', (e) => {
+		map.current.on('click', 'issues-layer', (e: any) => {
 			if (e.features && e.features.length > 0) {
 				const feature = e.features[0];
 				const issue = filteredIssues.find(i => i.id === feature.properties.id);

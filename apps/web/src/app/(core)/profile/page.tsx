@@ -431,7 +431,7 @@ export default function ProfilePage() {
 										variant="outline" 
 										size="sm" 
 										className="border-gray-300 dark:border-gray-700"
-										onClick={() => router.push('/activity')}
+										onClick={() => router.push('/activities')}
 									>
 										View All
 									</Button>
