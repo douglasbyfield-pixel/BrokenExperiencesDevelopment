@@ -375,7 +375,7 @@ export default function MapPage() {
 						issue.severity === 'high' ? 25 : 
 						issue.severity === 'medium' ? 22 : 18;
 			
-			// Use optimized CSS assignment
+			// Use optimized CSS assignment with proper positioning to prevent drift
 			el.style.cssText = `
 				width: ${size}px;
 				height: ${size}px;
@@ -390,7 +390,10 @@ export default function MapPage() {
 				font-weight: bold;
 				color: white;
 				font-size: ${size * 0.4}px;
-				transition: transform 0.2s ease;
+				position: absolute;
+				transform: translate(-50%, -50%);
+				transition: box-shadow 0.2s ease, filter 0.2s ease;
+				pointer-events: auto;
 			`;
 			
 			// Use memoized category labels
@@ -412,7 +415,11 @@ export default function MapPage() {
 				el.style.zIndex = 'auto';
 			}, { passive: true });
 			
-			return new (window as any).mapboxgl.Marker(el)
+			// Create marker with explicit positioning options
+			return new (window as any).mapboxgl.Marker({
+				element: el,
+				anchor: 'center'
+			})
 				.setLngLat([issue.longitude, issue.latitude])
 				.addTo(map.current);
 		};
