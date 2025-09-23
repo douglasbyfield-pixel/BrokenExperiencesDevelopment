@@ -25,7 +25,24 @@ import {
 	Shield,
 	Building,
 	ChevronUp,
-	ChevronDown
+	ChevronDown,
+	Navigation,
+	Route,
+	Share2,
+	Bookmark,
+	Timer,
+	User,
+	Calendar,
+	TrendingUp,
+	ExternalLink,
+	Info,
+	Focus,
+	ArrowUp,
+	ArrowDown,
+	ArrowLeft,
+	ArrowRight,
+	RotateCcw,
+	Compass
 } from "lucide-react";
 
 interface Issue {
@@ -162,6 +179,13 @@ export default function MapPage() {
 	const [showSearchPanel, setShowSearchPanel] = useState(true);
 	const [isLoading, setIsLoading] = useState(true);
 	const [mapError, setMapError] = useState<string | null>(null);
+	const [cardExpanded, setCardExpanded] = useState(false);
+	const [bookmarkedIssues, setBookmarkedIssues] = useState<Set<string>>(new Set());
+	const [drawnRoute, setDrawnRoute] = useState<any>(null);
+	const [userLocationMarker, setUserLocationMarker] = useState<any>(null);
+	const [distanceLine, setDistanceLine] = useState<any>(null);
+	const [routeDirections, setRouteDirections] = useState<any>(null);
+	const [showDirections, setShowDirections] = useState(false);
 
 	// Debounced search to improve performance
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -202,21 +226,462 @@ export default function MapPage() {
 		return distance;
 	};
 
-	// Get user's current location
-	useEffect(() => {
-		if (navigator.geolocation) {
-			navigator.geolocation.getCurrentPosition(
-				(position) => {
-					setUserLocation({
-						lat: position.coords.latitude,
-						lng: position.coords.longitude
-					});
-				},
-				(error) => {
-					console.log("Location access denied or unavailable");
+	// Enhanced distance display with walking time estimation
+	const getDistanceInfo = (issue: Issue) => {
+		if (!userLocation) return null;
+		
+		const distance = calculateDistance(userLocation.lat, userLocation.lng, issue.latitude, issue.longitude);
+		const walkingTime = Math.round(distance * 12); // Rough estimate: 12 minutes per km
+		const drivingTime = Math.round(distance * 2); // Rough estimate: 2 minutes per km
+		
+		return {
+			distance: distance.toFixed(1),
+			walkingTime,
+			drivingTime,
+			isNearby: distance < 1
+		};
+	};
+
+	// Draw route between user location and issue
+	const drawRoute = async (issue: Issue) => {
+		if (!userLocation || !map.current) return;
+
+		// Remove existing route
+		clearRoute();
+
+		try {
+			// Create a simple straight line route
+			const routeCoordinates = [
+				[userLocation.lng, userLocation.lat],
+				[issue.longitude, issue.latitude]
+			];
+
+			const routeGeoJSON = {
+				type: 'Feature' as const,
+				properties: {},
+				geometry: {
+					type: 'LineString' as const,
+					coordinates: routeCoordinates
 				}
-			);
+			};
+
+			// Add route source
+			map.current.addSource('route', {
+				type: 'geojson',
+				data: routeGeoJSON
+			});
+
+			// Add route layer
+			map.current.addLayer({
+				id: 'route',
+				type: 'line',
+				source: 'route',
+				layout: {
+					'line-join': 'round',
+					'line-cap': 'round'
+				},
+				paint: {
+					'line-color': '#3b82f6',
+					'line-width': 4,
+					'line-opacity': 0.8
+				}
+			});
+
+			setDrawnRoute(routeGeoJSON);
+
+			// Fit map to show route
+			const bounds = new (window as any).mapboxgl.LngLatBounds()
+				.extend([userLocation.lng, userLocation.lat])
+				.extend([issue.longitude, issue.latitude]);
+			
+			map.current.fitBounds(bounds, { padding: 50, duration: 1000 });
+
+		} catch (error) {
+			console.error('Error drawing route:', error);
 		}
+	};
+
+	// Clear drawn route
+	const clearRoute = () => {
+		if (!map.current) return;
+
+		try {
+			if (map.current.getLayer('route')) {
+				map.current.removeLayer('route');
+			}
+			if (map.current.getSource('route')) {
+				map.current.removeSource('route');
+			}
+		} catch (error) {
+			console.log('Error clearing route:', error);
+		}
+
+		setDrawnRoute(null);
+	};
+
+	// Bookmark/unbookmark issue
+	const toggleBookmark = (issueId: string) => {
+		setBookmarkedIssues(prev => {
+			const newSet = new Set(prev);
+			if (newSet.has(issueId)) {
+				newSet.delete(issueId);
+			} else {
+				newSet.add(issueId);
+			}
+			return newSet;
+		});
+	};
+
+	// Share issue
+	const shareIssue = async (issue: Issue) => {
+		const shareData = {
+			title: issue.title,
+			text: `Check out this community issue: ${issue.description}`,
+			url: `${window.location.origin}${window.location.pathname}?issue=${issue.id}`
+		};
+
+		try {
+			if (navigator.share) {
+				await navigator.share(shareData);
+			} else {
+				// Fallback: copy to clipboard
+				await navigator.clipboard.writeText(
+					`${shareData.title}\n${shareData.text}\n${shareData.url}`
+				);
+				console.log('Issue details copied to clipboard!');
+			}
+		} catch (error) {
+			console.error('Error sharing:', error);
+		}
+	};
+
+	// Get time ago display
+	const getTimeAgo = (date: Date | string) => {
+		const now = new Date();
+		const dateObj = new Date(date);
+		const diffMs = now.getTime() - dateObj.getTime();
+		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+		const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+		const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+		if (diffDays > 0) return `${diffDays}d ago`;
+		if (diffHours > 0) return `${diffHours}h ago`;
+		if (diffMinutes > 0) return `${diffMinutes}m ago`;
+		return 'Just now';
+	};
+
+	// Format duration from seconds to readable format
+	const formatDuration = (seconds: number) => {
+		const hours = Math.floor(seconds / 3600);
+		const minutes = Math.floor((seconds % 3600) / 60);
+		
+		if (hours > 0) {
+			return `${hours}h ${minutes}m`;
+		}
+		return `${minutes}m`;
+	};
+
+	// Format distance from meters to readable format
+	const formatDistance = (meters: number) => {
+		if (meters >= 1000) {
+			return `${(meters / 1000).toFixed(1)} km`;
+		}
+		return `${Math.round(meters)} m`;
+	};
+
+	// Get direction icon based on maneuver type
+	const getDirectionIcon = (maneuver: string) => {
+		const type = maneuver.toLowerCase();
+		if (type.includes('turn right') || type.includes('right')) return ArrowRight;
+		if (type.includes('turn left') || type.includes('left')) return ArrowLeft;
+		if (type.includes('straight') || type.includes('continue')) return ArrowUp;
+		if (type.includes('u-turn') || type.includes('uturn')) return RotateCcw;
+		if (type.includes('arrive') || type.includes('destination')) return MapPin;
+		if (type.includes('depart') || type.includes('start')) return Compass;
+		return ArrowUp; // Default
+	};
+
+	// Show distance by panning to fit both user location and marker, with actual route path
+	const showDistanceView = async (issue: Issue) => {
+		if (!userLocation || !map.current) return;
+
+		// Clear any existing distance markers and lines
+		clearDistanceView();
+
+		try {
+			// Create user location marker
+			const userMarkerEl = document.createElement('div');
+			userMarkerEl.className = 'user-location-marker';
+			userMarkerEl.style.cssText = `
+				width: 20px;
+				height: 20px;
+				background-color: #3b82f6;
+				border: 3px solid white;
+				border-radius: 50%;
+				box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+				position: absolute;
+				transform: translate(-50%, -50%);
+				animation: pulse 2s infinite;
+			`;
+
+			// Add pulsing animation CSS if not already added
+			if (!document.getElementById('user-marker-styles')) {
+				const style = document.createElement('style');
+				style.id = 'user-marker-styles';
+				style.textContent = `
+					@keyframes pulse {
+						0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+						70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+						100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+					}
+				`;
+				document.head.appendChild(style);
+			}
+
+			// Create and add user location marker
+			const userMarker = new (window as any).mapboxgl.Marker({
+				element: userMarkerEl,
+				anchor: 'center'
+			})
+				.setLngLat([userLocation.lng, userLocation.lat])
+				.addTo(map.current);
+
+			setUserLocationMarker(userMarker);
+
+			// Get actual route using Mapbox Directions API with detailed steps
+			try {
+				const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+				const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${userLocation.lng},${userLocation.lat};${issue.longitude},${issue.latitude}?geometries=geojson&steps=true&banner_instructions=true&voice_instructions=true&access_token=${accessToken}`;
+				
+				const response = await fetch(directionsUrl);
+				const data = await response.json();
+
+				if (data.routes && data.routes.length > 0) {
+					const route = data.routes[0];
+					const routeGeometry = route.geometry;
+
+					// Store detailed route information
+					setRouteDirections({
+						duration: route.duration,
+						distance: route.distance,
+						steps: route.legs[0].steps,
+						summary: route.legs[0].summary || 'Route to issue location'
+					});
+
+					// Add route source
+					map.current.addSource('route-path', {
+						type: 'geojson',
+						data: {
+							type: 'Feature',
+							properties: {},
+							geometry: routeGeometry
+						}
+					});
+
+					// Add main route layer
+					map.current.addLayer({
+						id: 'route-path',
+						type: 'line',
+						source: 'route-path',
+						layout: {
+							'line-join': 'round',
+							'line-cap': 'round'
+						},
+						paint: {
+							'line-color': '#3b82f6',
+							'line-width': 6,
+							'line-opacity': 0.8
+						}
+					});
+
+					// Add route outline for better visibility
+					map.current.addLayer({
+						id: 'route-path-outline',
+						type: 'line',
+						source: 'route-path',
+						layout: {
+							'line-join': 'round',
+							'line-cap': 'round'
+						},
+						paint: {
+							'line-color': '#ffffff',
+							'line-width': 8,
+							'line-opacity': 0.4
+						}
+					}, 'route-path');
+
+					setDistanceLine(routeGeometry);
+
+					// Fit map to route bounds
+					const coordinates = routeGeometry.coordinates;
+					const bounds = coordinates.reduce((bounds: any, coord: any) => {
+						return bounds.extend(coord);
+					}, new (window as any).mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+					map.current.fitBounds(bounds, {
+						padding: 80,
+						duration: 1500,
+						maxZoom: 15
+					});
+
+					console.log('Route path shown with actual directions');
+
+				} else {
+					// Fallback to straight line if routing fails
+					console.log('Routing failed, falling back to straight line');
+					await showStraightLineDistance(issue);
+				}
+
+			} catch (routingError) {
+				console.error('Error fetching route:', routingError);
+				// Fallback to straight line if routing fails
+				await showStraightLineDistance(issue);
+			}
+
+		} catch (error) {
+			console.error('Error showing distance view:', error);
+		}
+	};
+
+	// Fallback function for straight line when routing fails
+	const showStraightLineDistance = async (issue: Issue) => {
+		if (!userLocation || !map.current) return;
+
+		// Create straight line between user and issue
+		const lineCoordinates = [
+			[userLocation.lng, userLocation.lat],
+			[issue.longitude, issue.latitude]
+		];
+
+		const lineGeoJSON = {
+			type: 'Feature' as const,
+			properties: {},
+			geometry: {
+				type: 'LineString' as const,
+				coordinates: lineCoordinates
+			}
+		};
+
+		// Add line source
+		map.current.addSource('route-path', {
+			type: 'geojson',
+			data: lineGeoJSON
+		});
+
+		// Add line layer with dashed style (fallback)
+		map.current.addLayer({
+			id: 'route-path',
+			type: 'line',
+			source: 'route-path',
+			layout: {
+				'line-join': 'round',
+				'line-cap': 'round'
+			},
+			paint: {
+				'line-color': '#3b82f6',
+				'line-width': 3,
+				'line-opacity': 0.8,
+				'line-dasharray': [2, 2]
+			}
+		});
+
+		setDistanceLine(lineGeoJSON);
+
+		// Create bounds that include both points
+		const bounds = new (window as any).mapboxgl.LngLatBounds()
+			.extend([userLocation.lng, userLocation.lat])
+			.extend([issue.longitude, issue.latitude]);
+		
+		// Fit the map to show both points with padding
+		map.current.fitBounds(bounds, { 
+			padding: 100, 
+			duration: 1500,
+			maxZoom: 15
+		});
+	};
+
+	// Clear distance view (user marker and route)
+	const clearDistanceView = () => {
+		if (!map.current) return;
+
+		try {
+			// Remove user location marker
+			if (userLocationMarker) {
+				userLocationMarker.remove();
+				setUserLocationMarker(null);
+			}
+
+			// Remove route layers
+			if (map.current.getLayer('route-path')) {
+				map.current.removeLayer('route-path');
+			}
+			if (map.current.getLayer('route-path-outline')) {
+				map.current.removeLayer('route-path-outline');
+			}
+			if (map.current.getSource('route-path')) {
+				map.current.removeSource('route-path');
+			}
+
+			// Also remove old distance-line layers (for backwards compatibility)
+			if (map.current.getLayer('distance-line')) {
+				map.current.removeLayer('distance-line');
+			}
+			if (map.current.getSource('distance-line')) {
+				map.current.removeSource('distance-line');
+			}
+
+			// Clear directions data
+			setDistanceLine(null);
+			setRouteDirections(null);
+			setShowDirections(false);
+		} catch (error) {
+			console.log('Error clearing distance view:', error);
+		}
+	};
+
+	// Get user's current location with better error handling
+	const requestLocation = () => {
+		if (!navigator.geolocation) {
+			alert('Geolocation is not supported by this browser.');
+			return;
+		}
+
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				setUserLocation({
+					lat: position.coords.latitude,
+					lng: position.coords.longitude
+				});
+				console.log('Location obtained:', position.coords.latitude, position.coords.longitude);
+			},
+			(error) => {
+				console.log('Location error:', error);
+				switch(error.code) {
+					case error.PERMISSION_DENIED:
+						alert("Location access was denied. Please enable location access in your browser settings and refresh the page.");
+						break;
+					case error.POSITION_UNAVAILABLE:
+						alert("Location information is unavailable.");
+						break;
+					case error.TIMEOUT:
+						alert("Location request timed out.");
+						break;
+					default:
+						alert("An unknown error occurred while getting location.");
+						break;
+				}
+			},
+			{
+				enableHighAccuracy: true,
+				timeout: 10000,
+				maximumAge: 300000 // 5 minutes
+			}
+		);
+	};
+
+	// Get user's current location on mount
+	useEffect(() => {
+		requestLocation();
 	}, []);
 
 	// Fetch issues on mount
@@ -292,6 +757,9 @@ export default function MapPage() {
 			markersRef.current.forEach(marker => marker.remove());
 			markersRef.current = [];
 			
+			// Clean up distance view
+			clearDistanceView();
+			
 			if (map.current) {
 				// Remove layers if they exist
 				try {
@@ -300,6 +768,29 @@ export default function MapPage() {
 					}
 					if (map.current.getSource('issues')) {
 						map.current.removeSource('issues');
+					}
+					// Clean up route layers
+					if (map.current.getLayer('route')) {
+						map.current.removeLayer('route');
+					}
+					if (map.current.getSource('route')) {
+						map.current.removeSource('route');
+					}
+					// Clean up distance/route layers
+					if (map.current.getLayer('distance-line')) {
+						map.current.removeLayer('distance-line');
+					}
+					if (map.current.getSource('distance-line')) {
+						map.current.removeSource('distance-line');
+					}
+					if (map.current.getLayer('route-path')) {
+						map.current.removeLayer('route-path');
+					}
+					if (map.current.getLayer('route-path-outline')) {
+						map.current.removeLayer('route-path-outline');
+					}
+					if (map.current.getSource('route-path')) {
+						map.current.removeSource('route-path');
 					}
 				} catch (e) {
 					console.log('Cleanup layers error:', e);
@@ -996,24 +1487,46 @@ export default function MapPage() {
 				</div>
 			)}
 
-			{/* Issue Detail Popup */}
+			{/* Enhanced Issue Detail Card - Simple with Expandable Details */}
 			{selectedIssue && (
 				<div className="fixed bottom-0 left-0 right-0 sm:absolute sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:transform sm:-translate-x-1/2 sm:-translate-y-1/2 z-10 p-2 sm:p-0 pointer-events-none">
 					<Card 
-						className="shadow-xl border w-full sm:min-w-[320px] sm:max-w-[400px] sm:w-auto bg-white border-gray-200 max-h-[50vh] sm:max-h-none overflow-y-auto pointer-events-auto"
+						className="shadow-xl border w-full sm:min-w-[360px] sm:max-w-[420px] sm:w-auto bg-white border-gray-200 max-h-[80vh] overflow-y-auto pointer-events-auto"
 					>
-						<CardContent className="p-3 sm:p-4">
+						<CardContent className="p-4">
+							{/* Simple Header */}
 							<div className="flex items-start justify-between mb-3">
-								<h3 className="font-semibold text-base sm:text-lg text-black pr-2">{selectedIssue.title}</h3>
-								<div className="flex items-center gap-2">
-									<Badge className={`${statusConfig[selectedIssue.status].bgColor} ${statusConfig[selectedIssue.status].textColor} shrink-0 hover:bg-current transition-none`}>
-										{statusConfig[selectedIssue.status].label}
-									</Badge>
+								<div className="flex-1 pr-2">
+									<h3 className="font-semibold text-lg text-black leading-tight">{selectedIssue.title}</h3>
+									<div className="flex items-center gap-2 mt-2">
+										<Badge className={`${statusConfig[selectedIssue.status].bgColor} ${statusConfig[selectedIssue.status].textColor} text-xs`}>
+											{statusConfig[selectedIssue.status].label}
+										</Badge>
+										<Badge className={`${severityConfig[selectedIssue.severity as keyof typeof severityConfig].bgColor} ${severityConfig[selectedIssue.severity as keyof typeof severityConfig].textColor} text-xs capitalize`}>
+											{selectedIssue.severity}
+										</Badge>
+									</div>
+								</div>
+								<div className="flex items-center gap-1">
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => toggleBookmark(selectedIssue.id)}
+										className="h-8 w-8 p-0 hover:bg-blue-50"
+										title={bookmarkedIssues.has(selectedIssue.id) ? "Remove bookmark" : "Bookmark issue"}
+									>
+										<Bookmark className={`h-4 w-4 ${bookmarkedIssues.has(selectedIssue.id) ? 'fill-blue-500 text-blue-500' : 'text-gray-400'}`} />
+									</Button>
 									<Button
 										variant="outline"
 										size="sm"
-										onClick={() => setSelectedIssue(null)}
-										className="border-gray-300 hover:border-gray-500 hover:bg-gray-50 shrink-0"
+										onClick={() => {
+											setSelectedIssue(null);
+											setCardExpanded(false);
+											clearRoute();
+											clearDistanceView();
+										}}
+										className="h-8 w-8 p-0 border-gray-300 hover:border-gray-500 hover:bg-gray-50"
 										title="Close"
 									>
 										<X className="h-4 w-4 text-gray-600" />
@@ -1021,64 +1534,370 @@ export default function MapPage() {
 								</div>
 							</div>
 							
-							<p className="text-sm text-gray-700 mb-3 leading-relaxed">{selectedIssue.description}</p>
+							{/* Brief Description */}
+							<p className="text-sm text-gray-700 mb-3 leading-relaxed line-clamp-2">
+								{selectedIssue.description}
+							</p>
 							
+							{/* Location & Distance - Always Visible */}
 							{selectedIssue.address && (
-								<p className="text-xs text-gray-600 mb-3 flex items-center">
-									<MapPin className="inline h-3 w-3 mr-1" />
-									{selectedIssue.address}
-								</p>
-							)}
-
-							{/* Distance from user */}
-							{userLocation && (
-								<p className="text-xs text-gray-600 mb-3 flex items-center">
-									<span className="inline mr-1">📍</span>
-									{(calculateDistance(userLocation.lat, userLocation.lng, selectedIssue.latitude, selectedIssue.longitude)).toFixed(1)} km away
-								</p>
-							)}
-
-							{/* Additional details */}
-							<div className="mb-3 p-2 bg-gray-50 rounded-lg">
-								<div className="grid grid-cols-2 gap-2 text-xs">
-									<div>
-										<span className="text-gray-500">Category:</span>
-										<span className="ml-1 font-medium text-black capitalize">{selectedIssue.categoryId}</span>
-									</div>
-									<div>
-										<span className="text-gray-500">Reported:</span>
-										<span className="ml-1 font-medium text-black">{new Date(selectedIssue.createdAt).toLocaleDateString()}</span>
-									</div>
-									<div>
-										<span className="text-gray-500">Reporter:</span>
-										<span className="ml-1 font-medium text-black">{selectedIssue.reporterId}</span>
-									</div>
-									<div>
-										<span className="text-gray-500">Updated:</span>
-										<span className="ml-1 font-medium text-black">{new Date(selectedIssue.updatedAt).toLocaleDateString()}</span>
+								<div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+									<div className="flex items-start gap-2">
+										<MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+										<div className="flex-1">
+											<p className="text-sm text-blue-900 font-medium">{selectedIssue.address}</p>
+											{(() => {
+												const distanceInfo = getDistanceInfo(selectedIssue);
+												return distanceInfo ? (
+													<div className="mt-1">
+														<div className="flex items-center gap-4 text-xs text-blue-700">
+															<span className="flex items-center gap-1">
+																<span>📍</span>
+																<strong>{distanceInfo.distance} km</strong> away
+																{distanceInfo.isNearby && <span className="text-green-600 font-medium">(Nearby!)</span>}
+															</span>
+														</div>
+													</div>
+												) : null;
+											})()}
+										</div>
 									</div>
 								</div>
-							</div>
-							
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-3">
+							)}
+
+							{/* Action Buttons - Always Visible */}
+							<div className="flex flex-wrap gap-2 mb-3">
+								<Button
+									size="sm"
+									variant="ghost"
+									className="flex items-center gap-1 text-gray-700 hover:text-green-600 transition-colors"
+									onClick={(e) => {
+										e.stopPropagation();
+										handleVote(selectedIssue.id, "upvote");
+									}}
+								>
+									<ThumbsUp className="h-4 w-4" />
+									<span className="font-medium">{selectedIssue.upvotes}</span>
+								</Button>
+
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => shareIssue(selectedIssue)}
+									className="flex items-center gap-1 text-gray-600 hover:text-blue-600"
+									title="Share issue"
+								>
+									<Share2 className="h-3 w-3" />
+									<span className="text-xs">Share</span>
+								</Button>
+
+								<Button
+									size="sm"
+									variant="ghost"
+									onClick={() => {
+										if (userLocation) {
+											showDistanceView(selectedIssue);
+										} else {
+											// Try to request location again
+											console.log('Requesting location for Show Distance...');
+											requestLocation();
+											// If still no location after a moment, show message
+											setTimeout(() => {
+												if (!userLocation) {
+													alert('Please allow location access in your browser to use this feature. You may need to refresh the page after enabling location.');
+												} else {
+													showDistanceView(selectedIssue);
+												}
+											}, 1000);
+										}
+									}}
+									className="flex items-center gap-1 text-gray-600 hover:text-purple-600"
+									title="Show route on map"
+								>
+									<Focus className="h-3 w-3" />
+									<span className="text-xs">Show Route</span>
+								</Button>
+
+								{routeDirections && (
 									<Button
 										size="sm"
 										variant="ghost"
-										className="flex items-center gap-1 text-gray-700 hover:text-green-600"
-										onClick={(e) => {
-											e.stopPropagation();
-											handleVote(selectedIssue.id, "upvote");
-										}}
+										onClick={() => setShowDirections(!showDirections)}
+										className="flex items-center gap-1 text-gray-600 hover:text-blue-600"
+										title="Show turn-by-turn directions"
 									>
-										<ThumbsUp className="h-4 w-4" />
-										<span>{selectedIssue.upvotes}</span>
+										<Compass className="h-3 w-3" />
+										<span className="text-xs">Directions</span>
 									</Button>
-								</div>
-								<Badge className={`${severityConfig[selectedIssue.severity as keyof typeof severityConfig].bgColor} ${severityConfig[selectedIssue.severity as keyof typeof severityConfig].textColor} font-medium capitalize px-3 py-1`}>
-									{selectedIssue.severity}
-								</Badge>
+								)}
+
+								<Button
+									size="sm"
+									variant="ghost"
+									onClick={() => {
+										if (userLocation) {
+											const url = `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${selectedIssue.latitude},${selectedIssue.longitude}`;
+											window.open(url, '_blank');
+										} else {
+											const url = `https://www.google.com/maps/place/${selectedIssue.latitude},${selectedIssue.longitude}`;
+											window.open(url, '_blank');
+										}
+									}}
+									className="flex items-center gap-1 text-gray-600 hover:text-green-600"
+								>
+									<Navigation className="h-3 w-3" />
+									<span className="text-xs">Navigate</span>
+								</Button>
 							</div>
+
+							{/* Expand/Collapse Button - Make it more prominent */}
+							<Button
+								variant="outline"
+								size="default"
+								onClick={() => setCardExpanded(!cardExpanded)}
+								className="w-full mb-3 border-gray-400 hover:border-gray-600 bg-white hover:bg-white font-medium text-black hover:text-black"
+							>
+								<Info className="h-4 w-4 mr-2 text-black" />
+								{cardExpanded ? "Hide Details" : "Show More Details"}
+								{cardExpanded ? <ChevronUp className="h-4 w-4 ml-2 text-black" /> : <ChevronDown className="h-4 w-4 ml-2 text-black" />}
+							</Button>
+
+							{/* Directions Panel (when route is shown) */}
+							{showDirections && routeDirections && (
+								<div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+									<div className="flex items-center justify-between mb-3">
+										<h4 className="font-medium text-sm text-blue-900 flex items-center gap-2">
+											<Compass className="h-4 w-4" />
+											Turn-by-Turn Directions
+										</h4>
+										<div className="flex items-center gap-3 text-xs text-blue-700">
+											<div className="flex items-center gap-1">
+												<Clock className="h-3 w-3" />
+												{formatDuration(routeDirections.duration)}
+											</div>
+											<div className="flex items-center gap-1">
+												<MapPin className="h-3 w-3" />
+												{formatDistance(routeDirections.distance)}
+											</div>
+										</div>
+									</div>
+									
+									<div className="space-y-2 max-h-48 overflow-y-auto">
+										{routeDirections.steps.map((step: any, index: number) => {
+											const DirectionIcon = getDirectionIcon(step.maneuver.instruction);
+											return (
+												<div key={index} className="flex items-start gap-3 p-2 bg-white rounded border border-blue-100">
+													<div className="flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full shrink-0 mt-0.5">
+														<DirectionIcon className="h-3 w-3 text-blue-600" />
+													</div>
+													<div className="flex-1 min-w-0">
+														<p className="text-sm font-medium text-gray-900 leading-tight">
+															{step.maneuver.instruction}
+														</p>
+														{step.name && (
+															<p className="text-xs text-gray-600 mt-1">
+																{step.name} • {formatDistance(step.distance)}
+															</p>
+														)}
+													</div>
+												</div>
+											);
+										})}
+									</div>
+
+									{/* Quick action buttons */}
+									<div className="mt-3 flex gap-2">
+										<Button
+											size="sm"
+											variant="outline"
+											onClick={() => {
+												const url = `https://www.google.com/maps/dir/${userLocation?.lat},${userLocation?.lng}/${selectedIssue.latitude},${selectedIssue.longitude}`;
+												window.open(url, '_blank');
+											}}
+											className="flex-1 text-xs"
+										>
+											<ExternalLink className="h-3 w-3 mr-1" />
+											Open in Google Maps
+										</Button>
+										<Button
+											size="sm"
+											variant="outline"
+											onClick={() => {
+												const url = `https://waze.com/ul?ll=${selectedIssue.latitude}%2C${selectedIssue.longitude}&navigate=yes`;
+												window.open(url, '_blank');
+											}}
+											className="flex-1 text-xs"
+										>
+											<Navigation className="h-3 w-3 mr-1" />
+											Open in Waze
+										</Button>
+									</div>
+								</div>
+							)}
+
+							{/* Expandable Details Section */}
+							{cardExpanded && (
+								<div className="space-y-4 border-t border-gray-200 pt-4">
+									{/* Enhanced Distance & Travel Info */}
+									{userLocation && (() => {
+										const distanceInfo = getDistanceInfo(selectedIssue);
+										return distanceInfo ? (
+											<div className="p-3 bg-gray-50 rounded-lg">
+												<h4 className="font-medium text-sm text-gray-900 mb-2 flex items-center gap-2">
+													<MapPin className="h-4 w-4" />
+													Travel Information
+												</h4>
+												<div className="grid grid-cols-2 gap-3 text-xs">
+													<div className="flex items-center gap-2">
+														<span>🚶‍♀️</span>
+														<div>
+															<span className="text-gray-500">Walking:</span>
+															<div className="font-medium text-gray-900">~{distanceInfo.walkingTime} min</div>
+														</div>
+													</div>
+													<div className="flex items-center gap-2">
+														<span>🚗</span>
+														<div>
+															<span className="text-gray-500">Driving:</span>
+															<div className="font-medium text-gray-900">~{distanceInfo.drivingTime} min</div>
+														</div>
+													</div>
+												</div>
+												{userLocation && (
+													<div className="mt-3 flex gap-2">
+														<Button
+															size="sm"
+															variant={drawnRoute ? "default" : "outline"}
+															onClick={() => drawnRoute ? clearRoute() : drawRoute(selectedIssue)}
+															className="flex-1 text-xs"
+														>
+															<Route className="h-3 w-3 mr-1" />
+															{drawnRoute ? "Hide Route" : "Show Route"}
+														</Button>
+														<Button
+															size="sm"
+															variant="outline"
+															onClick={() => {
+																const url = `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${selectedIssue.latitude},${selectedIssue.longitude}`;
+																window.open(url, '_blank');
+															}}
+															className="flex items-center gap-1 text-xs"
+														>
+															<ExternalLink className="h-3 w-3" />
+															Open in Maps
+														</Button>
+													</div>
+												)}
+											</div>
+										) : null;
+									})()}
+
+									{/* Detailed Issue Information */}
+									<div className="p-3 bg-gray-50 rounded-lg">
+										<h4 className="font-medium text-sm text-gray-900 mb-3 flex items-center gap-2">
+											<Info className="h-4 w-4" />
+											Issue Details
+										</h4>
+										<div className="space-y-3">
+											<div>
+												<span className="text-xs text-gray-500 uppercase tracking-wide">Full Description</span>
+												<p className="text-sm text-gray-900 mt-1 leading-relaxed">{selectedIssue.description}</p>
+											</div>
+											
+											<div className="grid grid-cols-2 gap-4">
+												<div>
+													<span className="text-xs text-gray-500 uppercase tracking-wide">Category</span>
+													<div className="flex items-center gap-2 mt-1">
+														<span>{categoryLabels[selectedIssue.categoryId || 'other']}</span>
+														<span className="text-sm font-medium text-gray-900 capitalize">{selectedIssue.categoryId}</span>
+													</div>
+												</div>
+												<div>
+													<span className="text-xs text-gray-500 uppercase tracking-wide">Reporter</span>
+													<div className="flex items-center gap-1 mt-1">
+														<User className="h-3 w-3 text-gray-400" />
+														<span className="text-sm font-medium text-gray-900">{selectedIssue.reporterId}</span>
+													</div>
+												</div>
+											</div>
+
+											<div className="grid grid-cols-2 gap-4">
+												<div>
+													<span className="text-xs text-gray-500 uppercase tracking-wide">Reported</span>
+													<div className="mt-1">
+														<div className="flex items-center gap-1">
+															<Calendar className="h-3 w-3 text-gray-400" />
+															<span className="text-sm font-medium text-gray-900">{new Date(selectedIssue.createdAt).toLocaleDateString()}</span>
+														</div>
+														<div className="flex items-center gap-1 mt-1">
+															<Timer className="h-3 w-3 text-gray-400" />
+															<span className="text-xs text-gray-500">{getTimeAgo(selectedIssue.createdAt)}</span>
+														</div>
+													</div>
+												</div>
+												<div>
+													<span className="text-xs text-gray-500 uppercase tracking-wide">Last Updated</span>
+													<div className="mt-1">
+														<div className="flex items-center gap-1">
+															<Calendar className="h-3 w-3 text-gray-400" />
+															<span className="text-sm font-medium text-gray-900">{new Date(selectedIssue.updatedAt).toLocaleDateString()}</span>
+														</div>
+														<div className="flex items-center gap-1 mt-1">
+															<Timer className="h-3 w-3 text-gray-400" />
+															<span className="text-xs text-gray-500">{getTimeAgo(selectedIssue.updatedAt)}</span>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									{/* Community Engagement */}
+									<div className="p-3 bg-gray-50 rounded-lg">
+										<h4 className="font-medium text-sm text-gray-900 mb-2 flex items-center gap-2">
+											<TrendingUp className="h-4 w-4" />
+											Community Engagement
+										</h4>
+										<div className="flex items-center justify-between">
+											<div className="flex items-center gap-4">
+												<div className="text-center">
+													<div className="text-lg font-bold text-green-600">{selectedIssue.upvotes}</div>
+													<div className="text-xs text-gray-500">Upvotes</div>
+												</div>
+												<div className="text-center">
+													<div className="text-lg font-bold text-gray-600">{selectedIssue.upvotes + selectedIssue.downvotes}</div>
+													<div className="text-xs text-gray-500">Total Interactions</div>
+												</div>
+											</div>
+											<Button
+												size="sm"
+												variant="ghost"
+												className="flex items-center gap-1 text-gray-700 hover:text-green-600 transition-colors"
+												onClick={(e) => {
+													e.stopPropagation();
+													handleVote(selectedIssue.id, "upvote");
+												}}
+											>
+												<ThumbsUp className="h-4 w-4" />
+												<span>Support This Issue</span>
+											</Button>
+										</div>
+									</div>
+
+									{/* Resolution Status */}
+									{selectedIssue.status === 'resolved' && selectedIssue.resolvedAt && (
+										<div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+											<div className="flex items-center gap-2 text-sm text-green-800">
+												<CheckCircle className="h-4 w-4" />
+												<span className="font-medium">Issue Resolved</span>
+											</div>
+											<p className="text-xs text-green-700 mt-1">
+												Resolved {getTimeAgo(selectedIssue.resolvedAt)} on {new Date(selectedIssue.resolvedAt).toLocaleDateString()}
+											</p>
+										</div>
+									)}
+								</div>
+							)}
 						</CardContent>
 					</Card>
 				</div>
