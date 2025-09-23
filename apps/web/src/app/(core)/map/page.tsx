@@ -177,6 +177,26 @@ export default function MapPage() {
 	const [showLegend, setShowLegend] = useState(false);
 	const [mapLoaded, setMapLoaded] = useState(false);
 	const [showSearchPanel, setShowSearchPanel] = useState(true);
+
+	// Rate limiting and throttling state
+	const [apiCallCount, setApiCallCount] = useState(0);
+	const [lastApiCallTime, setLastApiCallTime] = useState(0);
+	const [apiCallCache, setApiCallCache] = useState(new Map());
+	const [rateLimitRetryCount, setRateLimitRetryCount] = useState(0);
+	const [consecutiveFailures, setConsecutiveFailures] = useState(0);
+	const [circuitBreakerOpen, setCircuitBreakerOpen] = useState(false);
+	
+	// API rate limiting configuration
+	const API_RATE_LIMIT = {
+		maxCallsPerMinute: 50, // Conservative limit for Mapbox
+		maxCallsPerHour: 1000,
+		minTimeBetweenCalls: 1000, // 1 second minimum between calls
+		cacheExpiryTime: 5 * 60 * 1000, // 5 minutes cache
+		maxRetries: 3,
+		baseRetryDelay: 1000, // 1 second base delay
+		circuitBreakerThreshold: 5, // Open circuit after 5 consecutive failures
+		circuitBreakerTimeout: 60000 // 1 minute timeout for circuit breaker
+	};
 	const [isLoading, setIsLoading] = useState(true);
 	const [mapError, setMapError] = useState<string | null>(null);
 	const [cardExpanded, setCardExpanded] = useState(false);
@@ -185,6 +205,7 @@ export default function MapPage() {
 	const [userLocationMarker, setUserLocationMarker] = useState<any>(null);
 	const [distanceLine, setDistanceLine] = useState<any>(null);
 	const [routeDirections, setRouteDirections] = useState<any>(null);
+	const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null);
 	const [showDirections, setShowDirections] = useState(false);
 
 	// Debounced search to improve performance
@@ -211,6 +232,174 @@ export default function MapPage() {
 		safety: '🛡️',
 		other: '📍'
 	}), []);
+
+	// Rate limiting and throttling utility functions
+	const generateCacheKey = (userLng: number, userLat: number, targetLng: number, targetLat: number) => {
+		// Round coordinates to reduce cache size while maintaining accuracy
+		const roundedUserLng = Math.round(userLng * 10000) / 10000;
+		const roundedUserLat = Math.round(userLat * 10000) / 10000;
+		const roundedTargetLng = Math.round(targetLng * 10000) / 10000;
+		const roundedTargetLat = Math.round(targetLat * 10000) / 10000;
+		return `${roundedUserLng},${roundedUserLat}-${roundedTargetLng},${roundedTargetLat}`;
+	};
+
+	const isRateLimited = () => {
+		const now = Date.now();
+		const timeSinceLastCall = now - lastApiCallTime;
+		
+		// Check minimum time between calls
+		if (timeSinceLastCall < API_RATE_LIMIT.minTimeBetweenCalls) {
+			return true;
+		}
+		
+		// Reset counter every minute
+		if (timeSinceLastCall > 60000) {
+			setApiCallCount(0);
+		}
+		
+		// Check calls per minute limit
+		if (apiCallCount >= API_RATE_LIMIT.maxCallsPerMinute) {
+			return true;
+		}
+		
+		return false;
+	};
+
+	const getCachedRoute = (cacheKey: string) => {
+		const cached = apiCallCache.get(cacheKey);
+		if (cached && Date.now() - cached.timestamp < API_RATE_LIMIT.cacheExpiryTime) {
+			return cached.data;
+		}
+		return null;
+	};
+
+	const setCachedRoute = (cacheKey: string, data: any) => {
+		setApiCallCache(prev => {
+			const newCache = new Map(prev);
+			newCache.set(cacheKey, {
+				data,
+				timestamp: Date.now()
+			});
+			
+			// Clean old cache entries (keep only last 100 entries)
+			if (newCache.size > 100) {
+				const entries = Array.from(newCache.entries());
+				entries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+				const newMap = new Map(entries.slice(0, 100));
+				return newMap;
+			}
+			
+			return newCache;
+		});
+	};
+
+	const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+	// Debounce utility for preventing rapid API calls
+	const debounceRef = useRef<NodeJS.Timeout | null>(null);
+	const debounce = (func: Function, delay: number) => {
+		return (...args: any[]) => {
+			if (debounceRef.current) {
+				clearTimeout(debounceRef.current);
+			}
+			debounceRef.current = setTimeout(() => func(...args), delay);
+		};
+	};
+
+	const makeThrottledApiCall = async (url: string, cacheKey: string, retryCount = 0): Promise<any> => {
+		// Check cache first
+		const cachedResult = getCachedRoute(cacheKey);
+		if (cachedResult) {
+			console.log('Using cached route data');
+			return cachedResult;
+		}
+
+		// Check circuit breaker
+		if (circuitBreakerOpen) {
+			setRateLimitMessage('Service temporarily unavailable. Please wait before trying again.');
+			throw new Error('Circuit breaker is open. Service temporarily unavailable.');
+		}
+
+		// Check rate limits
+		if (isRateLimited()) {
+			if (retryCount < API_RATE_LIMIT.maxRetries) {
+				const delay = API_RATE_LIMIT.baseRetryDelay * Math.pow(2, retryCount);
+				setRateLimitMessage(`Please wait ${Math.ceil(delay/1000)} seconds before requesting another route...`);
+				console.log(`Rate limited. Retrying in ${delay}ms...`);
+				await sleep(delay);
+				setRateLimitMessage(null);
+				return makeThrottledApiCall(url, cacheKey, retryCount + 1);
+			} else {
+				setRateLimitMessage('Too many requests. Please wait a moment before trying again.');
+				throw new Error('Rate limit exceeded. Please try again later.');
+			}
+		}
+
+		try {
+			// Update rate limiting counters
+			setApiCallCount(prev => prev + 1);
+			setLastApiCallTime(Date.now());
+			
+			const response = await fetch(url);
+			
+			if (!response.ok) {
+				if (response.status === 429) {
+					// Rate limited by API
+					if (retryCount < API_RATE_LIMIT.maxRetries) {
+						const delay = API_RATE_LIMIT.baseRetryDelay * Math.pow(2, retryCount);
+						setRateLimitMessage(`Server busy. Retrying in ${Math.ceil(delay/1000)} seconds...`);
+						console.log(`API rate limited. Retrying in ${delay}ms...`);
+						await sleep(delay);
+						setRateLimitMessage(null);
+						return makeThrottledApiCall(url, cacheKey, retryCount + 1);
+					} else {
+						setRateLimitMessage('Service temporarily unavailable. Please try again later.');
+						throw new Error('API rate limit exceeded. Please try again later.');
+					}
+				}
+				throw new Error(`API request failed: ${response.status}`);
+			}
+			
+			const data = await response.json();
+			
+			// Cache successful response
+			setCachedRoute(cacheKey, data);
+			setRateLimitRetryCount(0); // Reset retry count on success
+			setConsecutiveFailures(0); // Reset failure count on success
+			
+			return data;
+		} catch (error) {
+			console.error('API call failed:', error);
+			
+			// Enhanced error handling and circuit breaker management
+			setConsecutiveFailures(prev => {
+				const newFailureCount = prev + 1;
+				if (newFailureCount >= API_RATE_LIMIT.circuitBreakerThreshold) {
+					setCircuitBreakerOpen(true);
+					setRateLimitMessage('Multiple request failures detected. Service paused temporarily.');
+					// Auto-recover after timeout
+					setTimeout(() => {
+						setCircuitBreakerOpen(false);
+						setConsecutiveFailures(0);
+						console.log('Circuit breaker reset');
+					}, API_RATE_LIMIT.circuitBreakerTimeout);
+				}
+				return newFailureCount;
+			});
+
+			if (error instanceof TypeError && error.message.includes('fetch')) {
+				setRateLimitMessage('Network connection issue. Please check your internet connection.');
+			} else if (error instanceof Error) {
+				if (error.message.includes('Rate limit') || error.message.includes('rate limit')) {
+					// Rate limit message already set above
+				} else {
+					setRateLimitMessage('Unable to calculate route. Please try again later.');
+				}
+			}
+			
+			throw error;
+		}
+	};
 
 	// Function to calculate distance between two coordinates
 	const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -401,8 +590,8 @@ export default function MapPage() {
 		return ArrowUp; // Default
 	};
 
-	// Show distance by panning to fit both user location and marker, with actual route path
-	const showDistanceView = async (issue: Issue) => {
+	// Internal function for showing distance view (not debounced)
+	const _showDistanceView = async (issue: Issue) => {
 		if (!userLocation || !map.current) return;
 
 		// Clear any existing distance markers and lines
@@ -448,13 +637,16 @@ export default function MapPage() {
 
 			setUserLocationMarker(userMarker);
 
-			// Get actual route using Mapbox Directions API with detailed steps
+			// Get actual route using Mapbox Directions API with detailed steps and rate limiting
 			try {
 				const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 				const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${userLocation.lng},${userLocation.lat};${issue.longitude},${issue.latitude}?geometries=geojson&steps=true&banner_instructions=true&voice_instructions=true&access_token=${accessToken}`;
 				
-				const response = await fetch(directionsUrl);
-				const data = await response.json();
+				// Generate cache key for this route
+				const cacheKey = generateCacheKey(userLocation.lng, userLocation.lat, issue.longitude, issue.latitude);
+				
+				// Use throttled API call with caching and rate limiting
+				const data = await makeThrottledApiCall(directionsUrl, cacheKey);
 
 				if (data.routes && data.routes.length > 0) {
 					const route = data.routes[0];
@@ -542,6 +734,12 @@ export default function MapPage() {
 			console.error('Error showing distance view:', error);
 		}
 	};
+
+	// Debounced version to prevent rapid API calls
+	const showDistanceView = useMemo(
+		() => debounce(_showDistanceView, 1000), // 1 second debounce
+		[_showDistanceView]
+	);
 
 	// Fallback function for straight line when routing fails
 	const showStraightLineDistance = async (issue: Issue) => {
@@ -679,6 +877,42 @@ export default function MapPage() {
 		);
 	};
 
+	// Clear rate limit message after 10 seconds
+	useEffect(() => {
+		if (rateLimitMessage) {
+			const timer = setTimeout(() => {
+				setRateLimitMessage(null);
+			}, 10000);
+			return () => clearTimeout(timer);
+		}
+	}, [rateLimitMessage]);
+
+	// Enhanced API usage monitoring and logging
+	useEffect(() => {
+		const logApiUsage = () => {
+			if (apiCallCount > 0 || apiCallCache.size > 0) {
+				console.log(`📊 API Usage Stats:
+					• Calls made this session: ${apiCallCount}
+					• Cached routes: ${apiCallCache.size}
+					• Consecutive failures: ${consecutiveFailures}
+					• Circuit breaker: ${circuitBreakerOpen ? 'OPEN' : 'CLOSED'}
+					• Cache hit rate: ${apiCallCache.size > 0 ? ((apiCallCache.size / (apiCallCount + apiCallCache.size)) * 100).toFixed(1) + '%' : '0%'}`);
+			}
+		};
+
+		const interval = setInterval(logApiUsage, 60000); // Log every minute
+		return () => clearInterval(interval);
+	}, [apiCallCount, apiCallCache.size, consecutiveFailures, circuitBreakerOpen]);
+
+	// Log when circuit breaker changes state
+	useEffect(() => {
+		if (circuitBreakerOpen) {
+			console.warn('🚨 Circuit breaker OPENED - API requests temporarily blocked');
+		} else if (consecutiveFailures > 0) {
+			console.log('✅ Circuit breaker CLOSED - API requests resumed');
+		}
+	}, [circuitBreakerOpen, consecutiveFailures]);
+
 	// Get user's current location on mount
 	useEffect(() => {
 		requestLocation();
@@ -722,16 +956,33 @@ export default function MapPage() {
 					maxBounds: [
 						[-78.5, 17.5], // Southwest coordinates of Jamaica
 						[-76.0, 18.8]  // Northeast coordinates of Jamaica
-					]
+					],
+					// Disable default controls to prevent duplicates
+					attributionControl: false,
+					logoPosition: 'bottom-left'
 				});
 
-				map.current.addControl(new mapboxgl.default.NavigationControl());
-				map.current.addControl(new mapboxgl.default.GeolocateControl({
+				// Add navigation control with mobile optimization
+				const navControl = new mapboxgl.default.NavigationControl({
+					showCompass: false, // Hide compass on mobile for space
+					showZoom: true,
+					visualizePitch: false
+				});
+				map.current.addControl(navControl, 'top-right');
+				// Add geolocate control with mobile optimization
+				const geolocateControl = new mapboxgl.default.GeolocateControl({
 					positionOptions: {
 						enableHighAccuracy: true
 					},
-					trackUserLocation: true
-				}));
+					trackUserLocation: true,
+					showUserHeading: true
+				});
+				map.current.addControl(geolocateControl, 'top-right');
+				
+				// Add attribution control manually for proper licensing
+				map.current.addControl(new mapboxgl.default.AttributionControl({
+					compact: true
+				}), 'bottom-right');
 
 				map.current.on('load', () => {
 					console.log('Map loaded successfully');
@@ -739,7 +990,93 @@ export default function MapPage() {
 					// Skip loading custom icons - we'll use the circle markers only
 					// Chrome has issues with dynamically created SVG blob URLs
 
+					// Add mobile-optimized styles for navigation controls
+					if (!document.getElementById('mobile-map-controls')) {
+						const style = document.createElement('style');
+						style.id = 'mobile-map-controls';
+						style.textContent = `
+							/* Mobile-optimized navigation controls */
+							.mapboxgl-ctrl-top-right {
+								top: 10px !important;
+								right: 10px !important;
+							}
+							
+							/* Remove any duplicate controls */
+							.mapboxgl-ctrl-top-right .mapboxgl-ctrl-group:not(:first-child) {
+								margin-top: 8px !important;
+							}
+							
+							@media (max-width: 640px) {
+								.mapboxgl-ctrl-group {
+									box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+									border-radius: 8px !important;
+									overflow: hidden !important;
+									background: white !important;
+								}
+								
+								.mapboxgl-ctrl-zoom-in,
+								.mapboxgl-ctrl-zoom-out {
+									width: 44px !important;
+									height: 44px !important;
+									font-size: 18px !important;
+									line-height: 44px !important;
+									border: none !important;
+									background: white !important;
+									cursor: pointer !important;
+								}
+								
+								.mapboxgl-ctrl-zoom-in {
+									border-bottom: 1px solid #e5e5e5 !important;
+								}
+								
+								.mapboxgl-ctrl-zoom-in:hover,
+								.mapboxgl-ctrl-zoom-out:hover {
+									background: #f5f5f5 !important;
+								}
+								
+								/* Better touch targets for mobile */
+								.mapboxgl-ctrl button {
+									touch-action: manipulation !important;
+									user-select: none !important;
+									-webkit-tap-highlight-color: transparent !important;
+								}
+								
+								/* Geolocate control mobile optimization */
+								.mapboxgl-ctrl-geolocate {
+									width: 44px !important;
+									height: 44px !important;
+									border-radius: 8px !important;
+									background: white !important;
+									border: none !important;
+									box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+									cursor: pointer !important;
+								}
+								
+								.mapboxgl-ctrl-geolocate:hover {
+									background: #f5f5f5 !important;
+								}
+								
+								.mapboxgl-ctrl-geolocate .mapboxgl-ctrl-icon {
+									background-size: 20px !important;
+								}
+							}
+						`;
+						document.head.appendChild(style);
+					}
+
 					setMapLoaded(true);
+				});
+
+				// Add click handler to clear routes when clicking on empty map areas
+				map.current.on('click', (e) => {
+					// Only clear routes if no issue is selected (card is hidden)
+					// This allows routes to persist when card is visible
+					if (!selectedIssue) {
+						clearRoute();
+						clearDistanceView();
+						setShowDirections(false);
+						setRouteDirections(null);
+					}
 				});
 
 			} catch (error) {
@@ -1414,6 +1751,7 @@ export default function MapPage() {
 									variant="ghost"
 									size="sm"
 									onClick={() => setShowLegend(false)}
+									className="text-black hover:text-gray-700"
 								>
 									<X className="h-4 w-4" />
 								</Button>
@@ -1523,11 +1861,10 @@ export default function MapPage() {
 										onClick={() => {
 											setSelectedIssue(null);
 											setCardExpanded(false);
-											clearRoute();
-											clearDistanceView();
+											// Keep route and directions visible - don't clear them
 										}}
 										className="h-8 w-8 p-0 border-gray-300 hover:border-gray-500 hover:bg-gray-50"
-										title="Close"
+										title="Hide Issue Card"
 									>
 										<X className="h-4 w-4 text-gray-600" />
 									</Button>
@@ -1651,6 +1988,16 @@ export default function MapPage() {
 							</div>
 
 							{/* Expand/Collapse Button - Make it more prominent */}
+							{/* Rate Limit Message */}
+							{rateLimitMessage && (
+								<div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+									<div className="flex items-center">
+										<AlertCircle className="h-4 w-4 mr-2 text-yellow-600" />
+										<span className="text-sm text-yellow-800">{rateLimitMessage}</span>
+									</div>
+								</div>
+							)}
+
 							<Button
 								variant="outline"
 								size="default"
@@ -1670,15 +2017,31 @@ export default function MapPage() {
 											<Compass className="h-4 w-4" />
 											Turn-by-Turn Directions
 										</h4>
-										<div className="flex items-center gap-3 text-xs text-blue-700">
-											<div className="flex items-center gap-1">
-												<Clock className="h-3 w-3" />
-												{formatDuration(routeDirections.duration)}
+										<div className="flex items-center gap-2">
+											<div className="flex items-center gap-3 text-xs text-blue-700">
+												<div className="flex items-center gap-1">
+													<Clock className="h-3 w-3" />
+													{formatDuration(routeDirections.duration)}
+												</div>
+												<div className="flex items-center gap-1">
+													<MapPin className="h-3 w-3" />
+													{formatDistance(routeDirections.distance)}
+												</div>
 											</div>
-											<div className="flex items-center gap-1">
-												<MapPin className="h-3 w-3" />
-												{formatDistance(routeDirections.distance)}
-											</div>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={() => {
+													clearRoute();
+													clearDistanceView();
+													setShowDirections(false);
+													setRouteDirections(null);
+												}}
+												className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+												title="Clear Route"
+											>
+												<X className="h-3 w-3" />
+											</Button>
 										</div>
 									</div>
 									
