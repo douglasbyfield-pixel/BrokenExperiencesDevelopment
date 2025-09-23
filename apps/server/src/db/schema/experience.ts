@@ -21,8 +21,8 @@ export const ExperiencePriorityEnum = {
 
 export const experience = p.pgTable("experience", {
 	id: p.uuid().primaryKey().defaultRandom(),
-	reported_by: p.uuid().references(() => user.id, { onDelete: "cascade" }),
-	category_id: p.uuid().references(() => category.id, { onDelete: "cascade" }),
+	reportedBy: p.uuid().references(() => user.id, { onDelete: "cascade" }),
+	categoryId: p.uuid().references(() => category.id, { onDelete: "cascade" }),
 	title: p.text().notNull(),
 	description: p.text().notNull(),
 	latitude: p.decimal().notNull(),
@@ -38,21 +38,21 @@ export const experience = p.pgTable("experience", {
 		.notNull()
 		.$type<ExperiencePriority>()
 		.default(ExperiencePriorityEnum.medium),
-	created_at: p.timestamp().notNull().defaultNow(),
-	resolved_at: p.timestamp(),
-	updated_at: p.timestamp().notNull().defaultNow(),
+	createdAt: p.timestamp().notNull().defaultNow(),
+	resolvedAt: p.timestamp(),
+	updatedAt: p.timestamp().notNull().defaultNow(),
 	upvotes: p.integer().notNull().default(0),
 	downvotes: p.integer().notNull().default(0),
 });
 
 export const experienceRelations = relations(experience, ({ one ,many}) => ({
-	reported_by: one(user, {
-		fields: [experience.reported_by],
+	reportedBy: one(user, {
+		fields: [experience.reportedBy],
 		references: [user.id],
 	}),
 	category: one(category, {
-		fields: [experience.category_id],
+		fields: [experience.categoryId],
 		references: [category.id],
 	}),
-	experience_images: many(experienceImage),
+	experienceImages: many(experienceImage),
 }));
