@@ -26,6 +26,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@libs/*": [
+        "../../packages/libs/src/*"
       ]
     }
   },
@@ -35,7 +38,7 @@
     "./.next/types/**/*.ts",
     "./next-env.d.ts",
     ".next/types/**/*.ts",
-    "../../packages/libs/src/api/index.ts"
+    "../../packages/libs/src/index.ts"
   ],
   "exclude": [
     "./node_modules"

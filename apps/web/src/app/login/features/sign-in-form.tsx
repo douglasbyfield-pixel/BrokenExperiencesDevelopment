@@ -1,12 +1,12 @@
-import { authClient } from "@/lib/auth-client";
 import { useForm } from "@tanstack/react-form";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import z from "zod";
-import Loader from "./loader";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import Loader from "../../../components/loader";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
 
 export default function SignInForm({
 	onSwitchToSignUp,
@@ -52,8 +52,8 @@ export default function SignInForm({
 
 	return (
 		<div className="w-full">
-			<div className="text-center mb-8">
-				<h2 className="text-2xl font-bold text-black mb-2">Welcome back</h2>
+			<div className="mb-8 text-center">
+				<h2 className="mb-2 font-bold text-2xl text-black">Welcome back</h2>
 				<p className="text-gray-600">Sign in to your account</p>
 			</div>
 
@@ -69,7 +69,7 @@ export default function SignInForm({
 					<form.Field name="email">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name} className="text-sm font-medium text-black">
+								<Label htmlFor={field.name} className="font-medium text-black text-sm">
 									Email address
 								</Label>
 								<Input
@@ -80,10 +80,10 @@ export default function SignInForm({
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
-									className="w-full h-12 px-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black bg-white transition-all duration-200"
+									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
 								/>
 								{field.state.meta.errors.map((error) => (
-									<p key={error?.message} className="text-sm text-red-500 mt-1">
+									<p key={error?.message} className="mt-1 text-red-500 text-sm">
 										{error?.message}
 									</p>
 								))}
@@ -96,7 +96,7 @@ export default function SignInForm({
 					<form.Field name="password">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name} className="text-sm font-medium text-black">
+								<Label htmlFor={field.name} className="font-medium text-black text-sm">
 									Password
 								</Label>
 								<Input
@@ -107,10 +107,10 @@ export default function SignInForm({
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
-									className="w-full h-12 px-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black bg-white transition-all duration-200"
+									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
 								/>
 								{field.state.meta.errors.map((error) => (
-									<p key={error?.message} className="text-sm text-red-500 mt-1">
+									<p key={error?.message} className="mt-1 text-red-500 text-sm">
 										{error?.message}
 									</p>
 								))}
@@ -122,7 +122,7 @@ export default function SignInForm({
 				<div className="flex items-center justify-end">
 					<button
 						type="button"
-						className="text-sm text-black hover:text-gray-700 font-medium underline"
+						className="font-medium text-black text-sm underline hover:text-gray-700"
 					>
 						Forgot password?
 					</button>
@@ -132,7 +132,7 @@ export default function SignInForm({
 					{(state) => (
 						<Button
 							type="submit"
-							className="w-full h-12 bg-black hover:bg-gray-800 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+							className="h-12 w-full rounded-xl bg-black font-medium text-white shadow-lg transition-all duration-200 hover:bg-gray-800 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
 							disabled={!state.canSubmit || state.isSubmitting}
 						>
 							{state.isSubmitting ? "Signing in..." : "Sign In"}
@@ -141,15 +141,16 @@ export default function SignInForm({
 				</form.Subscribe>
 			</form>
 
-			<div className="mt-8 pt-6 border-t border-gray-200">
+			<div className="mt-8 border-gray-200 border-t pt-6">
 				<div className="text-center">
 					<span className="text-gray-600">Don't have an account? </span>
-					<button
+					<Button
+						variant="link"
 						onClick={onSwitchToSignUp}
-						className="text-black hover:text-gray-700 font-medium underline transition-colors duration-200"
+						className="font-medium text-black underline transition-colors duration-200 hover:text-gray-700"
 					>
 						Sign up
-					</button>
+					</Button>
 				</div>
 			</div>
 		</div>
