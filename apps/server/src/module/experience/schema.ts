@@ -19,7 +19,7 @@ export const experienceCreateSchema = t.Object({
 	latitude: baseExperienceInsertSchema.properties.latitude,
 	longitude: baseExperienceInsertSchema.properties.longitude,
 	address: baseExperienceInsertSchema.properties.address,
-	category_id: baseExperienceInsertSchema.properties.category_id,
+	categoryId: baseExperienceInsertSchema.properties.categoryId,
 	status: t.Enum(ExperienceStatusEnum, {default: ExperienceStatusEnum.pending}),
 	priority: t.Enum(ExperiencePriorityEnum, {default: ExperiencePriorityEnum.medium}),
 	experience_images: t.Files()

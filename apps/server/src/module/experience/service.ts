@@ -23,7 +23,7 @@ export const createExperience = async (options: { data: ExperienceCreate }) => {
 				latitude: data.latitude,
 				longitude: data.longitude,
 				address: data.address,
-				category_id: data.category_id,
+				categoryId: data.categoryId,
 				status: data.status,
 				priority: data.priority,
 			})
@@ -32,8 +32,8 @@ export const createExperience = async (options: { data: ExperienceCreate }) => {
 		const [newExperienceImage] = await tx
 			.insert(experienceImage)
 			.values({
-				experience_id: newExperience.id,
-				image_url: data.experience_images[0].name,
+				experienceId: newExperience.id,
+				imageUrl: data.experience_images[0].name,
 			})
 			.returning();
 
@@ -49,7 +49,7 @@ export const createExperience = async (options: { data: ExperienceCreate }) => {
 export const getExperience = async (options?: { id: string }) => {
 	const getExperience = await db.query.experience.findFirst({
 		where: (experience, { eq }) => eq(experience.id, options?.id as string),
-		with: { experience_images: true },
+		with: { experienceImages: true },
 	});
 
 	return getExperience;
