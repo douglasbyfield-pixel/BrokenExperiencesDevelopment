@@ -400,7 +400,7 @@ const MapScreen = memo(() => {
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                 attribution: '© OpenStreetMap © CartoDB',
                 subdomains: 'abcd',
-                maxZoom: 19
+                maxZoom: 25
             }).addTo(map);
 
             // Initialize marker cluster group
@@ -591,7 +591,7 @@ const MapScreen = memo(() => {
                 ]}>
                   <Ionicons 
                     name={getCategoryIcon(issue.category) as any}
-                    size={16} 
+                    size={25} 
                     color="white"
                   />
                 </View>

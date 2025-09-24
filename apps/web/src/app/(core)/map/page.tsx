@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,7 +177,7 @@ export default function MapPage() {
 	const [showFilters, setShowFilters] = useState(false);
 	const [showLegend, setShowLegend] = useState(false);
 	const [mapLoaded, setMapLoaded] = useState(false);
-	const [showSearchPanel, setShowSearchPanel] = useState(true);
+	const [showSearchPanel, setShowSearchPanel] = useState(false);
 
 	// Rate limiting and throttling state
 	const [apiCallCount, setApiCallCount] = useState(0);
@@ -219,6 +220,49 @@ export default function MapPage() {
 		return () => clearTimeout(timer);
 	}, [searchQuery]);
 
+	// Auto-close search panel when not actively being used
+	useEffect(() => {
+		if (showSearchPanel && !searchQuery && !showFilters && !showLegend) {
+			// Auto-close after 5 seconds of inactivity if search is empty
+			const autoCloseTimer = setTimeout(() => {
+				setShowSearchPanel(false);
+			}, 5000);
+
+			return () => clearTimeout(autoCloseTimer);
+		}
+	}, [showSearchPanel, searchQuery, showFilters, showLegend]);
+
+	// Close search panel when clicking on the map (outside search area)
+	useEffect(() => {
+		const handleMapClick = (e: MouseEvent) => {
+			// Check if click is outside the search panel area
+			const target = e.target as HTMLElement;
+			const searchPanel = target.closest('[data-search-panel]');
+			const searchButton = target.closest('[data-search-button]');
+			
+			if (!searchPanel && !searchButton && showSearchPanel && !searchQuery) {
+				setShowSearchPanel(false);
+			}
+		};
+
+		if (showSearchPanel) {
+			document.addEventListener('click', handleMapClick);
+			return () => document.removeEventListener('click', handleMapClick);
+		}
+	}, [showSearchPanel, searchQuery]);
+
+	// Auto-close search when an issue is selected (from marker click or search result)
+	useEffect(() => {
+		if (selectedIssue && showSearchPanel && !searchQuery) {
+			// Close search panel when viewing an issue
+			const closeTimer = setTimeout(() => {
+				setShowSearchPanel(false);
+			}, 1000); // Give user time to see the transition
+
+			return () => clearTimeout(closeTimer);
+		}
+	}, [selectedIssue, showSearchPanel, searchQuery]);
+
 	// Memoized category labels for performance
 	const categoryLabels = useMemo(() => ({
 		lighting: '💡',
@@ -234,13 +278,13 @@ export default function MapPage() {
 	}), []);
 
 	// Rate limiting and throttling utility functions
-	const generateCacheKey = (userLng: number, userLat: number, targetLng: number, targetLat: number) => {
+	const generateCacheKey = (userLng: number, userLat: number, targetLng: number, targetLat: number, profile: string = 'driving') => {
 		// Round coordinates to reduce cache size while maintaining accuracy
 		const roundedUserLng = Math.round(userLng * 10000) / 10000;
 		const roundedUserLat = Math.round(userLat * 10000) / 10000;
 		const roundedTargetLng = Math.round(targetLng * 10000) / 10000;
 		const roundedTargetLat = Math.round(targetLat * 10000) / 10000;
-		return `${roundedUserLng},${roundedUserLat}-${roundedTargetLng},${roundedTargetLat}`;
+		return `${profile}_${roundedUserLng},${roundedUserLat}-${roundedTargetLng},${roundedTargetLat}`;
 	};
 
 	const isRateLimited = () => {
@@ -470,9 +514,9 @@ export default function MapPage() {
 					'line-cap': 'round'
 				},
 				paint: {
-					'line-color': '#3b82f6',
-					'line-width': 4,
-					'line-opacity': 0.8
+					'line-color': '#62B1F6', // Bright blue for dark theme
+					'line-width': 6,
+					'line-opacity': 1
 				}
 			});
 
@@ -483,7 +527,12 @@ export default function MapPage() {
 				.extend([userLocation.lng, userLocation.lat])
 				.extend([issue.longitude, issue.latitude]);
 			
-			map.current.fitBounds(bounds, { padding: 50, duration: 1000 });
+			map.current.fitBounds(bounds, { 
+				padding: 50, 
+				duration: 1000,
+				pitch: 0, // Keep flat view
+				bearing: 0 // North-up orientation
+			});
 
 		} catch (error) {
 			console.error('Error drawing route:', error);
@@ -640,17 +689,57 @@ export default function MapPage() {
 			// Get actual route using Mapbox Directions API with detailed steps and rate limiting
 			try {
 				const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-				const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${userLocation.lng},${userLocation.lat};${issue.longitude},${issue.latitude}?geometries=geojson&steps=true&banner_instructions=true&voice_instructions=true&access_token=${accessToken}`;
 				
-				// Generate cache key for this route
-				const cacheKey = generateCacheKey(userLocation.lng, userLocation.lat, issue.longitude, issue.latitude);
+				// Use higher precision coordinates (6 decimal places)
+				const fromCoords = `${userLocation.lng.toFixed(6)},${userLocation.lat.toFixed(6)}`;
+				const toCoords = `${issue.longitude.toFixed(6)},${issue.latitude.toFixed(6)}`;
 				
-				// Use throttled API call with caching and rate limiting
-				const data = await makeThrottledApiCall(directionsUrl, cacheKey);
+				// Try driving first, then walking as fallback
+				const profiles = ['driving', 'walking'];
+				let routeData = null;
+				
+				for (const profile of profiles) {
+					const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${fromCoords};${toCoords}?geometries=geojson&steps=true&overview=full&alternatives=false&continue_straight=false&annotations=duration,distance&access_token=${accessToken}`;
+					
+					// Generate cache key for this route
+					const cacheKey = generateCacheKey(userLocation.lng, userLocation.lat, issue.longitude, issue.latitude, profile);
+					
+					try {
+						// Use throttled API call with caching and rate limiting
+						const data = await makeThrottledApiCall(directionsUrl, cacheKey);
+						
+						if (data.routes && data.routes.length > 0 && data.routes[0].geometry && data.routes[0].geometry.coordinates.length > 1) {
+							routeData = data;
+							console.log(`Successfully got ${profile} route with ${data.routes[0].geometry.coordinates.length} points`);
+							break;
+						}
+					} catch (profileError) {
+						console.warn(`${profile} routing failed:`, profileError);
+						continue;
+					}
+				}
+				
+				if (!routeData) {
+					throw new Error('No valid route found with any profile');
+				}
+				
+				const data = routeData;
+				
+				console.log('Directions API response:', data);
 
 				if (data.routes && data.routes.length > 0) {
 					const route = data.routes[0];
 					const routeGeometry = route.geometry;
+					
+					// Validate route geometry
+					if (!routeGeometry || !routeGeometry.coordinates || routeGeometry.coordinates.length === 0) {
+						console.error('Invalid route geometry received');
+						throw new Error('Invalid route geometry');
+					}
+					
+					console.log('Route geometry coordinates count:', routeGeometry.coordinates.length);
+					console.log('Route distance:', route.distance, 'meters');
+					console.log('Route duration:', route.duration, 'seconds');
 
 					// Store detailed route information
 					setRouteDirections({
@@ -660,12 +749,23 @@ export default function MapPage() {
 						summary: route.legs[0].summary || 'Route to issue location'
 					});
 
-					// Add route source
+					// Clear any existing routes first to prevent overlap
+					try {
+						if (map.current.getSource('route-path')) {
+							map.current.removeSource('route-path');
+						}
+					} catch (e) {
+						// Source doesn't exist, that's fine
+					}
+
+					// Add route source with proper error handling
 					map.current.addSource('route-path', {
 						type: 'geojson',
 						data: {
 							type: 'Feature',
-							properties: {},
+							properties: {
+								'route-type': 'directions'
+							},
 							geometry: routeGeometry
 						}
 					});
@@ -680,9 +780,9 @@ export default function MapPage() {
 							'line-cap': 'round'
 						},
 						paint: {
-							'line-color': '#3b82f6',
-							'line-width': 6,
-							'line-opacity': 0.8
+							'line-color': '#62B1F6', // Bright blue for dark theme
+							'line-width': 10,
+							'line-opacity': 1
 						}
 					});
 
@@ -696,25 +796,16 @@ export default function MapPage() {
 							'line-cap': 'round'
 						},
 						paint: {
-							'line-color': '#ffffff',
-							'line-width': 8,
-							'line-opacity': 0.4
+							'line-color': '#1a1a1a',
+							'line-width': 14,
+							'line-opacity': 1
 						}
 					}, 'route-path');
 
 					setDistanceLine(routeGeometry);
 
-					// Fit map to route bounds
-					const coordinates = routeGeometry.coordinates;
-					const bounds = coordinates.reduce((bounds: any, coord: any) => {
-						return bounds.extend(coord);
-					}, new (window as any).mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
-
-					map.current.fitBounds(bounds, {
-						padding: 80,
-						duration: 1500,
-						maxZoom: 15
-					});
+					// Don't change the map view - keep the current 3D view and zoom level
+					// Route will be visible but user can pan to see it fully
 
 					console.log('Route path shown with actual directions');
 
@@ -776,9 +867,9 @@ export default function MapPage() {
 				'line-cap': 'round'
 			},
 			paint: {
-				'line-color': '#3b82f6',
-				'line-width': 3,
-				'line-opacity': 0.8,
+				'line-color': '#62B1F6', // Bright blue for dark theme
+				'line-width': 5,
+				'line-opacity': 1,
 				'line-dasharray': [2, 2]
 			}
 		});
@@ -794,7 +885,9 @@ export default function MapPage() {
 		map.current.fitBounds(bounds, { 
 			padding: 100, 
 			duration: 1500,
-			maxZoom: 15
+			maxZoom: 16, // Good visibility without being too close
+			pitch: 0, // Keep flat view
+			bearing: 0 // North-up orientation
 		});
 	};
 
@@ -939,56 +1032,340 @@ export default function MapPage() {
 			if (map.current || !mapContainer.current) return;
 
 			try {
+				console.log('Starting map initialization...');
+				
 				// Dynamic import to avoid SSR issues
 				const mapboxgl = await import('mapbox-gl');
+				console.log('Mapbox GL imported successfully');
 				
 				// Make mapboxgl available globally for marker creation
 				(window as any).mapboxgl = mapboxgl.default;
 				
-				mapboxgl.default.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
+				const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+				console.log('Mapbox token exists:', !!token);
+				
+				if (!token) {
+					throw new Error('Mapbox access token is missing');
+				}
+				
+				mapboxgl.default.accessToken = token;
 
-				const mapStyle = settings?.display?.mapStyle || 'streets-v12';
-				map.current = new mapboxgl.default.Map({
-					container: mapContainer.current,
-					style: `mapbox://styles/mapbox/${mapStyle}`,
-					center: [-77.2975, 18.1096], // Jamaica center
-					zoom: 8.5, // Better initial zoom for Jamaica
-					maxBounds: [
-						[-78.5, 17.5], // Southwest coordinates of Jamaica
-						[-76.0, 18.8]  // Northeast coordinates of Jamaica
-					],
-					// Disable default controls to prevent duplicates
-					attributionControl: false,
-					logoPosition: 'bottom-left'
-				});
+				// Get user location first, then create map
+				if (navigator.geolocation) {
+					navigator.geolocation.getCurrentPosition(
+						(position) => {
+							const userLng = position.coords.longitude;
+							const userLat = position.coords.latitude;
+							
+							// Create map centered on user location with enhanced 3D appearance
+							map.current = new mapboxgl.default.Map({
+								container: mapContainer.current,
+								style: 'mapbox://styles/mapbox/streets-v12', // Clean street style with names
+								center: [userLng, userLat], // Start at user location
+								zoom: 18, // Street level detail
+								pitch: 60, // More dramatic 3D tilt (increased from 45)
+								bearing: 0, // North-up initially
+								minZoom: 10,
+								maxZoom: 22,
+								maxBounds: [
+									[-78.5, 17.5], // Southwest coordinates of Jamaica
+									[-76.0, 18.8]  // Northeast coordinates of Jamaica
+								],
+								// Disable default controls to prevent duplicates
+								attributionControl: false,
+								antialias: true, // Better rendering for 3D
+								// Optimize for mobile and 3D
+								trackResize: true,
+								touchZoomRotate: true,
+								doubleClickZoom: true,
+								keyboard: false,
+								dragRotate: true, // Allow rotation for better 3D navigation
+								touchPitch: true, // Allow touch pitch control
+								// Enhanced 3D settings
+								projection: 'mercator'
+							});
+							
+							// Set user location immediately
+							setUserLocation({
+								lat: userLat,
+								lng: userLng
+							});
+							
+							// Continue with map setup
+							setupMapControls();
+						},
+						(error) => {
+							console.log('Geolocation failed, using default center:', error);
+							// Fallback to default location with enhanced 3D appearance
+							map.current = new mapboxgl.default.Map({
+								container: mapContainer.current,
+								style: 'mapbox://styles/mapbox/streets-v12', // Clean street style with names
+								center: [-77.2975, 18.1096], // Jamaica center
+								zoom: 18, // Street level detail
+								pitch: 60, // More dramatic 3D tilt
+								bearing: 0, // North-up
+								minZoom: 10,
+								maxZoom: 22,
+								maxBounds: [
+									[-78.5, 17.5], // Southwest coordinates of Jamaica
+									[-76.0, 18.8]  // Northeast coordinates of Jamaica
+								],
+								// Disable default controls to prevent duplicates
+								attributionControl: false,
+								antialias: true, // Better rendering for 3D
+								// Enhanced 3D controls
+								trackResize: true,
+								touchZoomRotate: true,
+								doubleClickZoom: true,
+								keyboard: false,
+								dragRotate: true,
+								touchPitch: true,
+								projection: 'mercator'
+							});
+							
+							setupMapControls();
+						},
+						{
+							enableHighAccuracy: true,
+							timeout: 5000,
+							maximumAge: 0
+						}
+					);
+				} else {
+					// Fallback if geolocation not supported with enhanced 3D appearance
+					map.current = new mapboxgl.default.Map({
+						container: mapContainer.current,
+						style: 'mapbox://styles/mapbox/streets-v12', // Clean street style with names
+						center: [-77.2975, 18.1096], // Jamaica center
+						zoom: 18, // Street level detail
+						pitch: 60, // More dramatic 3D tilt
+						bearing: 0, // North-up
+						minZoom: 10,
+						maxZoom: 22,
+						maxBounds: [
+							[-78.5, 17.5], // Southwest coordinates of Jamaica
+							[-76.0, 18.8]  // Northeast coordinates of Jamaica
+						],
+						// Disable default controls to prevent duplicates
+						attributionControl: false,
+						antialias: true, // Better rendering for 3D
+						// Enhanced 3D controls
+						trackResize: true,
+						touchZoomRotate: true,
+						doubleClickZoom: true,
+						keyboard: false,
+						dragRotate: true,
+						touchPitch: true,
+						projection: 'mercator'
+					});
+					
+					setupMapControls();
+				}
+				
+				function setupMapControls() {
+					// Remove navigation controls for cleaner interface
+				// Store original methods for selective use (like search panning)
+				const originalMethods = {
+					flyTo: map.current.flyTo,
+					jumpTo: map.current.jumpTo,
+					easeTo: map.current.easeTo,
+					fitBounds: map.current.fitBounds,
+					setCenter: map.current.setCenter,
+					setZoom: map.current.setZoom,
+					zoomTo: map.current.zoomTo
+				};
+				
+				// Store in window for access from search functions
+				(window as any).originalMapMethods = originalMethods;
+				
+				// Disable view-changing methods but allow manual zoom controls to work
+				map.current.flyTo = () => { console.log('flyTo blocked to maintain 3D view'); };
+				map.current.jumpTo = () => { console.log('jumpTo blocked to maintain 3D view'); };
+				map.current.easeTo = () => { console.log('easeTo blocked to maintain 3D view'); };
+				map.current.fitBounds = () => { console.log('fitBounds blocked to maintain 3D view'); };
+				map.current.setCenter = () => { console.log('setCenter blocked to maintain 3D view'); };
+				// Allow setZoom for manual zoom controls
+				// map.current.setZoom = () => { console.log('setZoom blocked to maintain 3D view'); };
+				// map.current.zoomTo = () => { console.log('zoomTo blocked to maintain 3D view'); };
 
-				// Add navigation control with mobile optimization
-				const navControl = new mapboxgl.default.NavigationControl({
-					showCompass: false, // Hide compass on mobile for space
-					showZoom: true,
-					visualizePitch: false
-				});
-				map.current.addControl(navControl, 'top-right');
-				// Add geolocate control with mobile optimization
+				// Add geolocate control with balanced accuracy/speed settings
 				const geolocateControl = new mapboxgl.default.GeolocateControl({
 					positionOptions: {
-						enableHighAccuracy: true
+						enableHighAccuracy: true, // Use GPS
+						timeout: 8000, // Wait up to 8 seconds (faster loading)
+						maximumAge: 30000 // Allow 30 second cache for faster subsequent loads
 					},
-					trackUserLocation: true,
-					showUserHeading: true
+					trackUserLocation: true, // Continuously track location changes
+					showUserHeading: true, // Show direction arrow
+					showAccuracyCircle: false, // Remove accuracy circle for cleaner look
+					showUserLocation: true // Show the blue dot
 				});
+				
+				// Add geolocateControl but hidden - we need it for the location dot to appear
 				map.current.addControl(geolocateControl, 'top-right');
 				
-				// Add attribution control manually for proper licensing
+				// Hide the geolocate button but keep the functionality
+				setTimeout(() => {
+					const geoButton = document.querySelector('.mapboxgl-ctrl-geolocate');
+					if (geoButton) {
+						(geoButton as HTMLElement).style.display = 'none';
+					}
+				}, 100);
+				
+				// Listen for geolocate events to update our state with accuracy info
+				geolocateControl.on('geolocate', (e) => {
+					console.log('High accuracy location found:', {
+						lat: e.coords.latitude,
+						lng: e.coords.longitude,
+						accuracy: e.coords.accuracy + ' meters',
+						heading: e.coords.heading,
+						speed: e.coords.speed
+					});
+					setUserLocation({
+						lat: e.coords.latitude,
+						lng: e.coords.longitude
+					});
+				});
+
+				// Handle location errors
+				geolocateControl.on('error', (e) => {
+					console.error('Geolocation error:', e);
+					// Fallback to less accurate but faster location
+					if (navigator.geolocation) {
+						navigator.geolocation.getCurrentPosition(
+							(position) => {
+								console.log('Fallback location obtained');
+								setUserLocation({
+									lat: position.coords.latitude,
+									lng: position.coords.longitude
+								});
+							},
+							(error) => console.error('Fallback location failed:', error),
+							{
+								enableHighAccuracy: false, // Faster but less accurate
+								timeout: 5000,
+								maximumAge: 300000
+							}
+						);
+					}
+				});
+				
+				// Keep attribution minimal and compact
 				map.current.addControl(new mapboxgl.default.AttributionControl({
-					compact: true
-				}), 'bottom-right');
+					compact: true,
+					customAttribution: ''
+				}), 'bottom-left');
+
+				// Remove basemap control for cleaner interface
+
+				// Add error handler
+				map.current.on('error', (e) => {
+					console.error('Mapbox error:', e);
+					setMapError('Failed to load map. Please check your internet connection.');
+				});
+
+				// Add style load handler
+				map.current.on('style.load', () => {
+					console.log('Map style loaded');
+				});
 
 				map.current.on('load', () => {
 					console.log('Map loaded successfully');
+					setMapLoaded(true);
+					setIsLoading(false);
 					
-					// Skip loading custom icons - we'll use the circle markers only
-					// Chrome has issues with dynamically created SVG blob URLs
+					// Add enhanced 3D buildings layer with better rendering
+					try {
+						map.current.addLayer({
+							'id': '3d-buildings',
+							'source': 'composite',
+							'source-layer': 'building',
+							'filter': ['==', 'extrude', 'true'],
+							'type': 'fill-extrusion',
+							'minzoom': 14,
+							'paint': {
+								'fill-extrusion-color': [
+									'interpolate',
+									['linear'],
+									['get', 'height'],
+									0, '#e8e8e8',
+									50, '#d4d4d4',
+									100, '#b8b8b8',
+									200, '#9ca3af'
+								],
+								'fill-extrusion-height': [
+									'case',
+									['has', 'height'],
+									['get', 'height'],
+									[
+										'case',
+										['==', ['get', 'type'], 'house'], 8,
+										['==', ['get', 'type'], 'apartments'], 24,
+										15 // default height
+									]
+								],
+								'fill-extrusion-base': [
+									'case',
+									['has', 'min_height'],
+									['get', 'min_height'],
+									0
+								],
+								'fill-extrusion-opacity': [
+									'interpolate',
+									['linear'],
+									['zoom'],
+									14, 0.3,
+									16, 0.7,
+									18, 0.8
+								],
+								'fill-extrusion-vertical-gradient': true
+							}
+						});
+						console.log('3D buildings layer added successfully');
+					} catch (error) {
+						console.warn('Failed to add 3D buildings layer:', error);
+					}
+					
+					// Trigger high accuracy geolocation immediately and continuously
+					setTimeout(() => {
+						if (geolocateControl && geolocateControl._geolocateButton) {
+							console.log('Triggering high accuracy geolocation...');
+							geolocateControl._geolocateButton.click();
+						}
+					}, 100);
+
+					// Also trigger watchPosition for maximum accuracy and real-time updates
+					if (navigator.geolocation) {
+						const watchId = navigator.geolocation.watchPosition(
+							(position) => {
+								console.log('Continuous high accuracy location:', {
+									lat: position.coords.latitude,
+									lng: position.coords.longitude,
+									accuracy: position.coords.accuracy + ' meters',
+									timestamp: new Date(position.timestamp).toLocaleTimeString()
+								});
+								
+								// Only update if this reading is more accurate than previous
+								if (position.coords.accuracy <= 20) { // Within 20 meters
+									setUserLocation({
+										lat: position.coords.latitude,
+										lng: position.coords.longitude
+									});
+								}
+							},
+							(error) => {
+								console.error('Watch position error:', error);
+							},
+							{
+								enableHighAccuracy: true,
+								timeout: 5000, // 5 second timeout for faster response
+								maximumAge: 60000 // Allow 1 minute cache for balance
+							}
+						);
+
+						// Store watch ID for cleanup
+						(window as any).locationWatchId = watchId;
+					}
 
 					// Add mobile-optimized styles for navigation controls
 					if (!document.getElementById('mobile-map-controls')) {
@@ -1052,6 +1429,18 @@ export default function MapPage() {
 									cursor: pointer !important;
 								}
 								
+								/* Compass control for 3D view */
+								.mapboxgl-ctrl-compass {
+									width: 44px !important;
+									height: 44px !important;
+								}
+								
+								/* Pitch control for 3D tilting */
+								.mapboxgl-ctrl-pitch {
+									width: 44px !important;
+									height: 44px !important;
+								}
+								
 								.mapboxgl-ctrl-geolocate:hover {
 									background: #f5f5f5 !important;
 								}
@@ -1059,12 +1448,31 @@ export default function MapPage() {
 								.mapboxgl-ctrl-geolocate .mapboxgl-ctrl-icon {
 									background-size: 20px !important;
 								}
+								
+								/* Hide Mapbox branding for cleaner look */
+								.mapboxgl-ctrl-logo {
+									display: none !important;
+								}
+								
+								.mapboxgl-ctrl-attrib {
+									display: none !important;
+								}
+								
+								/* Remove marker hover effects */
+								.custom-marker:hover {
+									outline: none !important;
+									border: none !important;
+									box-shadow: none !important;
+								}
+								
+								.custom-marker:focus {
+									outline: none !important;
+									border: none !important;
+								}
 							}
 						`;
 						document.head.appendChild(style);
 					}
-
-					setMapLoaded(true);
 				});
 
 				// Add click handler to clear routes when clicking on empty map areas
@@ -1078,6 +1486,7 @@ export default function MapPage() {
 						setRouteDirections(null);
 					}
 				});
+				} // End setupMapControls function
 
 			} catch (error) {
 				console.error('Failed to load Mapbox:', error);
@@ -1206,42 +1615,53 @@ export default function MapPage() {
 			// Use optimized CSS assignment with proper positioning to prevent drift
 			el.style.cssText = `
 				width: ${size}px;
-				height: ${size}px;
-				background-color: ${statusConfig[issue.status].color};
-				border: 2px solid white;
-				border-radius: 50%;
+				height: ${size + 8}px;
 				cursor: pointer;
-				box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				font-weight: bold;
-				color: white;
-				font-size: ${size * 0.4}px;
 				position: absolute;
-				transform: translate(-50%, -50%);
+				transform: translate(-50%, -100%);
 				transition: box-shadow 0.2s ease, filter 0.2s ease;
 				pointer-events: auto;
+				z-index: ${severityConfig[issue.severity]?.zIndex || 1};
 			`;
 			
-			// Use memoized category labels
-			el.innerHTML = categoryLabels[issue.categoryId || 'other'] || '📍';
+			// Create pin shape with tail
+			el.innerHTML = `
+				<div style="
+					width: ${size}px;
+					height: ${size}px;
+					background-color: ${statusConfig[issue.status].color};
+					border: 2px solid white;
+					border-radius: 50%;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					font-weight: bold;
+					color: white;
+					font-size: ${size * 0.4}px;
+					box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+					position: relative;
+				">
+					${categoryLabels[issue.categoryId || 'other'] || '📍'}
+					<div style="
+						position: absolute;
+						bottom: -4px;
+						left: 50%;
+						transform: translateX(-50%);
+						width: 0;
+						height: 0;
+						border-left: 4px solid transparent;
+						border-right: 4px solid transparent;
+						border-top: 8px solid ${statusConfig[issue.status].color};
+					"></div>
+				</div>
+			`;
 			
-			// Add optimized click handler
+			// Add optimized click handler and remove hover effects
 			el.addEventListener('click', () => setSelectedIssue(issue), { passive: true });
 			
-			// Add hover effect without position shifting
-			el.addEventListener('mouseenter', () => {
-				el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)';
-				el.style.filter = 'brightness(1.1)';
-				el.style.zIndex = '1000';
-			}, { passive: true });
-			
-			el.addEventListener('mouseleave', () => {
-				el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-				el.style.filter = 'brightness(1)';
-				el.style.zIndex = 'auto';
-			}, { passive: true });
+			// Remove any hover effects completely
+			el.style.outline = 'none';
+			el.style.border = 'none';
 			
 			// Create marker with explicit positioning options
 			return new (window as any).mapboxgl.Marker({
@@ -1591,24 +2011,24 @@ export default function MapPage() {
 			{/* Mapbox Container */}
 			<div ref={mapContainer} className="w-full h-full" />
 
-			{/* Toggle Search Button (visible when search is hidden) */}
+			{/* Minimal Search Toggle Button */}
 			{!showSearchPanel && (
-				<div className="absolute top-2 left-2 z-10">
+				<div className="absolute top-3 left-3 z-10">
 					<Button
 						variant="default"
 						size="sm"
 						onClick={() => setShowSearchPanel(true)}
-						className="shadow-lg bg-white text-black border border-gray-200 hover:bg-gray-50"
+						className="shadow-lg bg-white/90 text-gray-700 border-none hover:bg-white p-2 rounded-full w-10 h-10 flex items-center justify-center"
+						data-search-button
 					>
-						<Search className="h-4 w-4 mr-2" />
-						<span>Show Search</span>
+						<Search className="h-4 w-4" />
 					</Button>
 				</div>
 			)}
 
 			{/* Search Bar */}
 			{showSearchPanel && (
-				<div className="absolute top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-10 w-auto sm:max-w-md">
+				<div className="absolute top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-10 w-auto sm:max-w-md" data-search-panel>
 					<Card className="shadow-lg bg-white border border-gray-200">
 						<CardContent className="p-2 sm:p-3">
 						<div className="space-y-2">
@@ -1657,11 +2077,82 @@ export default function MapPage() {
 								</Button>
 							</div>
 						</div>
+						{/* Search Results List - Only show when searching */}
+						{debouncedSearchQuery && (
+							<div className="mt-3 max-h-60 overflow-y-auto border-t border-gray-200 pt-3">
+								<div className="space-y-2">
+									<span className="text-black text-xs font-medium block">
+										Search Results ({filteredIssues.length} found)
+									</span>
+									{filteredIssues.length > 0 ? (
+										<div className="space-y-1">
+											{filteredIssues.slice(0, 5).map((issue) => (
+												<div
+													key={issue.id}
+													onClick={() => {
+														// Pan map to issue location while maintaining 3D view
+														if (map.current && (window as any).originalMapMethods) {
+															// Get current view settings to maintain 3D appearance
+															const currentZoom = map.current.getZoom();
+															const currentPitch = map.current.getPitch();
+															const currentBearing = map.current.getBearing();
+															
+															// Use original easeTo method directly for smooth panning
+															(window as any).originalMapMethods.easeTo.call(map.current, {
+																center: [issue.longitude, issue.latitude],
+																zoom: currentZoom, // Keep current zoom
+																pitch: currentPitch, // Keep current 3D tilt
+																bearing: currentBearing, // Keep current rotation
+																duration: 1000 // Smooth animation
+															});
+														}
+														setSelectedIssue(issue);
+														setSearchQuery(""); // Clear search to show normal view
+													}}
+													className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+												>
+													<div className={`w-3 h-3 rounded-full ${statusConfig[issue.status].bgColor}`} />
+													<div className="flex-1 min-w-0">
+														<h4 className="text-sm font-medium text-black truncate">
+															{issue.title}
+														</h4>
+														<p className="text-xs text-gray-600 truncate">
+															{issue.description}
+														</p>
+														{issue.address && (
+															<p className="text-xs text-gray-500 truncate">
+																📍 {issue.address}
+															</p>
+														)}
+													</div>
+													<div className="flex items-center gap-1">
+														<Badge className={`${severityConfig[issue.severity as keyof typeof severityConfig].bgColor} ${severityConfig[issue.severity as keyof typeof severityConfig].textColor} text-xs`}>
+															{issue.severity}
+														</Badge>
+													</div>
+												</div>
+											))}
+											{filteredIssues.length > 5 && (
+												<div className="text-xs text-gray-500 text-center py-2">
+													Showing first 5 of {filteredIssues.length} results
+												</div>
+											)}
+										</div>
+									) : (
+										<div className="text-center py-4 text-gray-500 text-sm">
+											No issues found matching "{debouncedSearchQuery}"
+										</div>
+									)}
+								</div>
+							</div>
+						)}
+
 						{/* Status Legend in Search Area */}
-						<div className="mt-2 space-y-2">
-							<span className="text-black text-xs font-medium block">
-								Showing {filteredIssues.length} of {issues.length} issues
-							</span>
+						{!debouncedSearchQuery && (
+							<div className="mt-2 space-y-2">
+								<span className="text-black text-xs font-medium block">
+									Showing {filteredIssues.length} of {issues.length} issues
+								</span>
 							<div className="flex items-center gap-2 sm:gap-3 flex-wrap">
 								<div className="flex items-center gap-1">
 									<div className="w-2.5 h-2.5 rounded-full bg-red-500" />
@@ -1677,6 +2168,7 @@ export default function MapPage() {
 								</div>
 							</div>
 						</div>
+						)}
 					</CardContent>
 				</Card>
 			</div>
@@ -1684,7 +2176,7 @@ export default function MapPage() {
 
 			{/* Filters Panel */}
 			{showFilters && (
-				<div className="absolute top-[120px] sm:top-24 left-2 right-2 sm:left-auto sm:right-4 z-10 w-auto sm:w-80 max-h-[calc(100vh-140px)] sm:max-h-[calc(100vh-120px)] overflow-y-auto">
+				<div className="absolute top-[120px] sm:top-24 left-2 right-2 sm:left-auto sm:right-4 z-10 w-auto sm:w-80 max-h-[calc(100vh-140px)] sm:max-h-[calc(100vh-120px)] overflow-y-auto" data-search-panel>
 					<Card className="shadow-lg bg-gray-50 border border-gray-300">
 						<CardHeader className="pb-2 sm:pb-3">
 							<div className="flex items-center justify-between">
@@ -1827,11 +2319,16 @@ export default function MapPage() {
 
 			{/* Enhanced Issue Detail Card - Simple with Expandable Details */}
 			{selectedIssue && (
-				<div className="fixed bottom-0 left-0 right-0 sm:absolute sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:transform sm:-translate-x-1/2 sm:-translate-y-1/2 z-10 p-2 sm:p-0 pointer-events-none">
+				<div className="fixed bottom-0 left-0 right-0 sm:absolute sm:bottom-4 sm:left-4 sm:right-auto sm:top-auto sm:transform-none z-20 p-0 sm:p-0 pointer-events-none">
 					<Card 
-						className="shadow-xl border w-full sm:min-w-[360px] sm:max-w-[420px] sm:w-auto bg-white border-gray-200 max-h-[80vh] overflow-y-auto pointer-events-auto"
+						className="shadow-2xl border w-full sm:w-80 sm:max-w-sm bg-white/98 backdrop-blur-sm border-gray-200 max-h-[50vh] sm:max-h-[75vh] overflow-hidden pointer-events-auto rounded-t-3xl sm:rounded-2xl transition-all duration-300 ease-out"
 					>
-						<CardContent className="p-4">
+						{/* Mobile Handle Bar */}
+						<div className="flex justify-center py-2 sm:hidden">
+							<div className="w-10 h-1 bg-gray-300 rounded-full"></div>
+						</div>
+						
+						<CardContent className="p-4 pt-2 sm:pt-4 overflow-y-auto max-h-[45vh] sm:max-h-[70vh]">
 							{/* Simple Header */}
 							<div className="flex items-start justify-between mb-3">
 								<div className="flex-1 pr-2">

@@ -1,15 +1,15 @@
-"use client";
-
 import Header from '@/components/header';
 
-export default function Home() {
+interface LoginLayoutProps {
+	children: React.ReactNode;
+}
+
+export default function LoginLayout({ children }: LoginLayoutProps) {
 	return (
 		<div className="flex flex-col h-dvh w-full">
 			<Header />
 			<main className="flex-1 min-h-0 w-full relative">
-				<div className="container mx-auto max-w-7xl px-4 py-2">
-					<h1>Home</h1>
-				</div>
+				{children}
 			</main>
 		</div>
 	);
