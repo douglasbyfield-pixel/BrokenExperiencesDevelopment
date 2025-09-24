@@ -208,6 +208,12 @@ export default function MapPage() {
 	const [routeDirections, setRouteDirections] = useState<any>(null);
 	const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null);
 	const [showDirections, setShowDirections] = useState(false);
+	
+	// Real-time location tracking states
+	const [isLiveTracking, setIsLiveTracking] = useState(false);
+	const [deviceHeading, setDeviceHeading] = useState<number | null>(null);
+	const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+	const [watchPositionId, setWatchPositionId] = useState<number | null>(null);
 
 	// Debounced search to improve performance
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -263,7 +269,140 @@ export default function MapPage() {
 		}
 	}, [selectedIssue, showSearchPanel, searchQuery]);
 
-	// Memoized category labels for performance
+	// Real-time location tracking with high accuracy
+	const startLiveTracking = useCallback(() => {
+		if (!navigator.geolocation) {
+			alert('Geolocation is not supported by this browser');
+			return;
+		}
+
+		setIsLiveTracking(true);
+		
+		const watchId = navigator.geolocation.watchPosition(
+			(position) => {
+				const { latitude, longitude, accuracy, heading } = position.coords;
+				
+				console.log('Live location update:', {
+					lat: latitude,
+					lng: longitude,
+					accuracy: accuracy + ' meters',
+					heading: heading,
+					timestamp: new Date().toLocaleTimeString()
+				});
+
+				// Update location state
+				setUserLocation({ lat: latitude, lng: longitude });
+				setLocationAccuracy(accuracy);
+				
+				// Update map center to follow user (use original method for live tracking)
+				if (map.current && (window as any).originalMapMethods) {
+					(window as any).originalMapMethods.easeTo.call(map.current, {
+						center: [longitude, latitude],
+						zoom: map.current.getZoom(), // Keep current zoom
+						pitch: map.current.getPitch(), // Keep current 3D tilt
+						bearing: map.current.getBearing(), // Keep current rotation unless updated by compass
+						duration: 1000, // Smooth 1-second animation
+						essential: true
+					});
+				}
+
+				// Update compass heading if available from GPS
+				if (heading !== null && heading !== undefined) {
+					setDeviceHeading(heading);
+					if (map.current && (window as any).originalMapMethods) {
+						(window as any).originalMapMethods.easeTo.call(map.current, {
+							bearing: heading,
+							duration: 500
+						});
+					}
+				}
+			},
+			(error) => {
+				console.error('Live tracking error:', error);
+				setIsLiveTracking(false);
+				alert('Failed to get location. Please check location permissions.');
+			},
+			{
+				enableHighAccuracy: true,
+				timeout: 10000,
+				maximumAge: 0 // Always get fresh location
+			}
+		);
+
+		setWatchPositionId(watchId);
+	}, []);
+
+	const stopLiveTracking = useCallback(() => {
+		setIsLiveTracking(false);
+		
+		if (watchPositionId !== null) {
+			navigator.geolocation.clearWatch(watchPositionId);
+			setWatchPositionId(null);
+		}
+		
+		setDeviceHeading(null);
+		setLocationAccuracy(null);
+	}, [watchPositionId]);
+
+	// Device orientation and real-time location tracking
+	useEffect(() => {
+		let orientationHandler: ((event: DeviceOrientationEvent) => void) | null = null;
+
+		const startOrientationTracking = () => {
+			if ('DeviceOrientationEvent' in window) {
+				orientationHandler = (event: DeviceOrientationEvent) => {
+					if (event.alpha !== null) {
+						// Convert compass heading (0-360°) where 0° is North
+						const heading = event.alpha;
+						setDeviceHeading(heading);
+						
+						// Update map bearing if live tracking is enabled
+						if (isLiveTracking && map.current && (window as any).originalMapMethods) {
+							(window as any).originalMapMethods.easeTo.call(map.current, {
+								bearing: heading,
+								duration: 200 // Quick orientation update
+							});
+						}
+					}
+				};
+
+				// Request permission for iOS devices
+				if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+					(DeviceOrientationEvent as any).requestPermission()
+						.then((response: string) => {
+							if (response === 'granted') {
+								window.addEventListener('deviceorientation', orientationHandler);
+							}
+						})
+						.catch(console.error);
+				} else {
+					// For Android and other devices
+					window.addEventListener('deviceorientation', orientationHandler);
+				}
+			}
+		};
+
+		if (isLiveTracking) {
+			startOrientationTracking();
+		}
+
+		return () => {
+			if (orientationHandler) {
+				window.removeEventListener('deviceorientation', orientationHandler);
+			}
+		};
+	}, [isLiveTracking]);
+
+	// Cleanup on unmount
+	useEffect(() => {
+		return () => {
+			if (watchPositionId !== null) {
+				navigator.geolocation.clearWatch(watchPositionId);
+			}
+		};
+	}, [watchPositionId]);
+
+	// Category emojis for better visibility  
 	const categoryLabels = useMemo(() => ({
 		lighting: '💡',
 		roads: '🚗',
@@ -1060,7 +1199,7 @@ export default function MapPage() {
 							// Create map centered on user location with enhanced 3D appearance
 							map.current = new mapboxgl.default.Map({
 								container: mapContainer.current,
-								style: 'mapbox://styles/mapbox/streets-v12', // Clean street style with names
+								style: 'mapbox://styles/mapbox/light-v11', // Clean monochrome style without colors
 								center: [userLng, userLat], // Start at user location
 								zoom: 18, // Street level detail
 								pitch: 60, // More dramatic 3D tilt (increased from 45)
@@ -1099,7 +1238,7 @@ export default function MapPage() {
 							// Fallback to default location with enhanced 3D appearance
 							map.current = new mapboxgl.default.Map({
 								container: mapContainer.current,
-								style: 'mapbox://styles/mapbox/streets-v12', // Clean street style with names
+								style: 'mapbox://styles/mapbox/light-v11', // Clean monochrome style without colors
 								center: [-77.2975, 18.1096], // Jamaica center
 								zoom: 18, // Street level detail
 								pitch: 60, // More dramatic 3D tilt
@@ -1135,7 +1274,7 @@ export default function MapPage() {
 					// Fallback if geolocation not supported with enhanced 3D appearance
 					map.current = new mapboxgl.default.Map({
 						container: mapContainer.current,
-						style: 'mapbox://styles/mapbox/streets-v12', // Clean street style with names
+						style: 'mapbox://styles/mapbox/light-v11', // Clean monochrome style without colors
 						center: [-77.2975, 18.1096], // Jamaica center
 						zoom: 18, // Street level detail
 						pitch: 60, // More dramatic 3D tilt
@@ -1288,10 +1427,11 @@ export default function MapPage() {
 									'interpolate',
 									['linear'],
 									['get', 'height'],
-									0, '#e8e8e8',
-									50, '#d4d4d4',
-									100, '#b8b8b8',
-									200, '#9ca3af'
+									0, '#f8f9fa',
+									25, '#e9ecef', 
+									50, '#dee2e6',
+									100, '#adb5bd',
+									200, '#6c757d'
 								],
 								'fill-extrusion-height': [
 									'case',
@@ -1624,34 +1764,42 @@ export default function MapPage() {
 				z-index: ${severityConfig[issue.severity]?.zIndex || 1};
 			`;
 			
-			// Create pin shape with tail
+			// Create professional pin shape with SVG icon
 			el.innerHTML = `
 				<div style="
 					width: ${size}px;
-					height: ${size}px;
-					background-color: ${statusConfig[issue.status].color};
-					border: 2px solid white;
-					border-radius: 50%;
+					height: ${size + 8}px;
 					display: flex;
+					flex-direction: column;
 					align-items: center;
-					justify-content: center;
-					font-weight: bold;
-					color: white;
-					font-size: ${size * 0.4}px;
-					box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+					filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
 					position: relative;
 				">
-					${categoryLabels[issue.categoryId || 'other'] || '📍'}
+					<!-- Main pin body -->
 					<div style="
-						position: absolute;
-						bottom: -4px;
-						left: 50%;
-						transform: translateX(-50%);
+						width: ${size}px;
+						height: ${size}px;
+						background: linear-gradient(135deg, ${statusConfig[issue.status].color} 0%, ${statusConfig[issue.status].color}dd 100%);
+						border: 3px solid white;
+						border-radius: 50%;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						position: relative;
+						z-index: 2;
+						font-size: ${size * 0.5}px;
+					">
+						${categoryLabels[issue.categoryId || 'other'] || '📍'}
+					</div>
+					<!-- Pin tail -->
+					<div style="
 						width: 0;
 						height: 0;
-						border-left: 4px solid transparent;
-						border-right: 4px solid transparent;
-						border-top: 8px solid ${statusConfig[issue.status].color};
+						border-left: 6px solid transparent;
+						border-right: 6px solid transparent;
+						border-top: 10px solid ${statusConfig[issue.status].color};
+						margin-top: -2px;
+						z-index: 1;
 					"></div>
 				</div>
 			`;
@@ -2011,9 +2159,10 @@ export default function MapPage() {
 			{/* Mapbox Container */}
 			<div ref={mapContainer} className="w-full h-full" />
 
-			{/* Minimal Search Toggle Button */}
+			{/* Control Buttons - Search and Live Location */}
 			{!showSearchPanel && (
-				<div className="absolute top-3 left-3 z-10">
+				<div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
+					{/* Search Button */}
 					<Button
 						variant="default"
 						size="sm"
@@ -2023,6 +2172,28 @@ export default function MapPage() {
 					>
 						<Search className="h-4 w-4" />
 					</Button>
+					
+					{/* Live Location Tracking Button */}
+					<Button
+						variant="default"
+						size="sm"
+						onClick={isLiveTracking ? stopLiveTracking : startLiveTracking}
+						className={`shadow-lg border-none p-2 rounded-full w-10 h-10 flex items-center justify-center transition-all ${
+							isLiveTracking 
+								? 'bg-blue-500 text-white hover:bg-blue-600' 
+								: 'bg-white/90 text-gray-700 hover:bg-white'
+						}`}
+						title={isLiveTracking ? 'Stop live tracking' : 'Start live tracking'}
+					>
+						<Compass className={`h-4 w-4 ${isLiveTracking ? 'animate-pulse' : ''}`} />
+					</Button>
+					
+					{/* Accuracy Indicator */}
+					{isLiveTracking && locationAccuracy && (
+						<div className="bg-black/75 text-white text-xs px-2 py-1 rounded-full">
+							±{Math.round(locationAccuracy)}m
+						</div>
+					)}
 				</div>
 			)}
 
