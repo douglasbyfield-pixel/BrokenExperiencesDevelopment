@@ -1,16 +1,11 @@
-import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react'
-
-setupIonicReact()
 
 export const Route = createRootRoute({
   component: () => (
-    <IonApp>
-      <IonRouterOutlet>
-        <Outlet />
-      </IonRouterOutlet>
+    <div className="min-h-screen bg-background text-foreground">
+      <Outlet />
       <TanStackRouterDevtools />
-    </IonApp>
+    </div>
   ),
 })

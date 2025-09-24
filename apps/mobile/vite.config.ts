@@ -1,28 +1,26 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
-      }
-    })
-  ],
-  server: {
-    port: 3002,
-    host: true
-  },
-  define: {
-    global: 'globalThis',
-  },
+  plugins: [react()],
   resolve: {
     alias: {
-      '@': '/src',
+      '@': path.resolve(__dirname, './src'),
+      '@/lib': path.resolve(__dirname, './src/lib'),
+      '@/modules': path.resolve(__dirname, './src/modules'),
+      '@/routes': path.resolve(__dirname, './src/routes'),
+      '@/config': path.resolve(__dirname, './src/config'),
+      '@/assets': path.resolve(__dirname, './src/assets'),
     },
+  },
+  server: {
+    port: 3002,
+    host: true,
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
   },
 })

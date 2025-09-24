@@ -1,7 +1,0 @@
-{
-  "name": "broken-experiences-mobile",
-  "integrations": {
-    "capacitor": {}
-  },
-  "type": "react"
-}
