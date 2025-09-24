@@ -2160,8 +2160,17 @@ export default function MapPage() {
 			<div ref={mapContainer} className="w-full h-full" />
 
 			{/* Control Buttons - Search and Live Location */}
-			{!showSearchPanel && (
-				<div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
+			{/* Map Title - OBVIOUS CHANGE APPLIED */}
+		<div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10">
+			<div className="bg-white/95 backdrop-blur-sm px-6 py-3 rounded-lg shadow-lg border">
+				<h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+					🗺️ Community Issues Map - CHANGES APPLIED
+				</h1>
+			</div>
+		</div>
+
+		{!showSearchPanel && (
+				<div className="absolute top-16 left-3 z-10 flex flex-col gap-2">
 					{/* Search Button */}
 					<Button
 						variant="default"
