@@ -5,9 +5,9 @@ import { cn } from '@/lib/utils'
 
 const navigationItems = [
   { name: 'Home', href: '/', icon: Home },
-  { name: 'Map', href: '/_protected/map', icon: Map },
-  { name: 'Report', href: '/_protected/report', icon: Plus },
-  { name: 'Profile', href: '/_protected/profile', icon: User },
+  { name: 'Map', href: '/map', icon: Map },
+  { name: 'Report', href: '/report', icon: Plus },
+  { name: 'Profile', href: '/profile', icon: User },
 ]
 
 export function MobileNavigation() {
