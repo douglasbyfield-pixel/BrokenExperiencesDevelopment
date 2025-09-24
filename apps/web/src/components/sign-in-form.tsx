@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import { useSupabaseSession } from "@/lib/use-supabase-session";
 import { Dialog } from "./ui/dialog";
 import { useState } from "react";
+import { AppleLogo } from "./icons/apple-logo";
+import { GoogleLogo } from "./icons/google-logo";
 
 export default function SignInForm({
 	onSwitchToSignUp,
@@ -139,6 +141,49 @@ export default function SignInForm({
 					)}
 				</form.Subscribe>
 			</form>
+
+			{/* OAuth section */}
+			<div className="relative my-5">
+				<div className="absolute inset-0 flex items-center" aria-hidden="true">
+					<div className="w-full border-t" />
+				</div>
+				<div className="relative flex justify-center text-xs">
+					<span className="bg-white px-2 text-gray-500">OR</span>
+				</div>
+			</div>
+
+			<div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3">
+				<Button
+					variant="outline"
+					className="w-full h-12 justify-center"
+					onClick={async () => {
+						const { error } = await supabase.auth.signInWithOAuth({
+							provider: "apple",
+							options: {
+								redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+							},
+						});
+						if (error) toast.error(error.message);
+					}}
+				>
+					<AppleLogo className="mr-2" /> Sign In with Apple
+				</Button>
+				<Button
+					variant="outline"
+					className="w-full h-12 justify-center"
+					onClick={async () => {
+						const { error } = await supabase.auth.signInWithOAuth({
+							provider: "google",
+							options: {
+								redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+							},
+						});
+						if (error) toast.error(error.message);
+					}}
+				>
+					<GoogleLogo className="mr-2" /> Sign In with Google
+				</Button>
+			</div>
 
 			<div className="mt-8 pt-6 border-t border-gray-200">
 				<div className="text-center">

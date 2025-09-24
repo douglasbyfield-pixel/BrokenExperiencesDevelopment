@@ -15,11 +15,24 @@ export default function AuthCallbackPage() {
             try {
                 // Implicit flow: session is in URL fragment and auto-parsed by the client
                 const { data } = await supabase.auth.getSession();
-                if (data.session) {
-                    router.replace("/onboarding/participation");
-                } else {
+                if (!data.session) {
                     setMessage("No session found. Returning to login…");
                     setTimeout(() => router.replace("/login"), 800);
+                    return;
+                }
+
+                // Check if user already completed onboarding (has profile row)
+                const userId = data.session.user.id;
+                const { data: prof, error: profErr } = await supabase
+                    .from('user_profiles')
+                    .select('id')
+                    .eq('auth_user_id', userId)
+                    .limit(1)
+                    .maybeSingle();
+                if (!profErr && prof) {
+                    router.replace('/home');
+                } else {
+                    router.replace("/onboarding/participation");
                 }
             } catch (e) {
                 console.error(e);

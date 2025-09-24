@@ -51,16 +51,47 @@ export default function ProfileSetupPage() {
                     className="w-full h-12 bg-blue-600 hover:bg-blue-700"
                     onClick={async () => {
                         setSaving(true);
-                        const { error } = await supabase.auth.updateUser({
-                            data: { handle, displayName, bio },
-                        });
-                        setSaving(false);
-                        if (error) {
-                            toast.error(error.message);
-                            return;
+                        try {
+                            const { data: userResp, error: userErr } = await supabase.auth.getUser();
+                            if (userErr || !userResp.user) {
+                                throw new Error(userErr?.message || "No authenticated user");
+                            }
+                            const authUserId = userResp.user.id;
+                            // Optional: read selected role from previous step
+                            let role: 'reporter' | 'organiser' = 'reporter';
+                            try {
+                                const stored = typeof window !== 'undefined' ? window.localStorage.getItem('be.role') : null;
+                                if (stored === 'organiser' || stored === 'reporter') role = stored;
+                            } catch {}
+
+                            // Upsert into Supabase Postgres
+                            const { error: upsertErr } = await supabase
+                                .from('user_profiles')
+                                .upsert(
+                                    {
+                                        auth_user_id: authUserId,
+                                        handle: handle.trim(),
+                                        display_name: displayName.trim() || null,
+                                        bio: bio.trim() || null,
+                                        role,
+                                    },
+                                    { onConflict: 'auth_user_id' }
+                                );
+                            if (upsertErr) throw upsertErr;
+
+                            // Also mirror to auth metadata for quick reads (optional)
+                            await supabase.auth.updateUser({
+                                data: { handle: handle.trim(), displayName: displayName.trim(), bio: bio.trim(), role },
+                            });
+
+                            toast.success('Profile saved');
+                            router.replace('/onboarding/permissions/notifications');
+                        } catch (e: any) {
+                            const msg = e?.message || 'Failed to save profile';
+                            toast.error(msg);
+                        } finally {
+                            setSaving(false);
                         }
-                        toast.success('Profile saved');
-                        router.replace('/home');
                     }}
                 >
                     {saving ? 'Saving...' : 'Next'}

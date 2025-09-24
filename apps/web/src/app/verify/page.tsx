@@ -22,16 +22,30 @@ export default function VerifyPage() {
     useEffect(() => {
         // If user completes email confirmation, Supabase will sign them in and
         // we'll see an auth state change → redirect to onboarding.
-        const sub = supabase.auth.onAuthStateChange((event, session) => {
+        const sub = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === "SIGNED_IN" && session) {
-                router.replace("/onboarding/participation");
+                const { data: prof } = await supabase
+                    .from('user_profiles')
+                    .select('id')
+                    .eq('auth_user_id', session.user.id)
+                    .limit(1)
+                    .maybeSingle();
+                if (prof) router.replace('/home');
+                else router.replace('/onboarding/participation');
             }
         });
 
         // Also check current session in case email confirmation is disabled.
-        supabase.auth.getSession().then(({ data }) => {
+        supabase.auth.getSession().then(async ({ data }) => {
             if (data.session) {
-                router.replace("/onboarding/participation");
+                const { data: prof } = await supabase
+                    .from('user_profiles')
+                    .select('id')
+                    .eq('auth_user_id', data.session.user.id)
+                    .limit(1)
+                    .maybeSingle();
+                if (prof) router.replace('/home');
+                else router.replace('/onboarding/participation');
             }
         });
 

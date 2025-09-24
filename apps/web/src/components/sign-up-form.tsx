@@ -222,7 +222,7 @@ export default function SignUpForm({
 				</div>
 			</div>
 
-			<div className="space-y-3">
+			<div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3">
 				<Button
 					variant="outline"
 					className="w-full h-12 justify-center"
@@ -231,7 +231,7 @@ export default function SignUpForm({
                             provider: "apple",
                             options: {
                                 redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-                                preferRedirect: true,
+                                // preferRedirect implicitly true in our flow by not using popups
                             },
                         });
 						if (error) toast.error(error.message);
@@ -247,7 +247,6 @@ export default function SignUpForm({
                             provider: "google",
                             options: {
                                 redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-                                preferRedirect: true,
                             },
                         });
 						if (error) toast.error(error.message);
@@ -266,17 +265,7 @@ export default function SignUpForm({
 				</p>
 			</div>
 
-			<div className="mt-8 pt-6 border-t border-gray-200">
-				<div className="text-center">
-					<span className="text-gray-600">Already have an account? </span>
-					<button
-						onClick={onSwitchToSignIn}
-						className="text-black hover:text-gray-700 font-medium underline transition-colors duration-200"
-					>
-						Sign in
-					</button>
-				</div>
-			</div>
+
 		</div>
 	);
 }
