@@ -155,16 +155,8 @@ export default function SignInForm({
 			<div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3">
 				<Button
 					variant="outline"
-					className="w-full h-12 justify-center"
-					onClick={async () => {
-						const { error } = await supabase.auth.signInWithOAuth({
-							provider: "apple",
-							options: {
-								redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-							},
-						});
-						if (error) toast.error(error.message);
-					}}
+					className="w-full h-12 justify-center opacity-60 cursor-not-allowed"
+					disabled
 				>
 					<AppleLogo className="mr-2" /> Sign In with Apple
 				</Button>
