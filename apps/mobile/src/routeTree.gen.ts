@@ -9,24 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ReportRouteImport } from './routes/report'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as MapRouteImport } from './routes/map'
+import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProtectedReportIndexRouteImport } from './routes/_protected/report/index'
+import { Route as ProtectedProfileIndexRouteImport } from './routes/_protected/profile/index'
+import { Route as ProtectedMapIndexRouteImport } from './routes/_protected/map/index'
 
-const ReportRoute = ReportRouteImport.update({
-  id: '/report',
-  path: '/report',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MapRoute = MapRouteImport.update({
-  id: '/map',
-  path: '/map',
+const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
+  id: '/_protected',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -34,62 +24,68 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtectedReportIndexRoute = ProtectedReportIndexRouteImport.update({
+  id: '/report/',
+  path: '/report/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedProfileIndexRoute = ProtectedProfileIndexRouteImport.update({
+  id: '/profile/',
+  path: '/profile/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedMapIndexRoute = ProtectedMapIndexRouteImport.update({
+  id: '/map/',
+  path: '/map/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/map': typeof MapRoute
-  '/profile': typeof ProfileRoute
-  '/report': typeof ReportRoute
+  '/map': typeof ProtectedMapIndexRoute
+  '/profile': typeof ProtectedProfileIndexRoute
+  '/report': typeof ProtectedReportIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/map': typeof MapRoute
-  '/profile': typeof ProfileRoute
-  '/report': typeof ReportRoute
+  '/map': typeof ProtectedMapIndexRoute
+  '/profile': typeof ProtectedProfileIndexRoute
+  '/report': typeof ProtectedReportIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/map': typeof MapRoute
-  '/profile': typeof ProfileRoute
-  '/report': typeof ReportRoute
+  '/_protected': typeof ProtectedRouteRouteWithChildren
+  '/_protected/map/': typeof ProtectedMapIndexRoute
+  '/_protected/profile/': typeof ProtectedProfileIndexRoute
+  '/_protected/report/': typeof ProtectedReportIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '/map' | '/profile' | '/report'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/map' | '/profile' | '/report'
-  id: '__root__' | '/' | '/map' | '/profile' | '/report'
+  id:
+    | '__root__'
+    | '/'
+    | '/_protected'
+    | '/_protected/map/'
+    | '/_protected/profile/'
+    | '/_protected/report/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  MapRoute: typeof MapRoute
-  ProfileRoute: typeof ProfileRoute
-  ReportRoute: typeof ReportRoute
+  ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/report': {
-      id: '/report'
-      path: '/report'
-      fullPath: '/report'
-      preLoaderRoute: typeof ReportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/map': {
-      id: '/map'
-      path: '/map'
-      fullPath: '/map'
-      preLoaderRoute: typeof MapRouteImport
+    '/_protected': {
+      id: '/_protected'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof ProtectedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -99,14 +95,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_protected/report/': {
+      id: '/_protected/report/'
+      path: '/report'
+      fullPath: '/report'
+      preLoaderRoute: typeof ProtectedReportIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/profile/': {
+      id: '/_protected/profile/'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProtectedProfileIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/map/': {
+      id: '/_protected/map/'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof ProtectedMapIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
   }
 }
 
+interface ProtectedRouteRouteChildren {
+  ProtectedMapIndexRoute: typeof ProtectedMapIndexRoute
+  ProtectedProfileIndexRoute: typeof ProtectedProfileIndexRoute
+  ProtectedReportIndexRoute: typeof ProtectedReportIndexRoute
+}
+
+const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
+  ProtectedMapIndexRoute: ProtectedMapIndexRoute,
+  ProtectedProfileIndexRoute: ProtectedProfileIndexRoute,
+  ProtectedReportIndexRoute: ProtectedReportIndexRoute,
+}
+
+const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(
+  ProtectedRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  MapRoute: MapRoute,
-  ProfileRoute: ProfileRoute,
-  ReportRoute: ReportRoute,
+  ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

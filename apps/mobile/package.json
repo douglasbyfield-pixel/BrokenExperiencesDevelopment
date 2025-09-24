@@ -52,6 +52,7 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
     "@tanstack/router-vite-plugin": "^1.95.0",
+    "vite-plugin-pwa": "^0.20.5",
     "@broken-experiences/config": "workspace:*",
     "@broken-experiences/libs": "workspace:*"
   }
