@@ -174,15 +174,15 @@ export function ExperienceForm({
       {description.trim().length > 0 && (
         <div className="space-y-3">
           <Label className="text-foreground font-medium">How would you categories this issue?</Label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-wrap gap-2">
             {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => toggleCategory(category)}
-                className={`px-3 py-2 rounded-full text-sm font-medium transition-colors ${
+                className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
                   selectedCategories.includes(category)
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-background text-foreground border border-border'
+                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                    : 'bg-white text-gray-700 border border-gray-300'
                 }`}
               >
                 {category}
@@ -196,7 +196,7 @@ export function ExperienceForm({
       <div className="pb-4">
         <Button 
           onClick={handleSubmit}
-          className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium"
+          className="w-full bg-blue-600 text-white py-3 rounded-full font-medium hover:bg-blue-700"
         >
           Submit report
         </Button>
