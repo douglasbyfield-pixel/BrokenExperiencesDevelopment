@@ -12,7 +12,7 @@ export default function NotificationsPermissionPage() {
                 <button
                     type="button"
                     aria-label="Back"
-                    onClick={() => router.back()}
+                    onClick={() => router.replace('/onboarding/profile')}
                     className="h-9 w-9 grid place-items-center rounded-full border"
                 >
                     ←

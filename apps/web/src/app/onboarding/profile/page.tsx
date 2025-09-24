@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,15 +14,41 @@ export default function ProfileSetupPage() {
     const [displayName, setDisplayName] = useState("");
     const [bio, setBio] = useState("");
     const [saving, setSaving] = useState(false);
+    const [nameTouched, setNameTouched] = useState(false);
 
     const canContinue = handle.trim().length >= 3;
+
+    // Load saved draft from localStorage on mount
+    useEffect(() => {
+        try {
+            if (typeof window === 'undefined') return;
+            const draft = window.localStorage.getItem('be.profile.draft');
+            if (draft) {
+                const parsed = JSON.parse(draft);
+                setHandle(parsed.handle ?? "");
+                setDisplayName(parsed.displayName ?? "");
+                setBio(parsed.bio ?? "");
+            }
+        } catch {}
+    }, []);
+
+    // Persist draft whenever fields change
+    useEffect(() => {
+        try {
+            if (typeof window === 'undefined') return;
+            window.localStorage.setItem(
+                'be.profile.draft',
+                JSON.stringify({ handle, displayName, bio })
+            );
+        } catch {}
+    }, [handle, displayName, bio]);
 
     return (
         <div className="container mx-auto max-w-md px-4 py-6">
             <div className="flex items-center justify-between">
                 <button onClick={() => router.back()} aria-label="Back" className="text-lg">←</button>
                 <div className="font-semibold">Set up profile</div>
-                <button onClick={() => router.replace('/home')} className="text-sm text-gray-600">Skip</button>
+                <div />
             </div>
 
             <div className="flex flex-col items-center py-6">
@@ -33,7 +59,16 @@ export default function ProfileSetupPage() {
             <div className="rounded-2xl border p-4 space-y-4 bg-white">
                 <div className="space-y-2">
                     <Label htmlFor="handle">Name</Label>
-                    <Input id="handle" placeholder="@brokenexperience" value={handle} onChange={(e) => setHandle(e.target.value)} />
+                    <Input
+                        id="handle"
+                        placeholder="Your name"
+                        value={handle}
+                        onChange={(e) => setHandle(e.target.value)}
+                        onBlur={() => setNameTouched(true)}
+                    />
+                    <p className={`text-xs ${!canContinue && nameTouched ? 'text-red-500' : 'text-gray-500'}`}>
+                        {(!canContinue && nameTouched) ? 'Name is required (min 3 characters).' : 'Enter your name (min 3 characters).'}
+                    </p>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="display">Display name</Label>
@@ -64,14 +99,17 @@ export default function ProfileSetupPage() {
                                 if (stored === 'organiser' || stored === 'reporter') role = stored;
                             } catch {}
 
+                            const nameValue = handle.trim();
+                            const display = (displayName.trim() || nameValue);
+
                             // Upsert into Supabase Postgres
                             const { error: upsertErr } = await supabase
                                 .from('user_profiles')
                                 .upsert(
                                     {
                                         auth_user_id: authUserId,
-                                        handle: handle.trim(),
-                                        display_name: displayName.trim() || null,
+                                        handle: nameValue,
+                                        display_name: display,
                                         bio: bio.trim() || null,
                                         role,
                                     },
@@ -81,10 +119,12 @@ export default function ProfileSetupPage() {
 
                             // Also mirror to auth metadata for quick reads (optional)
                             await supabase.auth.updateUser({
-                                data: { handle: handle.trim(), displayName: displayName.trim(), bio: bio.trim(), role },
+                                data: { handle: nameValue, displayName: display, bio: bio.trim(), role },
                             });
 
                             toast.success('Profile saved');
+                            // Clear draft on save
+                            try { if (typeof window !== 'undefined') window.localStorage.removeItem('be.profile.draft'); } catch {}
                             router.replace('/onboarding/permissions/notifications');
                         } catch (e: any) {
                             const msg = e?.message || 'Failed to save profile';
@@ -96,6 +136,9 @@ export default function ProfileSetupPage() {
                 >
                     {saving ? 'Saving...' : 'Next'}
                 </Button>
+                {!canContinue ? (
+                    <p className="mt-2 text-center text-xs text-gray-500">Enter your name to continue</p>
+                ) : null}
             </div>
         </div>
     );

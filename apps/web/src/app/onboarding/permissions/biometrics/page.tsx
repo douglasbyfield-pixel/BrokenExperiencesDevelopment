@@ -12,7 +12,7 @@ export default function BiometricsPermissionPage() {
                 <button
                     type="button"
                     aria-label="Back"
-                    onClick={() => router.back()}
+                    onClick={() => router.replace('/onboarding/permissions/location')}
                     className="h-9 w-9 grid place-items-center rounded-full border"
                 >
                     ←
