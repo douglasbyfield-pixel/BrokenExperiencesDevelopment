@@ -1304,7 +1304,7 @@ export default function MapPage() {
 							try {
 								map.current = new mapboxgl.default.Map({
 								container: mapContainer.current,
-								style: 'mapbox://styles/mapbox/light-v11', // Clean monochrome style without colors
+								style: 'mapbox://styles/mapbox/dark-v11', // Dark theme style
 								center: [userLng, userLat], // Start at user location
 								zoom: 18, // Street level detail
 								pitch: 60, // More dramatic 3D tilt (increased from 45)
@@ -1354,7 +1354,7 @@ export default function MapPage() {
 							try {
 								map.current = new mapboxgl.default.Map({
 								container: mapContainer.current,
-								style: 'mapbox://styles/mapbox/light-v11', // Clean monochrome style without colors
+								style: 'mapbox://styles/mapbox/dark-v11', // Dark theme style
 								center: [-77.2975, 18.1096], // Jamaica center
 								zoom: 18, // Street level detail
 								pitch: 60, // More dramatic 3D tilt
