@@ -1292,15 +1292,51 @@ export default function MapPage() {
 				
 				mapboxgl.default.accessToken = token;
 				
-				// Disable telemetry to prevent network errors
+				// Completely disable Mapbox telemetry to prevent ERR_NAME_NOT_RESOLVED
 				try {
-					// Disable telemetry events that cause ERR_NAME_NOT_RESOLVED
-					if (mapboxgl.default.version) {
-						// Set configuration to minimize network calls
-						(window as any).MapboxAccessToken = token;
+					// Set environment variable to disable telemetry
+					if (typeof window !== 'undefined') {
+						(window as any).MapboxGLTelemetryDisabled = true;
+						// Also try setting the process env for completeness
+						if (typeof process !== 'undefined' && process.env) {
+							process.env.MapboxGLTelemetryDisabled = 'true';
+						}
 					}
+					
+					// Block telemetry at the network level using a more comprehensive approach
+					const originalFetch = window.fetch;
+					const originalXMLHttpRequest = window.XMLHttpRequest;
+					
+					// Override fetch
+					window.fetch = function(input, init) {
+						const url = typeof input === 'string' ? input : input.url;
+						if (url.includes('events.mapbox.com') || url.includes('api.mapbox.com/events')) {
+							console.log('Blocked telemetry request:', url);
+							return Promise.resolve(new Response('{"success": true}', { 
+								status: 200, 
+								statusText: 'OK',
+								headers: { 'Content-Type': 'application/json' }
+							}));
+						}
+						return originalFetch.call(this, input, init);
+					};
+					
+					// Override XMLHttpRequest for older telemetry code
+					window.XMLHttpRequest = function() {
+						const xhr = new originalXMLHttpRequest();
+						const originalOpen = xhr.open;
+						xhr.open = function(method, url, ...args) {
+							if (typeof url === 'string' && (url.includes('events.mapbox.com') || url.includes('api.mapbox.com/events'))) {
+								console.log('Blocked XHR telemetry request:', url);
+								// Create a dummy request that does nothing
+								return originalOpen.call(this, method, 'data:,', ...args);
+							}
+							return originalOpen.call(this, method, url, ...args);
+						};
+						return xhr;
+					};
 				} catch (e) {
-					console.log('Telemetry configuration error:', e);
+					console.log('Telemetry blocking error:', e);
 				}
 
 				// Get user location first, then create map
@@ -1328,11 +1364,13 @@ export default function MapPage() {
 								],
 								// Disable default controls to prevent duplicates
 								attributionControl: false,
-								// Filter out telemetry requests to prevent ERR_NAME_NOT_RESOLVED
+								// Comprehensive telemetry blocking
 								transformRequest: (url, resourceType) => {
-									if (url.includes('events.mapbox.com')) {
-										// Block telemetry requests
-										return { url: '' };
+									if (url.includes('events.mapbox.com') || 
+									    url.includes('api.mapbox.com/events') ||
+									    resourceType === 'Unknown' && url.includes('mapbox.com/events')) {
+										// Return null to completely block the request
+										return null;
 									}
 									return { url };
 								},
@@ -1428,11 +1466,13 @@ export default function MapPage() {
 						],
 						// Disable default controls to prevent duplicates
 						attributionControl: false,
-						// Filter out telemetry requests to prevent ERR_NAME_NOT_RESOLVED
+						// Comprehensive telemetry blocking
 						transformRequest: (url, resourceType) => {
-							if (url.includes('events.mapbox.com')) {
-								// Block telemetry requests
-								return { url: '' };
+							if (url.includes('events.mapbox.com') || 
+							    url.includes('api.mapbox.com/events') ||
+							    resourceType === 'Unknown' && url.includes('mapbox.com/events')) {
+								// Return null to completely block the request
+								return null;
 							}
 							return { url };
 						},
