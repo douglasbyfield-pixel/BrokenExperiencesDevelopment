@@ -166,6 +166,7 @@ export default function MapPage() {
 	const [filteredIssues, setFilteredIssues] = useState<Issue[]>([]);
 	const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
 	const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+	const permanentUserMarkerRef = useRef<any>(null);
 	const [activeFilters, setActiveFilters] = useState<{
 		status: string[];
 		severity: string[];
@@ -293,6 +294,7 @@ export default function MapPage() {
 				// Update location state
 				setUserLocation({ lat: latitude, lng: longitude });
 				setLocationAccuracy(accuracy);
+				updatePermanentUserMarker(latitude, longitude);
 				
 				// Update map center to follow user (use original method for live tracking)
 				if (map.current && (window as any).originalMapMethods) {
@@ -662,6 +664,10 @@ export default function MapPage() {
 			setDrawnRoute(routeGeoJSON);
 
 			// Fit map to show route
+			if (!(window as any).mapboxgl) {
+				console.error('Mapbox GL not loaded');
+				return;
+			}
 			const bounds = new (window as any).mapboxgl.LngLatBounds()
 				.extend([userLocation.lng, userLocation.lat])
 				.extend([issue.longitude, issue.latitude]);
@@ -780,7 +786,10 @@ export default function MapPage() {
 
 	// Internal function for showing distance view (not debounced)
 	const _showDistanceView = async (issue: Issue) => {
-		if (!userLocation || !map.current) return;
+		if (!userLocation || !map.current || !mapLoaded) {
+			console.warn('Cannot show distance view: map not ready');
+			return;
+		}
 
 		// Clear any existing distance markers and lines
 		clearDistanceView();
@@ -816,6 +825,10 @@ export default function MapPage() {
 			}
 
 			// Create and add user location marker
+			if (!(window as any).mapboxgl) {
+				console.error('Mapbox GL not loaded');
+				return;
+			}
 			const userMarker = new (window as any).mapboxgl.Marker({
 				element: userMarkerEl,
 				anchor: 'center'
@@ -1016,6 +1029,10 @@ export default function MapPage() {
 		setDistanceLine(lineGeoJSON);
 
 		// Create bounds that include both points
+		if (!(window as any).mapboxgl) {
+			console.error('Mapbox GL not loaded');
+			return;
+		}
 		const bounds = new (window as any).mapboxgl.LngLatBounds()
 			.extend([userLocation.lng, userLocation.lat])
 			.extend([issue.longitude, issue.latitude]);
@@ -1069,6 +1086,61 @@ export default function MapPage() {
 		}
 	};
 
+	// Create or update the permanent user location marker
+	const updatePermanentUserMarker = (lat: number, lng: number) => {
+		if (!map.current || !(window as any).mapboxgl) return;
+		
+		// If marker exists, just update position
+		if (permanentUserMarkerRef.current) {
+			permanentUserMarkerRef.current.setLngLat([lng, lat]);
+			return;
+		}
+		
+		// Create new marker
+		const el = document.createElement('div');
+		el.style.width = '24px';
+		el.style.height = '24px';
+		el.style.borderRadius = '50%';
+		el.style.backgroundColor = '#3B82F6';
+		el.style.border = '3px solid white';
+		el.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+		el.style.zIndex = '1000';
+		
+		// Add pulsing animation
+		el.style.animation = 'pulse 2s infinite';
+		
+		// Add the animation to the page if not already present
+		if (!document.getElementById('user-marker-pulse')) {
+			const style = document.createElement('style');
+			style.id = 'user-marker-pulse';
+			style.textContent = `
+				@keyframes pulse {
+					0% {
+						box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+					}
+					70% {
+						box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+					}
+					100% {
+						box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+					}
+				}
+			`;
+			document.head.appendChild(style);
+		}
+		
+		try {
+			permanentUserMarkerRef.current = new (window as any).mapboxgl.Marker({
+				element: el,
+				anchor: 'center'
+			})
+				.setLngLat([lng, lat])
+				.addTo(map.current);
+		} catch (error) {
+			console.error('Error creating user marker:', error);
+		}
+	};
+
 	// Get user's current location with better error handling
 	const requestLocation = () => {
 		if (!navigator.geolocation) {
@@ -1078,10 +1150,12 @@ export default function MapPage() {
 
 		navigator.geolocation.getCurrentPosition(
 			(position) => {
+				const { latitude, longitude } = position.coords;
 				setUserLocation({
-					lat: position.coords.latitude,
-					lng: position.coords.longitude
+					lat: latitude,
+					lng: longitude
 				});
+				updatePermanentUserMarker(latitude, longitude);
 				console.log('Location obtained:', position.coords.latitude, position.coords.longitude);
 			},
 			(error) => {
@@ -1173,6 +1247,13 @@ export default function MapPage() {
 			try {
 				console.log('Starting map initialization...');
 				
+				// Ensure container is mounted
+				if (!mapContainer.current || !document.body.contains(mapContainer.current)) {
+					console.error('Map container not mounted');
+					setMapError('Map container not ready. Please refresh the page.');
+					return;
+				}
+				
 				// Dynamic import to avoid SSR issues
 				const mapboxgl = await import('mapbox-gl');
 				console.log('Mapbox GL imported successfully');
@@ -1184,6 +1265,7 @@ export default function MapPage() {
 				console.log('Mapbox token exists:', !!token);
 				
 				if (!token) {
+					setMapError('Map configuration error. Please contact support.');
 					throw new Error('Mapbox access token is missing');
 				}
 				
@@ -1191,6 +1273,7 @@ export default function MapPage() {
 
 				// Get user location first, then create map
 				if (navigator.geolocation) {
+					// First try to get a quick location (less accurate but faster)
 					navigator.geolocation.getCurrentPosition(
 						(position) => {
 							const userLng = position.coords.longitude;
@@ -1230,11 +1313,16 @@ export default function MapPage() {
 								lng: userLng
 							});
 							
+							// Create user marker immediately after map is loaded
+							map.current.on('load', () => {
+								updatePermanentUserMarker(userLat, userLng);
+							});
+							
 							// Continue with map setup
 							setupMapControls();
 						},
 						(error) => {
-							console.log('Geolocation failed, using default center:', error);
+							console.log('Quick geolocation failed, using default center:', error);
 							// Fallback to default location with enhanced 3D appearance
 							map.current = new mapboxgl.default.Map({
 								container: mapContainer.current,
@@ -1265,9 +1353,9 @@ export default function MapPage() {
 							setupMapControls();
 						},
 						{
-							enableHighAccuracy: true,
-							timeout: 5000,
-							maximumAge: 0
+							enableHighAccuracy: false, // Faster but less accurate initially
+							timeout: 3000, // 3 seconds for quick response
+							maximumAge: 300000 // Accept cached location up to 5 minutes
 						}
 					);
 				} else {
@@ -1360,10 +1448,12 @@ export default function MapPage() {
 						heading: e.coords.heading,
 						speed: e.coords.speed
 					});
+					const { latitude, longitude } = e.coords;
 					setUserLocation({
-						lat: e.coords.latitude,
-						lng: e.coords.longitude
+						lat: latitude,
+						lng: longitude
 					});
+					updatePermanentUserMarker(latitude, longitude);
 				});
 
 				// Handle location errors
@@ -1374,10 +1464,12 @@ export default function MapPage() {
 						navigator.geolocation.getCurrentPosition(
 							(position) => {
 								console.log('Fallback location obtained');
+								const { latitude, longitude } = position.coords;
 								setUserLocation({
-									lat: position.coords.latitude,
-									lng: position.coords.longitude
+									lat: latitude,
+									lng: longitude
 								});
+								updatePermanentUserMarker(latitude, longitude);
 							},
 							(error) => console.error('Fallback location failed:', error),
 							{
@@ -1487,10 +1579,12 @@ export default function MapPage() {
 								
 								// Only update if this reading is more accurate than previous
 								if (position.coords.accuracy <= 20) { // Within 20 meters
+									const { latitude, longitude } = position.coords;
 									setUserLocation({
-										lat: position.coords.latitude,
-										lng: position.coords.longitude
+										lat: latitude,
+										lng: longitude
 									});
+									updatePermanentUserMarker(latitude, longitude);
 								}
 							},
 							(error) => {
@@ -1636,12 +1730,37 @@ export default function MapPage() {
 			}
 		};
 
-		initializeMap();
+		// Initialize map with retry logic
+		let retryCount = 0;
+		const maxRetries = 3;
+		
+		const initWithRetry = async () => {
+			try {
+				await initializeMap();
+			} catch (error) {
+				console.error(`Map initialization attempt ${retryCount + 1} failed:`, error);
+				if (retryCount < maxRetries - 1 && !map.current) {
+					retryCount++;
+					setTimeout(initWithRetry, 2000); // Retry after 2 seconds
+				} else {
+					setMapError('Unable to load map. Please check your internet connection and refresh the page.');
+					setIsLoading(false);
+				}
+			}
+		};
+		
+		initWithRetry();
 
 		return () => {
 			// Cleanup markers and layers
 			markersRef.current.forEach(marker => marker.remove());
 			markersRef.current = [];
+			
+			// Clean up permanent user marker
+			if (permanentUserMarkerRef.current) {
+				permanentUserMarkerRef.current.remove();
+				permanentUserMarkerRef.current = null;
+			}
 			
 			// Clean up distance view
 			clearDistanceView();
@@ -1812,6 +1931,10 @@ export default function MapPage() {
 			el.style.border = 'none';
 			
 			// Create marker with explicit positioning options
+			if (!(window as any).mapboxgl) {
+				console.error('Mapbox GL not loaded');
+				return null;
+			}
 			return new (window as any).mapboxgl.Marker({
 				element: el,
 				anchor: 'center'
@@ -1830,7 +1953,9 @@ export default function MapPage() {
 			
 			for (let i = start; i < end; i++) {
 				const marker = createOptimizedMarker(filteredIssues[i]);
-				markersRef.current.push(marker);
+				if (marker) {
+					markersRef.current.push(marker);
+				}
 			}
 			
 			currentBatch++;
@@ -2160,14 +2285,6 @@ export default function MapPage() {
 			<div ref={mapContainer} className="w-full h-full" />
 
 			{/* Control Buttons - Search and Live Location */}
-			{/* Map Title - OBVIOUS CHANGE APPLIED */}
-		<div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10">
-			<div className="bg-white/95 backdrop-blur-sm px-6 py-3 rounded-lg shadow-lg border">
-				<h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-					🗺️ Community Issues Map - CHANGES APPLIED
-				</h1>
-			</div>
-		</div>
 
 		{!showSearchPanel && (
 				<div className="absolute top-16 left-3 z-10 flex flex-col gap-2">
