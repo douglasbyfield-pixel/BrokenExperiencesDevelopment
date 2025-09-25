@@ -52,8 +52,8 @@ export default function SignInForm({
 
 	return (
 		<div className="w-full">
-			<div className="text-center mb-8">
-				<h2 className="text-2xl font-bold text-black mb-2">Welcome back</h2>
+			<div className="text-center mb-6">
+				<h2 className="text-xl font-bold text-black mb-2">Welcome back</h2>
 				<p className="text-gray-600">Sign in to your account</p>
 			</div>
 
@@ -69,7 +69,7 @@ export default function SignInForm({
 					<form.Field name="email">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name} className="text-sm font-medium text-black">
+								<Label htmlFor={field.name} className="text-sm font-medium text-gray-900">
 									Email address
 								</Label>
 								<Input
@@ -96,7 +96,7 @@ export default function SignInForm({
 					<form.Field name="password">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name} className="text-sm font-medium text-black">
+								<Label htmlFor={field.name} className="text-sm font-medium text-gray-900">
 									Password
 								</Label>
 								<Input
@@ -152,17 +152,10 @@ export default function SignInForm({
 				</div>
 			</div>
 
-			<div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3">
+			<div className="w-full">
 				<Button
 					variant="outline"
-					className="w-full h-12 justify-center opacity-60 cursor-not-allowed"
-					disabled
-				>
-					<AppleLogo className="mr-2" /> Sign In with Apple
-				</Button>
-				<Button
-					variant="outline"
-					className="w-full h-12 justify-center"
+					className="w-full h-12 justify-center text-black border-gray-300 hover:bg-gray-50 hover:text-black"
 					onClick={async () => {
 						const { error } = await supabase.auth.signInWithOAuth({
 							provider: "google",
@@ -205,9 +198,9 @@ function ForgotPasswordDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange} title="Reset your password">
-            <div className="space-y-3">
+            <div className="space-y-4">
                 <div className="space-y-2">
-                    <Label htmlFor="fp-email">Email</Label>
+                    <Label htmlFor="fp-email" className="text-sm font-medium text-black">Email</Label>
                     <Input
                         id="fp-email"
                         type="email"
@@ -215,14 +208,20 @@ function ForgotPasswordDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                         value={email}
                         onBlur={() => setTouched(true)}
                         onChange={(e) => setEmail(e.target.value)}
-                        className={`${showError ? 'border-red-500' : ''}`}
+                        className={`w-full h-12 px-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black bg-white transition-all duration-200 ${showError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                     />
                     {showError ? (
-                        <p className="text-xs text-red-500">Enter a valid email address</p>
+                        <p className="text-sm text-red-500">Enter a valid email address</p>
                     ) : null}
                 </div>
-                <div className="flex gap-2 justify-end">
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <div className="flex gap-3 justify-end pt-2">
+                    <Button 
+                        variant="outline" 
+                        onClick={() => onOpenChange(false)}
+                        className="px-6 py-2 border-2 border-gray-300 text-black hover:bg-gray-50 hover:text-black rounded-xl transition-all duration-200"
+                    >
+                        Cancel
+                    </Button>
                     <Button
                         disabled={!isValidEmail || sending}
                         onClick={async () => {
@@ -241,6 +240,7 @@ function ForgotPasswordDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                                 toast.success("If an account exists for this email, a reset link has been sent.");
                             }, 0);
                         }}
+                        className="px-6 py-2 bg-black hover:bg-gray-800 text-white hover:text-white font-medium rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {sending ? "Sending..." : "Send link"}
                     </Button>

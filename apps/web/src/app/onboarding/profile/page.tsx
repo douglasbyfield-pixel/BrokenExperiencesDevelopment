@@ -1,20 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase-client";
 import { toast } from "sonner";
+import { Camera } from "lucide-react";
 
 export default function ProfileSetupPage() {
     const router = useRouter();
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [handle, setHandle] = useState("");
     const [displayName, setDisplayName] = useState("");
     const [bio, setBio] = useState("");
     const [saving, setSaving] = useState(false);
     const [nameTouched, setNameTouched] = useState(false);
+    const [profileImage, setProfileImage] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
 
     const canContinue = handle.trim().length >= 3;
 
@@ -43,48 +48,176 @@ export default function ProfileSetupPage() {
         } catch {}
     }, [handle, displayName, bio]);
 
+    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                toast.error("Image must be smaller than 5MB");
+                return;
+            }
+            
+            if (!file.type.startsWith('image/')) {
+                toast.error("Please select an image file");
+                return;
+            }
+            
+            setProfileImage(file);
+            
+            // Create preview
+            const reader = new FileReader();
+            reader.onload = () => setImagePreview(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const uploadProfileImage = async (userId: string): Promise<string | null> => {
+        if (!profileImage) return null;
+        
+        setUploading(true);
+        try {
+            const fileExt = profileImage.name.split('.').pop();
+            const fileName = `${userId}-${Date.now()}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('profile-images')
+                .upload(fileName, profileImage);
+                
+            if (uploadError) throw uploadError;
+            
+            const { data } = supabase.storage
+                .from('profile-images')
+                .getPublicUrl(fileName);
+                
+            return data.publicUrl;
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            toast.error('Failed to upload image');
+            return null;
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
-        <div className="container mx-auto max-w-md px-4 py-6">
-            <div className="flex items-center justify-between">
-                <button onClick={() => router.back()} aria-label="Back" className="text-lg">←</button>
-                <div className="font-semibold">Set up profile</div>
-                <div />
-            </div>
+        <div className="min-h-screen bg-gradient-to-br from-white to-gray-50 flex items-center justify-center">
+            <div className="w-full max-w-md mx-auto px-6">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-12 animate-fade-in">
+                    <button 
+                        onClick={() => router.back()} 
+                        aria-label="Back" 
+                        className="w-10 h-10 rounded-xl border-2 border-gray-300 flex items-center justify-center hover:border-black hover:scale-105 transition-all duration-200 hover:shadow-md"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <div className="font-bold text-black text-xl">Set up profile</div>
+                    <div className="w-10" />
+                </div>
 
-            <div className="flex flex-col items-center py-6">
-                <div className="h-20 w-20 rounded-full bg-gray-200" />
-                <button className="mt-2 text-blue-600 text-sm">Add a photo</button>
-            </div>
-
-            <div className="rounded-2xl border p-4 space-y-4 bg-white">
-                <div className="space-y-2">
-                    <Label htmlFor="handle">Name</Label>
-                    <Input
-                        id="handle"
-                        placeholder="Your name"
-                        value={handle}
-                        onChange={(e) => setHandle(e.target.value)}
-                        onBlur={() => setNameTouched(true)}
+                {/* Profile Photo */}
+                <div className="flex flex-col items-center mb-8 animate-slide-up animation-delay-200">
+                    <div className="relative group">
+                        <div 
+                            className={`h-24 w-24 rounded-full border-2 transition-all duration-300 group-hover:scale-105 cursor-pointer ${
+                                imagePreview ? 'border-black' : 'bg-gray-100 border-gray-300 group-hover:border-gray-400'
+                            }`}
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            {imagePreview ? (
+                                <img 
+                                    src={imagePreview} 
+                                    alt="Profile preview" 
+                                    className="w-full h-full rounded-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full rounded-full flex items-center justify-center bg-gray-100 group-hover:bg-gray-200 transition-colors duration-300">
+                                    <Camera className="w-8 h-8 text-gray-400 group-hover:text-gray-600 transition-colors duration-300" />
+                                </div>
+                            )}
+                        </div>
+                        {uploading && (
+                            <div className="absolute inset-0 rounded-full bg-black bg-opacity-20 flex items-center justify-center">
+                                <svg className="animate-spin w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                            </div>
+                        )}
+                    </div>
+                    <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="mt-3 text-black hover:text-gray-700 text-sm font-medium underline transition-colors duration-200 hover:scale-105 transform"
+                    >
+                        {imagePreview ? 'Change photo' : 'Add a photo'}
+                    </button>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
                     />
-                    <p className={`text-xs ${!canContinue && nameTouched ? 'text-red-500' : 'text-gray-500'}`}>
-                        {(!canContinue && nameTouched) ? 'Name is required (min 3 characters).' : 'Enter your name (min 3 characters).'}
-                    </p>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="display">Display name</Label>
-                    <Input id="display" placeholder="+ @brokenexperience" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Input id="bio" placeholder="+ Write bio" value={bio} onChange={(e) => setBio(e.target.value)} />
-                </div>
-            </div>
 
-            <div className="pt-6">
-                <Button
-                    disabled={!canContinue || saving}
-                    className="w-full h-12 bg-blue-600 hover:bg-blue-700"
-                    onClick={async () => {
+                {/* Form */}
+                <div className="rounded-xl border-2 border-gray-300 p-6 space-y-6 bg-white hover:shadow-lg transition-all duration-300 animate-slide-up animation-delay-300">
+                    <div className="space-y-2 group">
+                        <Label htmlFor="handle" className="text-sm font-medium text-black flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            Name
+                        </Label>
+                        <Input
+                            id="handle"
+                            placeholder="Your name"
+                            value={handle}
+                            onChange={(e) => setHandle(e.target.value)}
+                            onBlur={() => setNameTouched(true)}
+                            className="w-full h-12 px-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black bg-white transition-all duration-200 hover:border-gray-400"
+                        />
+                        <p className={`text-xs transition-colors duration-200 ${!canContinue && nameTouched ? 'text-red-500' : 'text-gray-600'}`}>
+                            {(!canContinue && nameTouched) ? 'Name is required (min 3 characters).' : 'Enter your name (min 3 characters).'}
+                        </p>
+                    </div>
+                    <div className="space-y-2 group">
+                        <Label htmlFor="display" className="text-sm font-medium text-black flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                            Display name
+                        </Label>
+                        <Input 
+                            id="display" 
+                            placeholder="@brokenexperience" 
+                            value={displayName} 
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            className="w-full h-12 px-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black bg-white transition-all duration-200 hover:border-gray-400"
+                        />
+                    </div>
+                    <div className="space-y-2 group">
+                        <Label htmlFor="bio" className="text-sm font-medium text-black flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Bio
+                        </Label>
+                        <Input 
+                            id="bio" 
+                            placeholder="Write a short bio" 
+                            value={bio} 
+                            onChange={(e) => setBio(e.target.value)}
+                            className="w-full h-12 px-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black bg-white transition-all duration-200 hover:border-gray-400"
+                        />
+                    </div>
+                </div>
+
+                <div className="pt-6 animate-slide-up animation-delay-500">
+                    <Button
+                        disabled={!canContinue || saving}
+                        className="w-full h-12 bg-black hover:bg-gray-800 text-white font-medium rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] transform group"
+                        onClick={async () => {
                         setSaving(true);
                         try {
                             const { data: userResp, error: userErr } = await supabase.auth.getUser();
@@ -92,6 +225,13 @@ export default function ProfileSetupPage() {
                                 throw new Error(userErr?.message || "No authenticated user");
                             }
                             const authUserId = userResp.user.id;
+                            
+                            // Upload profile image if selected
+                            let profileImageUrl: string | null = null;
+                            if (profileImage) {
+                                profileImageUrl = await uploadProfileImage(authUserId);
+                            }
+                            
                             // Optional: read selected role from previous step
                             let role: 'reporter' | 'organiser' = 'reporter';
                             try {
@@ -111,6 +251,7 @@ export default function ProfileSetupPage() {
                                         handle: nameValue,
                                         display_name: display,
                                         bio: bio.trim() || null,
+                                        avatar_url: profileImageUrl,
                                         role,
                                     },
                                     { onConflict: 'auth_user_id' }
@@ -119,7 +260,13 @@ export default function ProfileSetupPage() {
 
                             // Also mirror to auth metadata for quick reads (optional)
                             await supabase.auth.updateUser({
-                                data: { handle: nameValue, displayName: display, bio: bio.trim(), role },
+                                data: { 
+                                    handle: nameValue, 
+                                    displayName: display, 
+                                    bio: bio.trim(), 
+                                    avatar_url: profileImageUrl,
+                                    role 
+                                },
                             });
 
                             toast.success('Profile saved');
@@ -134,11 +281,33 @@ export default function ProfileSetupPage() {
                         }
                     }}
                 >
-                    {saving ? 'Saving...' : 'Next'}
+                    <span className="flex items-center justify-center gap-2">
+                        {saving ? (
+                            <>
+                                <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                Saving...
+                            </>
+                        ) : (
+                            <>
+                                Next
+                                <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                            </>
+                        )}
+                    </span>
                 </Button>
                 {!canContinue ? (
-                    <p className="mt-2 text-center text-xs text-gray-500">Enter your name to continue</p>
+                    <p className="mt-3 text-center text-sm text-gray-600 animate-fade-in">Enter your name to continue</p>
                 ) : null}
+                </div>
+
+                {/* Footer */}
+                <div className="mt-8 text-center text-xs text-gray-500 animate-fade-in animation-delay-700">
+                    <p>© 2025 Broken Experiences. All rights reserved.</p>
+                </div>
             </div>
         </div>
     );

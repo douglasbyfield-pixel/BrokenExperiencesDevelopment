@@ -12,5 +12,3 @@ export function GoogleLogo(props: React.SVGProps<SVGSVGElement>) {
 }
 
 export default GoogleLogo;
-
-

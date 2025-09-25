@@ -199,7 +199,7 @@ export default function SignUpForm({
 					{(state) => (
 						<Button
 							type="submit"
-							className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+							className="w-full h-12 bg-black hover:bg-gray-800 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
 							disabled={!state.canSubmit || state.isSubmitting}
 						>
 							{state.isSubmitting ? "Creating account..." : "Create an account"}
@@ -209,7 +209,7 @@ export default function SignUpForm({
 			</form>
 
 			<div className="text-center text-sm mt-3">
-				I already have an account.{' '}
+				<span className="text-gray-600">I already have an account.{' '}</span>
 				<button onClick={onSwitchToSignIn} className="text-black font-medium underline">Log in</button>
 			</div>
 
@@ -222,17 +222,10 @@ export default function SignUpForm({
 				</div>
 			</div>
 
-			<div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3">
+			<div className="w-full">
 				<Button
 					variant="outline"
-					className="w-full h-12 justify-center opacity-60 cursor-not-allowed"
-					disabled
-				>
-					<AppleLogo className="mr-2" /> Sign Up with Apple
-				</Button>
-				<Button
-					variant="outline"
-					className="w-full h-12 justify-center"
+					className="w-full h-12 justify-center text-black border-gray-300 hover:bg-gray-50 hover:text-black"
                     onClick={async () => {
                         const { error } = await supabase.auth.signInWithOAuth({
                             provider: "google",
