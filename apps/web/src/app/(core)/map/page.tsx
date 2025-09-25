@@ -326,8 +326,8 @@ export default function MapPage() {
 			},
 			{
 				enableHighAccuracy: true,
-				timeout: 10000,
-				maximumAge: 0 // Always get fresh location
+				timeout: 15000, // Allow sufficient time for GPS accuracy
+				maximumAge: 5000 // Use very fresh location data (5 seconds)
 			}
 		);
 
@@ -1188,8 +1188,8 @@ export default function MapPage() {
 			},
 			{
 				enableHighAccuracy: true,
-				timeout: 10000,
-				maximumAge: 300000 // 5 minutes
+				timeout: 12000, // Allow more time for accuracy
+				maximumAge: 30000 // Use recent location data (30 seconds)
 			}
 		);
 	};
@@ -1291,6 +1291,17 @@ export default function MapPage() {
 				}
 				
 				mapboxgl.default.accessToken = token;
+				
+				// Disable telemetry to prevent network errors
+				try {
+					// Disable telemetry events that cause ERR_NAME_NOT_RESOLVED
+					if (mapboxgl.default.version) {
+						// Set configuration to minimize network calls
+						(window as any).MapboxAccessToken = token;
+					}
+				} catch (e) {
+					console.log('Telemetry configuration error:', e);
+				}
 
 				// Get user location first, then create map
 				if (navigator.geolocation) {
@@ -1317,6 +1328,14 @@ export default function MapPage() {
 								],
 								// Disable default controls to prevent duplicates
 								attributionControl: false,
+								// Filter out telemetry requests to prevent ERR_NAME_NOT_RESOLVED
+								transformRequest: (url, resourceType) => {
+									if (url.includes('events.mapbox.com')) {
+										// Block telemetry requests
+										return { url: '' };
+									}
+									return { url };
+								},
 								antialias: true, // Better rendering for 3D
 								// Optimize for mobile and 3D
 								trackResize: true,
@@ -1386,9 +1405,9 @@ export default function MapPage() {
 							}
 						},
 						{
-							enableHighAccuracy: false, // Faster but less accurate initially
-							timeout: 3000, // 3 seconds for quick response
-							maximumAge: 300000 // Accept cached location up to 5 minutes
+							enableHighAccuracy: true, // Use GPS for highest accuracy
+							timeout: 8000, // Allow more time for accurate location
+							maximumAge: 60000 // Use 1 minute cache for better accuracy
 						}
 					);
 				} else {
@@ -1396,7 +1415,7 @@ export default function MapPage() {
 					try {
 						map.current = new mapboxgl.default.Map({
 						container: mapContainer.current,
-						style: 'mapbox://styles/mapbox/light-v11', // Clean monochrome style without colors
+						style: 'mapbox://styles/mapbox/dark-v11', // Dark theme style
 						center: [-77.2975, 18.1096], // Jamaica center
 						zoom: 18, // Street level detail
 						pitch: 60, // More dramatic 3D tilt
@@ -1409,6 +1428,14 @@ export default function MapPage() {
 						],
 						// Disable default controls to prevent duplicates
 						attributionControl: false,
+						// Filter out telemetry requests to prevent ERR_NAME_NOT_RESOLVED
+						transformRequest: (url, resourceType) => {
+							if (url.includes('events.mapbox.com')) {
+								// Block telemetry requests
+								return { url: '' };
+							}
+							return { url };
+						},
 						antialias: true, // Better rendering for 3D
 						// Enhanced 3D controls
 						trackResize: true,
@@ -1457,13 +1484,13 @@ export default function MapPage() {
 				// Add geolocate control with balanced accuracy/speed settings
 				const geolocateControl = new mapboxgl.default.GeolocateControl({
 					positionOptions: {
-						enableHighAccuracy: true, // Use GPS
-						timeout: 8000, // Wait up to 8 seconds (faster loading)
-						maximumAge: 30000 // Allow 30 second cache for faster subsequent loads
+						enableHighAccuracy: true, // Use GPS for maximum accuracy
+						timeout: 15000, // Allow up to 15 seconds for high accuracy
+						maximumAge: 10000 // Only use recent location data (10 seconds)
 					},
 					trackUserLocation: true, // Continuously track location changes
 					showUserHeading: true, // Show direction arrow
-					showAccuracyCircle: false, // Remove accuracy circle for cleaner look
+					showAccuracyCircle: true, // Show accuracy circle to indicate precision
 					showUserLocation: true // Show the blue dot
 				});
 				
@@ -1480,7 +1507,7 @@ export default function MapPage() {
 				
 				// Listen for geolocate events to update our state with accuracy info
 				geolocateControl.on('geolocate', (e) => {
-					// Check if coords exist and have the required properties
+					// Properly handle different event types from geolocate control
 					if (e && e.coords && typeof e.coords.latitude === 'number' && typeof e.coords.longitude === 'number') {
 						console.log('High accuracy location found:', {
 							lat: e.coords.latitude,
@@ -1495,9 +1522,19 @@ export default function MapPage() {
 							lng: longitude
 						});
 						updatePermanentUserMarker(latitude, longitude);
-					} else {
-						console.warn('Geolocation event received but coords are missing or invalid:', e);
+					} else if (e && e.lngLat) {
+						// Handle different event structure from geolocate control
+						console.log('Location from geolocate control:', {
+							lat: e.lngLat.lat,
+							lng: e.lngLat.lng
+						});
+						setUserLocation({
+							lat: e.lngLat.lat,
+							lng: e.lngLat.lng
+						});
+						updatePermanentUserMarker(e.lngLat.lat, e.lngLat.lng);
 					}
+					// Silently ignore events without location data (like trackuserlocationstart/end)
 				});
 
 				// Handle location errors
@@ -1517,9 +1554,9 @@ export default function MapPage() {
 							},
 							(error) => console.error('Fallback location failed:', error),
 							{
-								enableHighAccuracy: false, // Faster but less accurate
-								timeout: 5000,
-								maximumAge: 300000
+								enableHighAccuracy: true, // Use high accuracy for fallback too
+								timeout: 10000, // Allow more time for accuracy
+								maximumAge: 30000 // Use recent data (30 seconds)
 							}
 						);
 					}
@@ -1557,10 +1594,22 @@ export default function MapPage() {
 					console.log('Map style loaded');
 				});
 
-				// Add error event listener
+				// Add error event listener with more specific error handling
 				map.current.on('error', (e) => {
 					console.error('Map error:', e);
-					setMapError('Map failed to load. Please check your internet connection and try again.');
+					
+					// Handle specific error types
+					if (e.error && e.error.message) {
+						if (e.error.message.includes('NetworkError') || e.error.message.includes('Failed to fetch')) {
+							setMapError('Network error: Unable to connect to map servers. Please check your internet connection.');
+						} else if (e.error.message.includes('Unauthorized') || e.error.message.includes('token')) {
+							setMapError('Authentication error: Invalid map token. Please check configuration.');
+						} else {
+							setMapError(`Map error: ${e.error.message}`);
+						}
+					} else {
+						setMapError('Map failed to load. Please refresh the page and try again.');
+					}
 					setIsLoading(false);
 				});
 
@@ -1656,8 +1705,8 @@ export default function MapPage() {
 							},
 							{
 								enableHighAccuracy: true,
-								timeout: 5000, // 5 second timeout for faster response
-								maximumAge: 60000 // Allow 1 minute cache for balance
+								timeout: 10000, // Allow more time for high accuracy GPS fix
+								maximumAge: 15000 // Use only very recent location data (15 seconds)
 							}
 						);
 
