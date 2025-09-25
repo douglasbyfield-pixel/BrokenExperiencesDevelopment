@@ -3,9 +3,12 @@
 import SignInForm from "@/components/sign-in-form";
 import SignUpForm from "@/components/sign-up-form";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
 	const [showSignIn, setShowSignIn] = useState(true);
+	const router = useRouter();
 
 	return (
 		<div className="min-h-screen bg-white flex items-center justify-center">
@@ -25,6 +28,17 @@ export default function LoginPage() {
 				) : (
 					<SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
 				)}
+				
+				{/* Demo button */}
+				<div className="mt-6 pt-6 border-t border-gray-200">
+					<Button 
+						variant="outline" 
+						className="w-full"
+						onClick={() => router.push('/home')}
+					>
+						Continue as Demo User (No Sign In)
+					</Button>
+				</div>
 				
 				{/* Footer */}
 				<div className="mt-8 text-center text-xs text-gray-500">

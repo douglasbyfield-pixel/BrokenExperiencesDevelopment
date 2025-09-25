@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "mapbox-gl/dist/mapbox-gl.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -10,7 +11,8 @@
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
+  @apply bg-white dark:bg-gray-950 m-0 p-0;
+  height: 100%;
 
   @media (prefers-color-scheme: dark) {
     color-scheme: dark;
@@ -193,4 +195,79 @@ body {
 
 .animation-delay-1000 {
   animation-delay: 1s;
+}
+
+/* Ensure map fills available space on mobile */
+@layer utilities {
+  .map-container {
+    height: 100%;
+    min-height: 100%;
+  }
+  
+  @media (max-width: 768px) {
+    .mobile-map-page {
+      height: 100dvh; /* Full height since no header on map page */
+      width: 100vw;
+      position: fixed;
+      top: 0; /* No header offset */
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 0;
+      min-height: 400px; /* Ensure minimum usable map size */
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .mobile-map-page {
+      height: 100dvh; /* Full height since no header on map page */
+      top: 0; /* No header offset */
+      min-height: 350px;
+    }
+  }
+}
+
+/* Mapbox Controls Visibility Fix */
+.mapboxgl-ctrl-top-right {
+  top: 10px;
+  right: 10px;
+}
+
+.mapboxgl-ctrl-top-left {
+  top: 10px;
+  left: 10px;
+}
+
+.mapboxgl-ctrl-bottom-right {
+  bottom: 10px;
+  right: 10px;
+}
+
+.mapboxgl-ctrl-bottom-left {
+  bottom: 10px;
+  left: 10px;
+}
+
+/* Ensure navigation controls are visible */
+.mapboxgl-ctrl-nav-compass,
+.mapboxgl-ctrl-zoom-in,
+.mapboxgl-ctrl-zoom-out,
+.mapboxgl-ctrl-geolocate {
+  background-color: white !important;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Mobile specific adjustments for controls */
+@media (max-width: 768px) {
+  .mapboxgl-ctrl-top-right {
+    top: 10px;
+    right: 10px;
+  }
+  
+  /* When search panel is visible, move controls down */
+  .search-visible .mapboxgl-ctrl-top-right {
+    top: auto;
+    bottom: 20px;
+    right: 10px;
+  }
 }

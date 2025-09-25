@@ -23,7 +23,7 @@ export default function UserMenu() {
 
     if (!user) {
 		return (
-			<Button variant="outline" asChild>
+			<Button variant="outline" asChild className="text-black border-black hover:bg-black hover:text-white transition-colors">
 				<Link href="/login">Sign In</Link>
 			</Button>
 		);
@@ -32,7 +32,9 @@ export default function UserMenu() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-                <Button variant="outline">{user.email}</Button>
+				<Button variant="outline" className="text-black border-black hover:bg-black hover:text-white transition-colors">
+					{user.email || user.user_metadata?.name || 'User'}
+				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="bg-card">
 				<DropdownMenuLabel>My Account</DropdownMenuLabel>
