@@ -179,6 +179,9 @@ export default function MapPage() {
 	const [showLegend, setShowLegend] = useState(false);
 	const [mapLoaded, setMapLoaded] = useState(false);
 	const [showSearchPanel, setShowSearchPanel] = useState(false);
+	const [showUserLocationPopup, setShowUserLocationPopup] = useState(false);
+	const [userLocationPopupPosition, setUserLocationPopupPosition] = useState<{x: number, y: number} | null>(null);
+	const [showQuickFeatures, setShowQuickFeatures] = useState(false);
 
 	// Rate limiting and throttling state
 	const [apiCallCount, setApiCallCount] = useState(0);
@@ -1097,59 +1100,11 @@ export default function MapPage() {
 		}
 	};
 
-	// Create or update the permanent user location marker
+	// Create or update the permanent user location marker (disabled - using built-in marker)
 	const updatePermanentUserMarker = (lat: number, lng: number) => {
-		if (!map.current || !(window as any).mapboxgl) return;
-		
-		// If marker exists, just update position
-		if (permanentUserMarkerRef.current) {
-			permanentUserMarkerRef.current.setLngLat([lng, lat]);
-			return;
-		}
-		
-		// Create new marker
-		const el = document.createElement('div');
-		el.style.width = '24px';
-		el.style.height = '24px';
-		el.style.borderRadius = '50%';
-		el.style.backgroundColor = '#3B82F6';
-		el.style.border = '3px solid white';
-		el.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-		el.style.zIndex = '1000';
-		
-		// Add pulsing animation
-		el.style.animation = 'pulse 2s infinite';
-		
-		// Add the animation to the page if not already present
-		if (!document.getElementById('user-marker-pulse')) {
-			const style = document.createElement('style');
-			style.id = 'user-marker-pulse';
-			style.textContent = `
-				@keyframes pulse {
-					0% {
-						box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
-					}
-					70% {
-						box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-					}
-					100% {
-						box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-					}
-				}
-			`;
-			document.head.appendChild(style);
-		}
-		
-		try {
-			permanentUserMarkerRef.current = new (window as any).mapboxgl.Marker({
-				element: el,
-				anchor: 'center'
-			})
-				.setLngLat([lng, lat])
-				.addTo(map.current);
-		} catch (error) {
-			console.error('Error creating user marker:', error);
-		}
+		console.log('updatePermanentUserMarker called with:', lat, lng, '- using built-in marker instead');
+		// We're now using the built-in Mapbox location marker, so skip custom marker creation
+		return;
 	};
 
 	// Get user's current location with better error handling
@@ -1193,6 +1148,243 @@ export default function MapPage() {
 			}
 		);
 	};
+
+	// User location popup handlers
+	const shareLocation = async () => {
+		console.log('Share location clicked', { userLocation });
+		if (userLocation) {
+			const url = `https://maps.google.com/maps?q=${userLocation.lat},${userLocation.lng}`;
+			if (navigator.share) {
+				try {
+					await navigator.share({
+						title: 'My Current Location',
+						text: 'Check out my location on the map',
+						url: url
+					});
+				} catch (err) {
+					// Fallback to clipboard
+					navigator.clipboard.writeText(url);
+					alert('Location URL copied to clipboard!');
+				}
+			} else {
+				navigator.clipboard.writeText(url);
+				alert('Location URL copied to clipboard!');
+			}
+		}
+		setShowUserLocationPopup(false);
+		setShowQuickFeatures(false);
+	};
+
+	// Quick action handlers
+	const reportIssueHere = () => {
+		console.log('Report issue at current location');
+		if (userLocation) {
+			// Create a new issue object with current location
+			const newIssue = {
+				title: 'New Issue',
+				description: 'Issue reported at current location',
+				latitude: userLocation.lat,
+				longitude: userLocation.lng,
+				category: 'other',
+				status: 'pending',
+				priority: 'medium'
+			};
+			
+			// Focus on the location and show issue creation
+			if (map.current) {
+				map.current.easeTo({
+					center: [userLocation.lng, userLocation.lat],
+					zoom: 18,
+					pitch: 45,
+					duration: 1000
+				});
+			}
+			
+			alert('Issue reporting feature coming soon! Location saved.');
+		}
+		setShowUserLocationPopup(false);
+	};
+
+	const showMyArea = () => {
+		console.log('Show my area clicked');
+		if (userLocation && map.current) {
+			// Show a wider view of the user's area
+			const originalMethods = (window as any).originalMapMethods;
+			if (originalMethods && originalMethods.easeTo) {
+				originalMethods.easeTo.call(map.current, {
+					center: [userLocation.lng, userLocation.lat],
+					zoom: 14, // Wider view
+					pitch: 30, // Less tilt for overview
+					bearing: 0,
+					duration: 1500
+				});
+			} else {
+				map.current.easeTo({
+					center: [userLocation.lng, userLocation.lat],
+					zoom: 14,
+					pitch: 30,
+					bearing: 0,
+					duration: 1500
+				});
+			}
+		}
+		setShowUserLocationPopup(false);
+		setShowQuickFeatures(false);
+	};
+
+	const findDirections = () => {
+		console.log('Find directions clicked');
+		if (userLocation) {
+			// Open directions in external app
+			const url = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${userLocation.lat},${userLocation.lng}`;
+			window.open(url, '_blank');
+		}
+		setShowUserLocationPopup(false);
+	};
+
+	const toggleLiveTracking = () => {
+		console.log('Toggle live tracking clicked');
+		if (isLiveTracking) {
+			stopLiveTracking();
+			alert('Live tracking disabled');
+		} else {
+			startLiveTracking();
+			alert('Live tracking enabled');
+		}
+		setShowUserLocationPopup(false);
+	};
+
+	const centerOnUser = () => {
+		console.log('Center on user clicked', { userLocation, mapExists: !!map.current });
+		if (map.current && userLocation) {
+			// Use the original map methods if available, otherwise use direct easeTo
+			const originalMethods = (window as any).originalMapMethods;
+			if (originalMethods && originalMethods.easeTo) {
+				originalMethods.easeTo.call(map.current, {
+					center: [userLocation.lng, userLocation.lat],
+					zoom: 18,
+					pitch: 60,
+					bearing: 0,
+					duration: 1000
+				});
+			} else {
+				map.current.easeTo({
+					center: [userLocation.lng, userLocation.lat],
+					zoom: 18,
+					pitch: 60,
+					bearing: 0,
+					duration: 1000
+				});
+			}
+			console.log('Centering map on user location:', userLocation);
+		} else {
+			console.error('Cannot center on user - missing map or location');
+		}
+		setShowUserLocationPopup(false);
+		setShowQuickFeatures(false);
+	};
+
+	const refreshLocation = () => {
+		console.log('Refresh location clicked');
+		requestLocation();
+		setShowUserLocationPopup(false);
+	};
+
+	const findClosestIssue = () => {
+		console.log('Find closest issue clicked', { userLocation, issueCount: filteredIssues.length });
+		if (userLocation && filteredIssues.length > 0) {
+			// Find all valid issues with coordinates
+			const validIssues = filteredIssues.filter(issue => {
+				if (!issue.latitude || !issue.longitude) {
+					console.warn('Issue missing coordinates:', issue);
+					return false;
+				}
+				return true;
+			});
+			
+			if (validIssues.length > 0) {
+				// Find the closest issue
+				let closestIssue = validIssues[0];
+				let shortestDistance = calculateDistance(
+					userLocation.lat, userLocation.lng,
+					closestIssue.latitude, closestIssue.longitude
+				);
+				
+				validIssues.forEach(issue => {
+					const distance = calculateDistance(
+						userLocation.lat, userLocation.lng,
+						issue.latitude, issue.longitude
+					);
+					if (distance < shortestDistance) {
+						shortestDistance = distance;
+						closestIssue = issue;
+					}
+				});
+				
+				setSelectedIssue(closestIssue);
+				
+				// Smooth transition to the closest issue
+				if (map.current) {
+					const originalMethods = (window as any).originalMapMethods;
+					if (originalMethods && originalMethods.easeTo) {
+						originalMethods.easeTo.call(map.current, {
+							center: [closestIssue.longitude, closestIssue.latitude],
+							zoom: 17,
+							pitch: 60,
+							duration: 1500
+						});
+					} else {
+						map.current.easeTo({
+							center: [closestIssue.longitude, closestIssue.latitude],
+							zoom: 17,
+							pitch: 60,
+							duration: 1500
+						});
+					}
+				}
+				
+				console.log(`Closest issue found: ${shortestDistance.toFixed(1)}km away - "${closestIssue.title}"`);
+			} else {
+				alert('No issues with valid coordinates found');
+			}
+		} else {
+			console.log('Cannot find closest issue - missing location or no issues available');
+		}
+		setShowUserLocationPopup(false);
+		setShowQuickFeatures(false);
+	};
+
+
+	// Debug popup state changes
+	useEffect(() => {
+		console.log('User location popup state changed:', { 
+			showUserLocationPopup, 
+			userLocationPopupPosition,
+			userLocation 
+		});
+	}, [showUserLocationPopup, userLocationPopupPosition, userLocation]);
+
+	// Close popups when clicking outside
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (showUserLocationPopup) {
+				console.log('Closing location popup due to outside click');
+				setShowUserLocationPopup(false);
+			}
+			if (showQuickFeatures) {
+				console.log('Closing quick features due to outside click');
+				setShowQuickFeatures(false);
+			}
+		};
+
+		if (showUserLocationPopup || showQuickFeatures) {
+			document.addEventListener('click', handleClickOutside);
+		}
+
+		return () => {
+			document.removeEventListener('click', handleClickOutside);
+		};
+	}, [showUserLocationPopup, showQuickFeatures]);
 
 	// Clear rate limit message after 10 seconds
 	useEffect(() => {
@@ -1515,13 +1707,22 @@ export default function MapPage() {
 				map.current.flyTo = () => { console.log('flyTo blocked to maintain 3D view'); };
 				map.current.jumpTo = () => { console.log('jumpTo blocked to maintain 3D view'); };
 				map.current.easeTo = () => { console.log('easeTo blocked to maintain 3D view'); };
-				map.current.fitBounds = () => { console.log('fitBounds blocked to maintain 3D view'); };
+				// Allow fitBounds for location-based operations, block for others
+				map.current.fitBounds = (bounds, options) => { 
+					// Allow fitBounds when explicitly called for location features
+					if (options && options.allowForLocation) {
+						console.log('fitBounds allowed for location operation');
+						return (window as any).originalMapMethods.fitBounds.call(map.current, bounds, options);
+					} else {
+						console.log('fitBounds blocked to maintain 3D view'); 
+					}
+				};
 				map.current.setCenter = () => { console.log('setCenter blocked to maintain 3D view'); };
 				// Allow setZoom for manual zoom controls
 				// map.current.setZoom = () => { console.log('setZoom blocked to maintain 3D view'); };
 				// map.current.zoomTo = () => { console.log('zoomTo blocked to maintain 3D view'); };
 
-				// Add geolocate control with balanced accuracy/speed settings
+				// Add geolocate control with built-in user marker (as you preferred)
 				const geolocateControl = new mapboxgl.default.GeolocateControl({
 					positionOptions: {
 						enableHighAccuracy: true, // Use GPS for maximum accuracy
@@ -1530,12 +1731,41 @@ export default function MapPage() {
 					},
 					trackUserLocation: true, // Continuously track location changes
 					showUserHeading: true, // Show direction arrow
-					showAccuracyCircle: true, // Show accuracy circle to indicate precision
-					showUserLocation: true // Show the blue dot
+					showAccuracyCircle: true, // Show accuracy circle
+					showUserLocation: true // Show the built-in blue dot
 				});
 				
-				// Add geolocateControl but hidden - we need it for the location dot to appear
+				// Add geolocateControl with click handling for popup
 				map.current.addControl(geolocateControl, 'top-right');
+				
+				// Add click handler to the built-in user location marker
+				geolocateControl.on('geolocate', () => {
+					// Wait for the location dot to be added to DOM
+					setTimeout(() => {
+						const locationDot = document.querySelector('.mapboxgl-user-location-dot');
+						if (locationDot && !locationDot.dataset.clickHandlerAdded) {
+							locationDot.dataset.clickHandlerAdded = 'true';
+							locationDot.addEventListener('click', (e) => {
+								console.log('Built-in location marker clicked!');
+								e.stopPropagation();
+								
+								if (map.current && userLocation) {
+									// Get screen position of the location dot
+									const rect = (locationDot as HTMLElement).getBoundingClientRect();
+									
+									setUserLocationPopupPosition({
+										x: rect.left + rect.width / 2,
+										y: rect.top
+									});
+									setShowUserLocationPopup(true);
+								}
+							});
+							
+							// Add cursor pointer style
+							(locationDot as HTMLElement).style.cursor = 'pointer';
+						}
+					}, 500);
+				});
 				
 				// Hide the geolocate button but keep the functionality
 				setTimeout(() => {
@@ -2466,6 +2696,19 @@ export default function MapPage() {
 					>
 						<Compass className={`h-4 w-4 ${isLiveTracking ? 'animate-pulse' : ''}`} />
 					</Button>
+
+					{/* Quick Features Button */}
+					{userLocation && (
+						<Button
+							variant="default"
+							size="sm"
+							onClick={() => setShowQuickFeatures(!showQuickFeatures)}
+							className="shadow-lg bg-orange-500/90 text-white border-none hover:bg-orange-600 p-2 rounded-full w-10 h-10 flex items-center justify-center transition-all"
+							title="Quick Location Features"
+						>
+							<MapPin className="h-4 w-4" />
+						</Button>
+					)}
 					
 					{/* Accuracy Indicator */}
 					{isLiveTracking && locationAccuracy && (
@@ -3210,6 +3453,228 @@ export default function MapPage() {
 							)}
 						</CardContent>
 					</Card>
+				</div>
+			)}
+
+			{/* Quick Features Popup */}
+			{showQuickFeatures && userLocation && (
+				<div 
+					className="fixed top-20 left-3 z-50 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200"
+					style={{ width: '220px' }}
+					onClick={(e) => e.stopPropagation()}
+				>
+					{/* Header */}
+					<div className="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-white">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2">
+								<MapPin className="w-4 h-4" />
+								<span className="font-medium text-sm">Quick Features</span>
+							</div>
+							<button 
+								onClick={() => setShowQuickFeatures(false)}
+								className="text-orange-100 hover:text-white transition-colors"
+							>
+								<X className="w-4 h-4" />
+							</button>
+						</div>
+					</div>
+
+					{/* Quick Actions */}
+					<div className="py-2">
+						<button
+							onClick={findClosestIssue}
+							className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+						>
+							<div className="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center">
+								<Compass className="h-3.5 w-3.5 text-orange-600" />
+							</div>
+							<div>
+								<div className="font-medium text-sm text-gray-900">Find Closest</div>
+								<div className="text-xs text-gray-500">Navigate to nearest issue</div>
+							</div>
+						</button>
+
+						<button
+							onClick={centerOnUser}
+							className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+						>
+							<div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
+								<Focus className="h-3.5 w-3.5 text-blue-600" />
+							</div>
+							<div>
+								<div className="font-medium text-sm text-gray-900">Center Map</div>
+								<div className="text-xs text-gray-500">Focus on your location</div>
+							</div>
+						</button>
+
+						<button
+							onClick={shareLocation}
+							className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+						>
+							<div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center">
+								<ExternalLink className="h-3.5 w-3.5 text-purple-600" />
+							</div>
+							<div>
+								<div className="font-medium text-sm text-gray-900">Share Location</div>
+								<div className="text-xs text-gray-500">Copy location URL</div>
+							</div>
+						</button>
+					</div>
+				</div>
+			)}
+
+			{/* User Location Popup Menu */}
+			{showUserLocationPopup && userLocationPopupPosition && (
+				<div 
+					className="fixed z-50 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200"
+					style={{
+						left: userLocationPopupPosition.x - 120, // Center the 240px wide popup
+						top: userLocationPopupPosition.y - 10,
+						transform: 'translateY(-100%)',
+						width: '240px'
+					}}
+					onClick={(e) => e.stopPropagation()}
+				>
+					{/* Popup Arrow */}
+					<div 
+						className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full"
+						style={{ 
+							width: 0, 
+							height: 0, 
+							borderLeft: '8px solid transparent',
+							borderRight: '8px solid transparent',
+							borderTop: '8px solid white'
+						}}
+					/>
+					
+					{/* Header */}
+					<div className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3 text-white">
+						<div className="flex items-center gap-2">
+							<div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+							<span className="font-medium text-sm">Your Location</span>
+						</div>
+						{userLocation && locationAccuracy && (
+							<p className="text-xs text-blue-100 mt-1">
+								Accuracy: {locationAccuracy}
+							</p>
+						)}
+					</div>
+
+					{/* Quick Actions Section */}
+					<div className="py-2 border-b border-gray-100">
+						<div className="px-4 py-2">
+							<div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quick Actions</div>
+						</div>
+						
+						<button
+							onClick={centerOnUser}
+							className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+						>
+							<div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+								<Focus className="h-4 w-4 text-blue-600" />
+							</div>
+							<div>
+								<div className="font-medium text-sm text-gray-900">Center Map</div>
+								<div className="text-xs text-gray-500">Focus on your location</div>
+							</div>
+						</button>
+
+						<button
+							onClick={showMyArea}
+							className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+						>
+							<div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+								<ArrowUp className="h-4 w-4 text-green-600" />
+							</div>
+							<div>
+								<div className="font-medium text-sm text-gray-900">Show My Area</div>
+								<div className="text-xs text-gray-500">Wider neighborhood view</div>
+							</div>
+						</button>
+
+						<button
+							onClick={reportIssueHere}
+							className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+						>
+							<div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+								<MapPin className="h-4 w-4 text-red-600" />
+							</div>
+							<div>
+								<div className="font-medium text-sm text-gray-900">Report Issue Here</div>
+								<div className="text-xs text-gray-500">Create issue at location</div>
+							</div>
+						</button>
+					</div>
+
+					{/* Main Actions Section */}
+					<div className="py-2">
+						<div className="px-4 py-2">
+							<div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Explore</div>
+						</div>
+
+						<button
+							onClick={findClosestIssue}
+							className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+						>
+							<div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+								<Compass className="h-4 w-4 text-orange-600" />
+							</div>
+							<div>
+								<div className="font-medium text-sm text-gray-900">Find Closest Issue</div>
+								<div className="text-xs text-gray-500">Navigate to nearest issue</div>
+							</div>
+						</button>
+
+						<button
+							onClick={findDirections}
+							className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+						>
+							<div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+								<Route className="h-4 w-4 text-indigo-600" />
+							</div>
+							<div>
+								<div className="font-medium text-sm text-gray-900">Get Directions</div>
+								<div className="text-xs text-gray-500">Open in maps app</div>
+							</div>
+						</button>
+
+						<button
+							onClick={toggleLiveTracking}
+							className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+						>
+							<div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isLiveTracking ? 'bg-green-100' : 'bg-gray-100'}`}>
+								<Timer className={`h-4 w-4 ${isLiveTracking ? 'text-green-600' : 'text-gray-600'}`} />
+							</div>
+							<div>
+								<div className="font-medium text-sm text-gray-900">
+									{isLiveTracking ? 'Stop' : 'Start'} Live Tracking
+								</div>
+								<div className="text-xs text-gray-500">
+									{isLiveTracking ? 'Disable location updates' : 'Enable location updates'}
+								</div>
+							</div>
+						</button>
+
+						<button
+							onClick={shareLocation}
+							className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+						>
+							<div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+								<ExternalLink className="h-4 w-4 text-purple-600" />
+							</div>
+							<div>
+								<div className="font-medium text-sm text-gray-900">Share Location</div>
+								<div className="text-xs text-gray-500">Copy location link</div>
+							</div>
+						</button>
+					</div>
+
+					{/* Footer */}
+					<div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
+						<p className="text-xs text-gray-500 text-center">
+							Tap anywhere to close
+						</p>
+					</div>
 				</div>
 			)}
 
