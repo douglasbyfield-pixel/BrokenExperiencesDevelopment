@@ -3,9 +3,5 @@ interface CoreLayoutProps {
 }
 
 export default function CoreLayout({ children }: CoreLayoutProps) {
-	return (
-		<main className="flex-1 min-h-0 w-full relative">
-			{children}
-		</main>
-	);
+	return <main className="relative min-h-0 w-full flex-1">{children}</main>;
 }

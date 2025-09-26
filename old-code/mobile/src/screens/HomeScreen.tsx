@@ -1,1677 +1,1847 @@
-import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, RefreshControl, ScrollView, Dimensions, Image, TextInput, Modal, Alert, Share, Animated, FlatList } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DataService } from '../services/dataService';
-import { useAuth } from '../context/AuthContext';
-import { useBookmark } from '../context/BookmarkContext';
-import IssueDetailScreen from './IssueDetailScreen';
-import type { Issue } from '../types/database';
-import { AnimationUtils } from '../utils/animations';
-import LoadingAnimation from '../components/LoadingAnimation';
-import { PerformanceUtils } from '../utils/performanceOptimizations';
-import OptimizedIssueCard from '../components/OptimizedIssueCard';
-import { IssueCardSkeleton } from '../components/ShimmerLoader';
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
+import React, {
+	memo,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import {
+	Alert,
+	Animated,
+	Dimensions,
+	FlatList,
+	Image,
+	Modal,
+	RefreshControl,
+	ScrollView,
+	Share,
+	StatusBar,
+	StyleSheet,
+	Text,
+	TextInput,
+	TouchableOpacity,
+	View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import LoadingAnimation from "../components/LoadingAnimation";
+import OptimizedIssueCard from "../components/OptimizedIssueCard";
+import { IssueCardSkeleton } from "../components/ShimmerLoader";
+import { useAuth } from "../context/AuthContext";
+import { useBookmark } from "../context/BookmarkContext";
+import { DataService } from "../services/dataService";
+import type { Issue } from "../types/database";
+import { AnimationUtils } from "../utils/animations";
+import { PerformanceUtils } from "../utils/performanceOptimizations";
+import IssueDetailScreen from "./IssueDetailScreen";
 
 interface HomeScreenProps {
-  navigation: any;
+	navigation: any;
 }
 
-const { width } = Dimensions.get('window');
-
+const { width } = Dimensions.get("window");
 
 // Helper functions
 const getCategoryIcon = (category: string) => {
-  const icons: { [key: string]: string } = {
-    infrastructure: 'construct-outline',
-    safety: 'shield-outline',
-    environment: 'leaf-outline',
-    maintenance: 'hammer-outline',
-    accessibility: 'accessibility-outline',
-    road_maintenance: 'car-outline',
-  };
-  return icons[category] || 'help-outline';
+	const icons: { [key: string]: string } = {
+		infrastructure: "construct-outline",
+		safety: "shield-outline",
+		environment: "leaf-outline",
+		maintenance: "hammer-outline",
+		accessibility: "accessibility-outline",
+		road_maintenance: "car-outline",
+	};
+	return icons[category] || "help-outline";
 };
 
 const getPriorityColor = (priority: string) => {
-  const colors: { [key: string]: string } = {
-    low: '#22c55e',
-    medium: '#f59e0b',
-    high: '#ef4444',
-    critical: '#dc2626',
-  };
-  return colors[priority] || '#6b7280';
+	const colors: { [key: string]: string } = {
+		low: "#22c55e",
+		medium: "#f59e0b",
+		high: "#ef4444",
+		critical: "#dc2626",
+	};
+	return colors[priority] || "#6b7280";
 };
 
 const getStatusColor = (status: string) => {
-  const colors: { [key: string]: string } = {
-    pending: '#f59e0b',
-    in_progress: '#3b82f6',
-    resolved: '#22c55e',
-    closed: '#6b7280',
-  };
-  return colors[status] || '#6b7280';
+	const colors: { [key: string]: string } = {
+		pending: "#f59e0b",
+		in_progress: "#3b82f6",
+		resolved: "#22c55e",
+		closed: "#6b7280",
+	};
+	return colors[status] || "#6b7280";
 };
 
 const formatTimeAgo = (dateString: string) => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
-  if (diffInSeconds < 60) return 'Just now';
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-  return `${Math.floor(diffInSeconds / 86400)}d ago`;
+	const date = new Date(dateString);
+	const now = new Date();
+	const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+	if (diffInSeconds < 60) return "Just now";
+	if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+	if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+	return `${Math.floor(diffInSeconds / 86400)}d ago`;
 };
 
 const HomeScreen = memo(({ navigation }: HomeScreenProps) => {
-  const { user, profile } = useAuth();
-  const { isBookmarked, toggleBookmark } = useBookmark();
-  const insets = useSafeAreaInsets();
-  const [issues, setIssues] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
-  const [selectedPriorityFilter, setSelectedPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
-  const [selectedIssue, setSelectedIssue] = useState<any>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [userUpvotes, setUserUpvotes] = useState<string[]>([]);
-  const [activeMenu, setActiveMenu] = useState<string | null>(null);
-  const [editingIssue, setEditingIssue] = useState<any>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [communityStats, setCommunityStats] = useState({
-    totalIssues: 0,
-    resolvedThisWeek: 0,
-    activeMembers: 0,
-    impactScore: 0
-  });
-  const scrollViewRef = React.useRef<ScrollView>(null);
-  
-  // Animation values for interactions
-  const animationRefs = useRef<{[key: string]: {
-    upvote: Animated.Value;
-    bookmark: Animated.Value;
-  }}>({}).current;
+	const { user, profile } = useAuth();
+	const { isBookmarked, toggleBookmark } = useBookmark();
+	const insets = useSafeAreaInsets();
+	const [issues, setIssues] = useState<any[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [refreshing, setRefreshing] = useState(false);
+	const [selectedStatusFilter, setSelectedStatusFilter] = useState<
+		"all" | "pending" | "in_progress" | "resolved"
+	>("all");
+	const [selectedPriorityFilter, setSelectedPriorityFilter] = useState<
+		"all" | "low" | "medium" | "high"
+	>("all");
+	const [showFilterPanel, setShowFilterPanel] = useState(false);
+	const [selectedIssue, setSelectedIssue] = useState<any>(null);
+	const [showDetailModal, setShowDetailModal] = useState(false);
+	const [userUpvotes, setUserUpvotes] = useState<string[]>([]);
+	const [activeMenu, setActiveMenu] = useState<string | null>(null);
+	const [editingIssue, setEditingIssue] = useState<any>(null);
+	const [showEditModal, setShowEditModal] = useState(false);
+	const [editTitle, setEditTitle] = useState("");
+	const [editDescription, setEditDescription] = useState("");
+	const [communityStats, setCommunityStats] = useState({
+		totalIssues: 0,
+		resolvedThisWeek: 0,
+		activeMembers: 0,
+		impactScore: 0,
+	});
+	const scrollViewRef = React.useRef<ScrollView>(null);
 
-  // Load data functions
-  const loadIssues = useCallback(async () => {
-    try {
-      setLoading(true);
-      const issuesData = await DataService.getIssues();
-      console.log('HomeScreen: Loaded', issuesData.length, 'issues');
-      
-      // Log sample issue data structure
-      if (issuesData.length > 0) {
-        console.log('HomeScreen: Sample issue data:', JSON.stringify(issuesData[0], null, 2));
-      }
-      
-      setIssues(issuesData);
-      
-      // Load user upvotes if user is logged in
-      if (user) {
-        const upvotes = await DataService.getUserUpvotes(user.id);
-        console.log('HomeScreen: User upvotes:', upvotes);
-        setUserUpvotes(upvotes);
-      }
-    } catch (error) {
-      console.error('Error loading issues:', error);
-      Alert.alert('Error', 'Failed to load issues. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+	// Animation values for interactions
+	const animationRefs = useRef<{
+		[key: string]: {
+			upvote: Animated.Value;
+			bookmark: Animated.Value;
+		};
+	}>({}).current;
 
-  const loadCommunityStats = useCallback(async () => {
-    try {
-      const stats = await DataService.getCommunityStats();
-      console.log('HomeScreen: Loaded community stats:', stats);
-      setCommunityStats(stats);
-    } catch (error) {
-      console.error('Error loading community stats:', error);
-    }
-  }, []);
+	// Load data functions
+	const loadIssues = useCallback(async () => {
+		try {
+			setLoading(true);
+			const issuesData = await DataService.getIssues();
+			console.log("HomeScreen: Loaded", issuesData.length, "issues");
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([loadIssues(), loadCommunityStats()]);
-    setRefreshing(false);
-  }, [loadIssues, loadCommunityStats]);
+			// Log sample issue data structure
+			if (issuesData.length > 0) {
+				console.log(
+					"HomeScreen: Sample issue data:",
+					JSON.stringify(issuesData[0], null, 2),
+				);
+			}
 
-  const handleUpvote = useCallback(async (issueId: string) => {
-    if (!user) {
-      Alert.alert('Sign In Required', 'Please sign in to upvote issues.');
-      return;
-    }
+			setIssues(issuesData);
 
-    const wasUpvoted = userUpvotes.includes(issueId);
-    
-    // Haptic feedback
-    await AnimationUtils.mediumHaptic();
-    
-    // Optimistic update - update UI immediately
-    if (wasUpvoted) {
-      setUserUpvotes(prev => prev.filter(id => id !== issueId));
-      // Optimistically decrease count
-      setIssues(prevIssues => 
-        prevIssues.map(issue => 
-          issue.id === issueId 
-            ? {
-                ...issue, 
-                upvotes: [{ count: Math.max(0, (issue.upvotes?.[0]?.count || 0) - 1) }]
-              }
-            : issue
-        )
-      );
-    } else {
-      setUserUpvotes(prev => [...prev, issueId]);
-      // Optimistically increase count
-      setIssues(prevIssues => 
-        prevIssues.map(issue => 
-          issue.id === issueId 
-            ? {
-                ...issue, 
-                upvotes: [{ count: (issue.upvotes?.[0]?.count || 0) + 1 }]
-              }
-            : issue
-        )
-      );
-      
-      // Celebration animation for new upvote
-      await AnimationUtils.successHaptic();
-    }
+			// Load user upvotes if user is logged in
+			if (user) {
+				const upvotes = await DataService.getUserUpvotes(user.id);
+				console.log("HomeScreen: User upvotes:", upvotes);
+				setUserUpvotes(upvotes);
+			}
+		} catch (error) {
+			console.error("Error loading issues:", error);
+			Alert.alert("Error", "Failed to load issues. Please try again.");
+		} finally {
+			setLoading(false);
+		}
+	}, [user]);
 
-    try {
-      console.log('HomeScreen: Toggling upvote for issue:', issueId, 'by user:', user.id);
-      const isUpvoted = await DataService.toggleUpvote(issueId, user.id);
-      console.log('HomeScreen: Upvote result:', isUpvoted);
-      
-      // Award points for upvoting (only if it's a new upvote)
-      if (isUpvoted && !wasUpvoted) {
-        const pointsResult = await DataService.addPoints(user.id, 'UPVOTE_ISSUE');
-        if (pointsResult?.leveledUp) {
-          // Show level up notification
-          console.log('User leveled up!', pointsResult.newLevel);
-          Alert.alert(
-            '🎉 Level Up!', 
-            `Congratulations! You've reached ${pointsResult.newLevel.title} (Level ${pointsResult.newLevel.level})!`,
-            [{ text: 'Awesome!', style: 'default' }]
-          );
-        }
-      }
-      
-      // Verify optimistic update was correct
-      if (isUpvoted !== !wasUpvoted) {
-        console.log('HomeScreen: Optimistic update was wrong, reverting');
-        // Revert if our optimistic update was wrong
-        if (wasUpvoted) {
-          setUserUpvotes(prev => [...prev, issueId]);
-        } else {
-          setUserUpvotes(prev => prev.filter(id => id !== issueId));
-        }
-        // Refresh to get accurate data
-        await loadIssues();
-      }
-    } catch (error) {
-      console.error('Error toggling upvote:', error);
-      
-      // Revert optimistic update on error
-      if (wasUpvoted) {
-        setUserUpvotes(prev => [...prev, issueId]);
-      } else {
-        setUserUpvotes(prev => prev.filter(id => id !== issueId));
-      }
-      // Refresh to get accurate data
-      await loadIssues();
-      
-      Alert.alert('Error', 'Failed to update upvote. Please try again.');
-    }
-  }, [user, userUpvotes, loadIssues]);
+	const loadCommunityStats = useCallback(async () => {
+		try {
+			const stats = await DataService.getCommunityStats();
+			console.log("HomeScreen: Loaded community stats:", stats);
+			setCommunityStats(stats);
+		} catch (error) {
+			console.error("Error loading community stats:", error);
+		}
+	}, []);
 
-  useEffect(() => {
-    loadIssues();
-    loadCommunityStats();
-  }, [user]);
+	const handleRefresh = useCallback(async () => {
+		setRefreshing(true);
+		await Promise.all([loadIssues(), loadCommunityStats()]);
+		setRefreshing(false);
+	}, [loadIssues, loadCommunityStats]);
 
+	const handleUpvote = useCallback(
+		async (issueId: string) => {
+			if (!user) {
+				Alert.alert("Sign In Required", "Please sign in to upvote issues.");
+				return;
+			}
 
+			const wasUpvoted = userUpvotes.includes(issueId);
 
-  // Filter issues based on selected filters
-  const applyFilters = async () => {
-    try {
-      setLoading(true);
-      const filters: any = {};
-      
-      if (selectedStatusFilter !== 'all') {
-        filters.status = selectedStatusFilter;
-      }
-      if (selectedPriorityFilter !== 'all') {
-        filters.priority = selectedPriorityFilter;
-      }
-      
-      const filteredData = await DataService.getFilteredIssues(filters);
-      setIssues(filteredData);
-    } catch (error) {
-      console.error('Error applying filters:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+			// Haptic feedback
+			await AnimationUtils.mediumHaptic();
 
-  useEffect(() => {
-    if (selectedStatusFilter !== 'all' || selectedPriorityFilter !== 'all') {
-      applyFilters();
-    } else {
-      loadIssues();
-    }
-  }, [selectedStatusFilter, selectedPriorityFilter]);
+			// Optimistic update - update UI immediately
+			if (wasUpvoted) {
+				setUserUpvotes((prev) => prev.filter((id) => id !== issueId));
+				// Optimistically decrease count
+				setIssues((prevIssues) =>
+					prevIssues.map((issue) =>
+						issue.id === issueId
+							? {
+									...issue,
+									upvotes: [
+										{
+											count: Math.max(0, (issue.upvotes?.[0]?.count || 0) - 1),
+										},
+									],
+								}
+							: issue,
+					),
+				);
+			} else {
+				setUserUpvotes((prev) => [...prev, issueId]);
+				// Optimistically increase count
+				setIssues((prevIssues) =>
+					prevIssues.map((issue) =>
+						issue.id === issueId
+							? {
+									...issue,
+									upvotes: [{ count: (issue.upvotes?.[0]?.count || 0) + 1 }],
+								}
+							: issue,
+					),
+				);
 
+				// Celebration animation for new upvote
+				await AnimationUtils.successHaptic();
+			}
 
-  const toggleFilterPanel = () => {
-    setShowFilterPanel(!showFilterPanel);
-  };
+			try {
+				console.log(
+					"HomeScreen: Toggling upvote for issue:",
+					issueId,
+					"by user:",
+					user.id,
+				);
+				const isUpvoted = await DataService.toggleUpvote(issueId, user.id);
+				console.log("HomeScreen: Upvote result:", isUpvoted);
 
-  const clearAllFilters = () => {
-    setSelectedStatusFilter('all');
-    setSelectedPriorityFilter('all');
-  };
+				// Award points for upvoting (only if it's a new upvote)
+				if (isUpvoted && !wasUpvoted) {
+					const pointsResult = await DataService.addPoints(
+						user.id,
+						"UPVOTE_ISSUE",
+					);
+					if (pointsResult?.leveledUp) {
+						// Show level up notification
+						console.log("User leveled up!", pointsResult.newLevel);
+						Alert.alert(
+							"🎉 Level Up!",
+							`Congratulations! You've reached ${pointsResult.newLevel.title} (Level ${pointsResult.newLevel.level})!`,
+							[{ text: "Awesome!", style: "default" }],
+						);
+					}
+				}
 
-  const handleIssuePress = useCallback((issue: Issue) => {
-    setSelectedIssue(issue);
-    setShowDetailModal(true);
-  }, []);
+				// Verify optimistic update was correct
+				if (isUpvoted !== !wasUpvoted) {
+					console.log("HomeScreen: Optimistic update was wrong, reverting");
+					// Revert if our optimistic update was wrong
+					if (wasUpvoted) {
+						setUserUpvotes((prev) => [...prev, issueId]);
+					} else {
+						setUserUpvotes((prev) => prev.filter((id) => id !== issueId));
+					}
+					// Refresh to get accurate data
+					await loadIssues();
+				}
+			} catch (error) {
+				console.error("Error toggling upvote:", error);
 
-  const handleCloseDetail = () => {
-    setShowDetailModal(false);
-    setSelectedIssue(null);
-    // Refresh issues to get updated comment counts
-    console.log('HomeScreen: Detail modal closed, refreshing issues');
-    loadIssues();
-  };
+				// Revert optimistic update on error
+				if (wasUpvoted) {
+					setUserUpvotes((prev) => [...prev, issueId]);
+				} else {
+					setUserUpvotes((prev) => prev.filter((id) => id !== issueId));
+				}
+				// Refresh to get accurate data
+				await loadIssues();
 
-  const handleNavigateToIssue = (issueId: string) => {
-    const issue = issues.find(i => i.id === issueId);
-    if (issue) {
-      setSelectedIssue(issue);
-    }
-  };
+				Alert.alert("Error", "Failed to update upvote. Please try again.");
+			}
+		},
+		[user, userUpvotes, loadIssues],
+	);
 
+	useEffect(() => {
+		loadIssues();
+		loadCommunityStats();
+	}, [user]);
 
-  // Issues are already filtered on the server side
-  const filteredIssues = useMemo(() => issues, [issues]);
+	// Filter issues based on selected filters
+	const applyFilters = async () => {
+		try {
+			setLoading(true);
+			const filters: any = {};
 
-  const handleSearchPress = useCallback(() => {
-    navigation.navigate('SearchResults', { searchQuery: '' });
-  }, [navigation]);
+			if (selectedStatusFilter !== "all") {
+				filters.status = selectedStatusFilter;
+			}
+			if (selectedPriorityFilter !== "all") {
+				filters.priority = selectedPriorityFilter;
+			}
 
-  const handleBookmarkPress = async (issueId: string) => {
-    await AnimationUtils.lightHaptic();
-    const wasBookmarked = isBookmarked(issueId);
-    
-    toggleBookmark(issueId);
-    
-    if (!wasBookmarked) {
-      // Success haptic for new bookmark
-      await AnimationUtils.successHaptic();
-    }
-  };
+			const filteredData = await DataService.getFilteredIssues(filters);
+			setIssues(filteredData);
+		} catch (error) {
+			console.error("Error applying filters:", error);
+		} finally {
+			setLoading(false);
+		}
+	};
 
-  const handleMenuPress = (issueId: string) => {
-    setActiveMenu(activeMenu === issueId ? null : issueId);
-  };
+	useEffect(() => {
+		if (selectedStatusFilter !== "all" || selectedPriorityFilter !== "all") {
+			applyFilters();
+		} else {
+			loadIssues();
+		}
+	}, [selectedStatusFilter, selectedPriorityFilter]);
 
-  const handleMenuAction = async (action: string, issue: any) => {
-    setActiveMenu(null);
-    
-    switch (action) {
-      case 'share':
-        try {
-          const shareContent = {
-            title: 'Jamaica Issue Report',
-            message: `Check out this issue in Jamaica: "${issue.title}"\n\n${issue.description}\n\nLocation: ${issue.address}`,
-            url: `jamaicaissues://issue/${issue.id}`, // Deep link format
-          };
-          
-          await Share.share(shareContent);
-        } catch (error) {
-          console.error('Error sharing issue:', error);
-          Alert.alert('Error', 'Failed to share issue. Please try again.');
-        }
-        break;
-        
-      case 'report':
-        Alert.alert('Report Issue', 'Report this issue as inappropriate?', [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Report', style: 'destructive', onPress: () => console.log('Report functionality would go here') }
-        ]);
-        break;
-        
-      case 'copy_link':
-        try {
-          const issueLink = `jamaicaissues://issue/${issue.id}`;
-          await Clipboard.setStringAsync(issueLink);
-          Alert.alert('Link Copied', 'Issue link copied to clipboard');
-        } catch (error) {
-          console.error('Error copying link:', error);
-          Alert.alert('Error', 'Failed to copy link. Please try again.');
-        }
-        break;
-        
-      case 'view_location':
-        navigation.navigate('Map', {
-          issueId: issue.id,
-          latitude: issue.latitude,
-          longitude: issue.longitude
-        });
-        break;
-        
-      case 'edit':
-        if (user?.id === issue.reported_by) {
-          setEditingIssue(issue);
-          setEditTitle(issue.title);
-          setEditDescription(issue.description);
-          setShowEditModal(true);
-        }
-        break;
-        
-      case 'delete':
-        if (user?.id === issue.reported_by) {
-          Alert.alert('Delete Issue', 'Are you sure you want to delete this issue? This action cannot be undone.', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => handleDeleteIssue(issue.id) }
-          ]);
-        }
-        break;
-    }
-  };
+	const toggleFilterPanel = () => {
+		setShowFilterPanel(!showFilterPanel);
+	};
 
-  const handleDeleteIssue = async (issueId: string) => {
-    try {
-      console.log('Attempting to delete issue:', issueId);
-      console.log('Current user:', user?.id);
-      
-      const result = await DataService.deleteIssue(issueId);
-      console.log('Delete result:', result);
-      
-      // Remove from local state
-      setIssues(prevIssues => prevIssues.filter(issue => issue.id !== issueId));
-      
-      Alert.alert('Success', 'Issue deleted successfully');
-    } catch (error) {
-      console.error('Error deleting issue:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert('Error', `Failed to delete issue: ${errorMessage}`);
-    }
-  };
+	const clearAllFilters = () => {
+		setSelectedStatusFilter("all");
+		setSelectedPriorityFilter("all");
+	};
 
-  const handleEditIssue = async () => {
-    if (!editingIssue || !editTitle.trim() || !editDescription.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
+	const handleIssuePress = useCallback((issue: Issue) => {
+		setSelectedIssue(issue);
+		setShowDetailModal(true);
+	}, []);
 
-    try {
-      const updates = {
-        title: editTitle.trim(),
-        description: editDescription.trim(),
-        updated_at: new Date().toISOString()
-      };
+	const handleCloseDetail = () => {
+		setShowDetailModal(false);
+		setSelectedIssue(null);
+		// Refresh issues to get updated comment counts
+		console.log("HomeScreen: Detail modal closed, refreshing issues");
+		loadIssues();
+	};
 
-      const updatedIssue = await DataService.updateIssue(editingIssue.id, updates);
-      
-      // Update local state
-      setIssues(prevIssues => 
-        prevIssues.map(issue => 
-          issue.id === editingIssue.id 
-            ? { ...issue, ...updates }
-            : issue
-        )
-      );
-      
-      // Close modal
-      setShowEditModal(false);
-      setEditingIssue(null);
-      setEditTitle('');
-      setEditDescription('');
-      
-      Alert.alert('Success', 'Issue updated successfully');
-    } catch (error) {
-      console.error('Error updating issue:', error);
-      Alert.alert('Error', 'Failed to update issue. Please try again.');
-    }
-  };
+	const handleNavigateToIssue = (issueId: string) => {
+		const issue = issues.find((i) => i.id === issueId);
+		if (issue) {
+			setSelectedIssue(issue);
+		}
+	};
 
-  const handleCancelEdit = () => {
-    setShowEditModal(false);
-    setEditingIssue(null);
-    setEditTitle('');
-    setEditDescription('');
-  };
+	// Issues are already filtered on the server side
+	const filteredIssues = useMemo(() => issues, [issues]);
 
-  const renderStatusFilterButton = (filter: typeof selectedStatusFilter, label: string, count: number) => {
-    const isActive = selectedStatusFilter === filter;
-    return (
-      <TouchableOpacity
-        key={filter}
-        style={[styles.filterPanelButton, isActive && styles.filterPanelButtonActive]}
-        onPress={() => setSelectedStatusFilter(filter)}
-        activeOpacity={0.7}
-      >
-        <Text style={[styles.filterPanelButtonText, isActive && styles.filterPanelButtonTextActive]}>
-          {label} ({count})
-        </Text>
-      </TouchableOpacity>
-    );
-  };
+	const handleSearchPress = useCallback(() => {
+		navigation.navigate("SearchResults", { searchQuery: "" });
+	}, [navigation]);
 
-  const renderPriorityFilterButton = (filter: typeof selectedPriorityFilter, label: string, count: number) => {
-    const isActive = selectedPriorityFilter === filter;
-    return (
-      <TouchableOpacity
-        key={filter}
-        style={[styles.filterPanelButton, isActive && styles.filterPanelButtonActive]}
-        onPress={() => setSelectedPriorityFilter(filter)}
-        activeOpacity={0.7}
-      >
-        <Text style={[styles.filterPanelButtonText, isActive && styles.filterPanelButtonTextActive]}>
-          {label} ({count})
-        </Text>
-      </TouchableOpacity>
-    );
-  };
+	const handleBookmarkPress = async (issueId: string) => {
+		await AnimationUtils.lightHaptic();
+		const wasBookmarked = isBookmarked(issueId);
 
-  const getAnimationValues = (issueId: string) => {
-    if (!animationRefs[issueId]) {
-      animationRefs[issueId] = {
-        upvote: new Animated.Value(1),
-        bookmark: new Animated.Value(1)
-      };
-    }
-    return animationRefs[issueId];
-  };
+		toggleBookmark(issueId);
 
-  const renderIssue = useCallback(({ item }: { item: any }) => {
-    return (
-      <OptimizedIssueCard
-        item={item}
-        isUpvoted={userUpvotes.includes(item.id)}
-        isBookmarked={isBookmarked(item.id)}
-        activeMenu={activeMenu}
-        onUpvote={handleUpvote}
-        onBookmark={handleBookmarkPress}
-        onMenuPress={handleMenuPress}
-        onMenuAction={handleMenuAction}
-        onIssuePress={handleIssuePress}
-      />
-    );
-  }, [userUpvotes, isBookmarked, activeMenu, handleUpvote, handleBookmarkPress, handleMenuPress, handleMenuAction, handleIssuePress]);
+		if (!wasBookmarked) {
+			// Success haptic for new bookmark
+			await AnimationUtils.successHaptic();
+		}
+	};
 
-  const renderEmptyState = () => {
-    const hasActiveFilters = selectedStatusFilter !== 'all' || selectedPriorityFilter !== 'all';
-    return (
-      <View style={styles.emptyState}>
-        <View style={styles.emptyIconContainer}>
-          <Ionicons name="document-text-outline" size={80} color="#ccc" />
-        </View>
-        <Text style={styles.emptyText}>
-          {hasActiveFilters ? 'No issues match your filters' : 'No issues reported yet'}
-        </Text>
-        <Text style={styles.emptySubtext}>
-          {hasActiveFilters 
-            ? 'Try adjusting your filter settings'
-            : 'Be the first to report an issue in Jamaica'
-          }
-        </Text>
-      </View>
-    );
-  };
+	const handleMenuPress = (issueId: string) => {
+		setActiveMenu(activeMenu === issueId ? null : issueId);
+	};
 
-  const pendingCount = issues.filter(i => i.status === 'pending').length;
-  const inProgressCount = issues.filter(i => i.status === 'in_progress').length;
-  const resolvedCount = issues.filter(i => i.status === 'resolved').length;
-  
-  const lowCount = issues.filter(i => i.priority === 'low').length;
-  const mediumCount = issues.filter(i => i.priority === 'medium').length;
-  const highCount = issues.filter(i => i.priority === 'high').length;
-  const criticalCount = issues.filter(i => i.priority === 'critical').length;
+	const handleMenuAction = async (action: string, issue: any) => {
+		setActiveMenu(null);
 
-  // Show shimmer skeleton loading on initial load
-  if (loading && issues.length === 0) {
-    return (
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        
-        <View style={styles.skeletonHeader}>
-          <LoadingAnimation 
-            visible={true} 
-            size="medium" 
-            useCustomLoader={true}
-            animationType="breathe"
-            color="#1DA1F2"
-          />
-          <Text style={styles.skeletonHeaderText}>Loading community feed...</Text>
-        </View>
-        
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <IssueCardSkeleton />
-          <IssueCardSkeleton />
-          <IssueCardSkeleton />
-          <IssueCardSkeleton />
-        </ScrollView>
-      </View>
-    );
-  }
+		switch (action) {
+			case "share":
+				try {
+					const shareContent = {
+						title: "Jamaica Issue Report",
+						message: `Check out this issue in Jamaica: "${issue.title}"\n\n${issue.description}\n\nLocation: ${issue.address}`,
+						url: `jamaicaissues://issue/${issue.id}`, // Deep link format
+					};
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      
-      <TouchableOpacity 
-        style={styles.container} 
-        activeOpacity={1}
-        onPress={() => setActiveMenu(null)}
-      >
-        <FlatList
-        ref={scrollViewRef as any}
-        style={styles.scrollView}
-        contentContainerStyle={[
-          filteredIssues.length === 0 ? styles.scrollContent : undefined,
-          { paddingBottom: 65 + Math.max(insets.bottom, 0) + 25 }
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#000" />
-        }
-        data={filteredIssues}
-        keyExtractor={(item) => item.id}
-        renderItem={renderIssue}
-        // Performance optimizations
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={5}
-        updateCellsBatchingPeriod={100}
-        initialNumToRender={6}
-        windowSize={5}
-        getItemLayout={(data, index) => ({
-          length: 350, // Estimated height including images
-          offset: 350 * index,
-          index,
-        })}
-        disableVirtualization={false}
-        ListHeaderComponent={() => (
-          <>
-            <View style={styles.header}>
-          <View style={styles.titleContainer}>
-            <Ionicons name="home" size={32} color="#000" style={styles.titleIcon} />
-            <Text style={styles.title}>Jamaica Issues</Text>
-            <View style={styles.headerButtons}>
-              <TouchableOpacity 
-                style={styles.searchButton} 
-                onPress={handleSearchPress}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="search-outline" size={24} color="#000" />
-              </TouchableOpacity>
-            </View>
-          </View>
-          <Text style={styles.subtitle}>Stay informed about Jamaica</Text>
-        </View>
+					await Share.share(shareContent);
+				} catch (error) {
+					console.error("Error sharing issue:", error);
+					Alert.alert("Error", "Failed to share issue. Please try again.");
+				}
+				break;
 
-        {/* Jamaica Stats */}
-        <View style={styles.statsSection}>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="pulse-outline" size={24} color="#000" />
-              </View>
-              <Text style={styles.statNumber}>{communityStats.impactScore}</Text>
-              <Text style={styles.statLabel}>Impact Score</Text>
-            </View>
-            
-            <View style={styles.statCard}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="people-outline" size={24} color="#000" />
-              </View>
-              <Text style={styles.statNumber}>{communityStats.activeMembers}</Text>
-              <Text style={styles.statLabel}>Active Members</Text>
-            </View>
-            
-            <View style={[styles.statCard, styles.resolvedStatCard]}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="checkmark-done-outline" size={24} color="#16a34a" />
-              </View>
-              <Text style={styles.statNumber}>{communityStats.resolvedThisWeek}</Text>
-              <Text style={styles.statLabel}>Resolved This Week</Text>
-            </View>
-          </View>
-        </View>
+			case "report":
+				Alert.alert("Report Issue", "Report this issue as inappropriate?", [
+					{ text: "Cancel", style: "cancel" },
+					{
+						text: "Report",
+						style: "destructive",
+						onPress: () => console.log("Report functionality would go here"),
+					},
+				]);
+				break;
 
+			case "copy_link":
+				try {
+					const issueLink = `jamaicaissues://issue/${issue.id}`;
+					await Clipboard.setStringAsync(issueLink);
+					Alert.alert("Link Copied", "Issue link copied to clipboard");
+				} catch (error) {
+					console.error("Error copying link:", error);
+					Alert.alert("Error", "Failed to copy link. Please try again.");
+				}
+				break;
 
+			case "view_location":
+				navigation.navigate("Map", {
+					issueId: issue.id,
+					latitude: issue.latitude,
+					longitude: issue.longitude,
+				});
+				break;
 
-        {/* Active Filters Summary */}
-        {(selectedStatusFilter !== 'all' || selectedPriorityFilter !== 'all') && (
-          <View style={styles.filterSummary}>
-            <Text style={styles.filterSummaryText}>
-              Showing {filteredIssues.length} of {issues.length} issues
-            </Text>
-            <TouchableOpacity onPress={clearAllFilters} style={styles.clearFiltersLink}>
-              <Text style={styles.clearFiltersLinkText}>Clear filters</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+			case "edit":
+				if (user?.id === issue.reported_by) {
+					setEditingIssue(issue);
+					setEditTitle(issue.title);
+					setEditDescription(issue.description);
+					setShowEditModal(true);
+				}
+				break;
 
-        {/* Loading State */}
-        {loading && issues.length > 0 && (
-          <View style={styles.loadingContainer}>
-            <LoadingAnimation 
-              visible={loading} 
-              size="medium" 
-              useCustomLoader={true}
-              animationType="pulse"
-              color="#1DA1F2"
-            />
-            <Text style={styles.loadingText}>Refreshing feed...</Text>
-          </View>
-        )}
+			case "delete":
+				if (user?.id === issue.reported_by) {
+					Alert.alert(
+						"Delete Issue",
+						"Are you sure you want to delete this issue? This action cannot be undone.",
+						[
+							{ text: "Cancel", style: "cancel" },
+							{
+								text: "Delete",
+								style: "destructive",
+								onPress: () => handleDeleteIssue(issue.id),
+							},
+						],
+					);
+				}
+				break;
+		}
+	};
 
-          </>
-        )}
-        ListEmptyComponent={!loading ? renderEmptyState : null}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        updateCellsBatchingPeriod={50}
-        windowSize={10}
-        initialNumToRender={5}
-        getItemLayout={(data, index) => (
-          { length: 450, offset: 450 * index, index }
-        )}
-      />
+	const handleDeleteIssue = async (issueId: string) => {
+		try {
+			console.log("Attempting to delete issue:", issueId);
+			console.log("Current user:", user?.id);
 
-      {/* Issue Detail Modal */}
-      <IssueDetailScreen
-        issue={selectedIssue}
-        visible={showDetailModal}
-        onClose={handleCloseDetail}
-        onNavigateToIssue={handleNavigateToIssue}
-        allIssues={issues}
-      />
+			const result = await DataService.deleteIssue(issueId);
+			console.log("Delete result:", result);
 
-      {/* Filter Panel Modal */}
-      {showFilterPanel && (
-        <View style={styles.filterPanelOverlay}>
-          <View style={styles.filterPanel}>
-            <View style={styles.filterPanelHeader}>
-              <Text style={styles.filterPanelTitle}>Filter Issues</Text>
-              <TouchableOpacity onPress={toggleFilterPanel} style={styles.filterPanelCloseButton}>
-                <Ionicons name="close" size={24} color="#000" />
-              </TouchableOpacity>
-            </View>
+			// Remove from local state
+			setIssues((prevIssues) =>
+				prevIssues.filter((issue) => issue.id !== issueId),
+			);
 
-            <ScrollView style={styles.filterPanelContent} showsVerticalScrollIndicator={false}>
-              {/* Status Filters */}
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Status</Text>
-                <View style={styles.filterButtonsGrid}>
-                  {renderStatusFilterButton('all', 'All', issues.length)}
-                  {renderStatusFilterButton('pending', 'Pending', pendingCount)}
-                  {renderStatusFilterButton('in_progress', 'Active', inProgressCount)}
-                  {renderStatusFilterButton('resolved', 'Resolved', resolvedCount)}
-                </View>
-              </View>
+			Alert.alert("Success", "Issue deleted successfully");
+		} catch (error) {
+			console.error("Error deleting issue:", error);
+			console.error("Error details:", JSON.stringify(error, null, 2));
+			const errorMessage =
+				error instanceof Error ? error.message : "Unknown error";
+			Alert.alert("Error", `Failed to delete issue: ${errorMessage}`);
+		}
+	};
 
-              {/* Priority Filters */}
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Priority</Text>
-                <View style={styles.filterButtonsGrid}>
-                  {renderPriorityFilterButton('all', 'All', issues.length)}
-                  {renderPriorityFilterButton('low', 'Low', lowCount)}
-                  {renderPriorityFilterButton('medium', 'Medium', mediumCount)}
-                  {renderPriorityFilterButton('high', 'High', highCount)}
-                  {renderPriorityFilterButton('high', 'Critical', criticalCount)}
-                </View>
-              </View>
-            </ScrollView>
+	const handleEditIssue = async () => {
+		if (!editingIssue || !editTitle.trim() || !editDescription.trim()) {
+			Alert.alert("Error", "Please fill in all fields");
+			return;
+		}
 
-            <View style={styles.filterPanelFooter}>
-              <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
-                <Ionicons name="refresh-outline" size={20} color="#666" />
-                <Text style={styles.clearFiltersText}>Clear All</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.applyFiltersButton} onPress={toggleFilterPanel}>
-                <Text style={styles.applyFiltersText}>Apply Filters</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
+		try {
+			const updates = {
+				title: editTitle.trim(),
+				description: editDescription.trim(),
+				updated_at: new Date().toISOString(),
+			};
 
-      {/* Edit Issue Modal */}
-      <Modal
-        visible={showEditModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={handleCancelEdit}
-      >
-        <View style={styles.editModalContainer}>
-          <View style={styles.editModalHeader}>
-            <TouchableOpacity onPress={handleCancelEdit}>
-              <Text style={styles.editModalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.editModalTitle}>Edit Issue</Text>
-            <TouchableOpacity onPress={handleEditIssue}>
-              <Text style={styles.editModalSaveText}>Save</Text>
-            </TouchableOpacity>
-          </View>
+			const updatedIssue = await DataService.updateIssue(
+				editingIssue.id,
+				updates,
+			);
 
-          <ScrollView style={styles.editModalContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.editFormSection}>
-              <Text style={styles.editFormLabel}>Title</Text>
-              <TextInput
-                style={styles.editFormInput}
-                value={editTitle}
-                onChangeText={setEditTitle}
-                placeholder="Issue title"
-                maxLength={100}
-                multiline
-              />
-            </View>
+			// Update local state
+			setIssues((prevIssues) =>
+				prevIssues.map((issue) =>
+					issue.id === editingIssue.id ? { ...issue, ...updates } : issue,
+				),
+			);
 
-            <View style={styles.editFormSection}>
-              <Text style={styles.editFormLabel}>Description</Text>
-              <TextInput
-                style={[styles.editFormInput, styles.editFormTextArea]}
-                value={editDescription}
-                onChangeText={setEditDescription}
-                placeholder="Describe the issue in detail"
-                maxLength={500}
-                multiline
-                numberOfLines={6}
-              />
-            </View>
+			// Close modal
+			setShowEditModal(false);
+			setEditingIssue(null);
+			setEditTitle("");
+			setEditDescription("");
 
-            <View style={styles.editFormInfo}>
-              <Text style={styles.editFormInfoText}>
-                Note: Location, category, and priority cannot be changed after posting.
-              </Text>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
+			Alert.alert("Success", "Issue updated successfully");
+		} catch (error) {
+			console.error("Error updating issue:", error);
+			Alert.alert("Error", "Failed to update issue. Please try again.");
+		}
+	};
 
-      </TouchableOpacity>
-    </View>
-  );
+	const handleCancelEdit = () => {
+		setShowEditModal(false);
+		setEditingIssue(null);
+		setEditTitle("");
+		setEditDescription("");
+	};
+
+	const renderStatusFilterButton = (
+		filter: typeof selectedStatusFilter,
+		label: string,
+		count: number,
+	) => {
+		const isActive = selectedStatusFilter === filter;
+		return (
+			<TouchableOpacity
+				key={filter}
+				style={[
+					styles.filterPanelButton,
+					isActive && styles.filterPanelButtonActive,
+				]}
+				onPress={() => setSelectedStatusFilter(filter)}
+				activeOpacity={0.7}
+			>
+				<Text
+					style={[
+						styles.filterPanelButtonText,
+						isActive && styles.filterPanelButtonTextActive,
+					]}
+				>
+					{label} ({count})
+				</Text>
+			</TouchableOpacity>
+		);
+	};
+
+	const renderPriorityFilterButton = (
+		filter: typeof selectedPriorityFilter,
+		label: string,
+		count: number,
+	) => {
+		const isActive = selectedPriorityFilter === filter;
+		return (
+			<TouchableOpacity
+				key={filter}
+				style={[
+					styles.filterPanelButton,
+					isActive && styles.filterPanelButtonActive,
+				]}
+				onPress={() => setSelectedPriorityFilter(filter)}
+				activeOpacity={0.7}
+			>
+				<Text
+					style={[
+						styles.filterPanelButtonText,
+						isActive && styles.filterPanelButtonTextActive,
+					]}
+				>
+					{label} ({count})
+				</Text>
+			</TouchableOpacity>
+		);
+	};
+
+	const getAnimationValues = (issueId: string) => {
+		if (!animationRefs[issueId]) {
+			animationRefs[issueId] = {
+				upvote: new Animated.Value(1),
+				bookmark: new Animated.Value(1),
+			};
+		}
+		return animationRefs[issueId];
+	};
+
+	const renderIssue = useCallback(
+		({ item }: { item: any }) => {
+			return (
+				<OptimizedIssueCard
+					item={item}
+					isUpvoted={userUpvotes.includes(item.id)}
+					isBookmarked={isBookmarked(item.id)}
+					activeMenu={activeMenu}
+					onUpvote={handleUpvote}
+					onBookmark={handleBookmarkPress}
+					onMenuPress={handleMenuPress}
+					onMenuAction={handleMenuAction}
+					onIssuePress={handleIssuePress}
+				/>
+			);
+		},
+		[
+			userUpvotes,
+			isBookmarked,
+			activeMenu,
+			handleUpvote,
+			handleBookmarkPress,
+			handleMenuPress,
+			handleMenuAction,
+			handleIssuePress,
+		],
+	);
+
+	const renderEmptyState = () => {
+		const hasActiveFilters =
+			selectedStatusFilter !== "all" || selectedPriorityFilter !== "all";
+		return (
+			<View style={styles.emptyState}>
+				<View style={styles.emptyIconContainer}>
+					<Ionicons name="document-text-outline" size={80} color="#ccc" />
+				</View>
+				<Text style={styles.emptyText}>
+					{hasActiveFilters
+						? "No issues match your filters"
+						: "No issues reported yet"}
+				</Text>
+				<Text style={styles.emptySubtext}>
+					{hasActiveFilters
+						? "Try adjusting your filter settings"
+						: "Be the first to report an issue in Jamaica"}
+				</Text>
+			</View>
+		);
+	};
+
+	const pendingCount = issues.filter((i) => i.status === "pending").length;
+	const inProgressCount = issues.filter(
+		(i) => i.status === "in_progress",
+	).length;
+	const resolvedCount = issues.filter((i) => i.status === "resolved").length;
+
+	const lowCount = issues.filter((i) => i.priority === "low").length;
+	const mediumCount = issues.filter((i) => i.priority === "medium").length;
+	const highCount = issues.filter((i) => i.priority === "high").length;
+	const criticalCount = issues.filter((i) => i.priority === "critical").length;
+
+	// Show shimmer skeleton loading on initial load
+	if (loading && issues.length === 0) {
+		return (
+			<View style={styles.container}>
+				<StatusBar
+					barStyle="dark-content"
+					backgroundColor="transparent"
+					translucent
+				/>
+
+				<View style={styles.skeletonHeader}>
+					<LoadingAnimation
+						visible={true}
+						size="medium"
+						useCustomLoader={true}
+						animationType="breathe"
+						color="#1DA1F2"
+					/>
+					<Text style={styles.skeletonHeaderText}>
+						Loading community feed...
+					</Text>
+				</View>
+
+				<ScrollView
+					style={styles.scrollView}
+					showsVerticalScrollIndicator={false}
+				>
+					<IssueCardSkeleton />
+					<IssueCardSkeleton />
+					<IssueCardSkeleton />
+					<IssueCardSkeleton />
+				</ScrollView>
+			</View>
+		);
+	}
+
+	return (
+		<View style={styles.container}>
+			<StatusBar
+				barStyle="dark-content"
+				backgroundColor="transparent"
+				translucent
+			/>
+
+			<TouchableOpacity
+				style={styles.container}
+				activeOpacity={1}
+				onPress={() => setActiveMenu(null)}
+			>
+				<FlatList
+					ref={scrollViewRef as any}
+					style={styles.scrollView}
+					contentContainerStyle={[
+						filteredIssues.length === 0 ? styles.scrollContent : undefined,
+						{ paddingBottom: 65 + Math.max(insets.bottom, 0) + 25 },
+					]}
+					showsVerticalScrollIndicator={false}
+					refreshControl={
+						<RefreshControl
+							refreshing={refreshing}
+							onRefresh={handleRefresh}
+							tintColor="#000"
+						/>
+					}
+					data={filteredIssues}
+					keyExtractor={(item) => item.id}
+					renderItem={renderIssue}
+					// Performance optimizations
+					removeClippedSubviews={true}
+					maxToRenderPerBatch={5}
+					updateCellsBatchingPeriod={100}
+					initialNumToRender={6}
+					windowSize={5}
+					getItemLayout={(data, index) => ({
+						length: 350, // Estimated height including images
+						offset: 350 * index,
+						index,
+					})}
+					disableVirtualization={false}
+					ListHeaderComponent={() => (
+						<>
+							<View style={styles.header}>
+								<View style={styles.titleContainer}>
+									<Ionicons
+										name="home"
+										size={32}
+										color="#000"
+										style={styles.titleIcon}
+									/>
+									<Text style={styles.title}>Jamaica Issues</Text>
+									<View style={styles.headerButtons}>
+										<TouchableOpacity
+											style={styles.searchButton}
+											onPress={handleSearchPress}
+											activeOpacity={0.7}
+										>
+											<Ionicons name="search-outline" size={24} color="#000" />
+										</TouchableOpacity>
+									</View>
+								</View>
+								<Text style={styles.subtitle}>Stay informed about Jamaica</Text>
+							</View>
+
+							{/* Jamaica Stats */}
+							<View style={styles.statsSection}>
+								<View style={styles.statsGrid}>
+									<View style={styles.statCard}>
+										<View style={styles.statIconContainer}>
+											<Ionicons name="pulse-outline" size={24} color="#000" />
+										</View>
+										<Text style={styles.statNumber}>
+											{communityStats.impactScore}
+										</Text>
+										<Text style={styles.statLabel}>Impact Score</Text>
+									</View>
+
+									<View style={styles.statCard}>
+										<View style={styles.statIconContainer}>
+											<Ionicons name="people-outline" size={24} color="#000" />
+										</View>
+										<Text style={styles.statNumber}>
+											{communityStats.activeMembers}
+										</Text>
+										<Text style={styles.statLabel}>Active Members</Text>
+									</View>
+
+									<View style={[styles.statCard, styles.resolvedStatCard]}>
+										<View style={styles.statIconContainer}>
+											<Ionicons
+												name="checkmark-done-outline"
+												size={24}
+												color="#16a34a"
+											/>
+										</View>
+										<Text style={styles.statNumber}>
+											{communityStats.resolvedThisWeek}
+										</Text>
+										<Text style={styles.statLabel}>Resolved This Week</Text>
+									</View>
+								</View>
+							</View>
+
+							{/* Active Filters Summary */}
+							{(selectedStatusFilter !== "all" ||
+								selectedPriorityFilter !== "all") && (
+								<View style={styles.filterSummary}>
+									<Text style={styles.filterSummaryText}>
+										Showing {filteredIssues.length} of {issues.length} issues
+									</Text>
+									<TouchableOpacity
+										onPress={clearAllFilters}
+										style={styles.clearFiltersLink}
+									>
+										<Text style={styles.clearFiltersLinkText}>
+											Clear filters
+										</Text>
+									</TouchableOpacity>
+								</View>
+							)}
+
+							{/* Loading State */}
+							{loading && issues.length > 0 && (
+								<View style={styles.loadingContainer}>
+									<LoadingAnimation
+										visible={loading}
+										size="medium"
+										useCustomLoader={true}
+										animationType="pulse"
+										color="#1DA1F2"
+									/>
+									<Text style={styles.loadingText}>Refreshing feed...</Text>
+								</View>
+							)}
+						</>
+					)}
+					ListEmptyComponent={!loading ? renderEmptyState : null}
+					removeClippedSubviews={true}
+					maxToRenderPerBatch={10}
+					updateCellsBatchingPeriod={50}
+					windowSize={10}
+					initialNumToRender={5}
+					getItemLayout={(data, index) => ({
+						length: 450,
+						offset: 450 * index,
+						index,
+					})}
+				/>
+
+				{/* Issue Detail Modal */}
+				<IssueDetailScreen
+					issue={selectedIssue}
+					visible={showDetailModal}
+					onClose={handleCloseDetail}
+					onNavigateToIssue={handleNavigateToIssue}
+					allIssues={issues}
+				/>
+
+				{/* Filter Panel Modal */}
+				{showFilterPanel && (
+					<View style={styles.filterPanelOverlay}>
+						<View style={styles.filterPanel}>
+							<View style={styles.filterPanelHeader}>
+								<Text style={styles.filterPanelTitle}>Filter Issues</Text>
+								<TouchableOpacity
+									onPress={toggleFilterPanel}
+									style={styles.filterPanelCloseButton}
+								>
+									<Ionicons name="close" size={24} color="#000" />
+								</TouchableOpacity>
+							</View>
+
+							<ScrollView
+								style={styles.filterPanelContent}
+								showsVerticalScrollIndicator={false}
+							>
+								{/* Status Filters */}
+								<View style={styles.filterSection}>
+									<Text style={styles.filterSectionTitle}>Status</Text>
+									<View style={styles.filterButtonsGrid}>
+										{renderStatusFilterButton("all", "All", issues.length)}
+										{renderStatusFilterButton(
+											"pending",
+											"Pending",
+											pendingCount,
+										)}
+										{renderStatusFilterButton(
+											"in_progress",
+											"Active",
+											inProgressCount,
+										)}
+										{renderStatusFilterButton(
+											"resolved",
+											"Resolved",
+											resolvedCount,
+										)}
+									</View>
+								</View>
+
+								{/* Priority Filters */}
+								<View style={styles.filterSection}>
+									<Text style={styles.filterSectionTitle}>Priority</Text>
+									<View style={styles.filterButtonsGrid}>
+										{renderPriorityFilterButton("all", "All", issues.length)}
+										{renderPriorityFilterButton("low", "Low", lowCount)}
+										{renderPriorityFilterButton(
+											"medium",
+											"Medium",
+											mediumCount,
+										)}
+										{renderPriorityFilterButton("high", "High", highCount)}
+										{renderPriorityFilterButton(
+											"high",
+											"Critical",
+											criticalCount,
+										)}
+									</View>
+								</View>
+							</ScrollView>
+
+							<View style={styles.filterPanelFooter}>
+								<TouchableOpacity
+									style={styles.clearFiltersButton}
+									onPress={clearAllFilters}
+								>
+									<Ionicons name="refresh-outline" size={20} color="#666" />
+									<Text style={styles.clearFiltersText}>Clear All</Text>
+								</TouchableOpacity>
+								<TouchableOpacity
+									style={styles.applyFiltersButton}
+									onPress={toggleFilterPanel}
+								>
+									<Text style={styles.applyFiltersText}>Apply Filters</Text>
+								</TouchableOpacity>
+							</View>
+						</View>
+					</View>
+				)}
+
+				{/* Edit Issue Modal */}
+				<Modal
+					visible={showEditModal}
+					animationType="slide"
+					presentationStyle="pageSheet"
+					onRequestClose={handleCancelEdit}
+				>
+					<View style={styles.editModalContainer}>
+						<View style={styles.editModalHeader}>
+							<TouchableOpacity onPress={handleCancelEdit}>
+								<Text style={styles.editModalCancelText}>Cancel</Text>
+							</TouchableOpacity>
+							<Text style={styles.editModalTitle}>Edit Issue</Text>
+							<TouchableOpacity onPress={handleEditIssue}>
+								<Text style={styles.editModalSaveText}>Save</Text>
+							</TouchableOpacity>
+						</View>
+
+						<ScrollView
+							style={styles.editModalContent}
+							showsVerticalScrollIndicator={false}
+						>
+							<View style={styles.editFormSection}>
+								<Text style={styles.editFormLabel}>Title</Text>
+								<TextInput
+									style={styles.editFormInput}
+									value={editTitle}
+									onChangeText={setEditTitle}
+									placeholder="Issue title"
+									maxLength={100}
+									multiline
+								/>
+							</View>
+
+							<View style={styles.editFormSection}>
+								<Text style={styles.editFormLabel}>Description</Text>
+								<TextInput
+									style={[styles.editFormInput, styles.editFormTextArea]}
+									value={editDescription}
+									onChangeText={setEditDescription}
+									placeholder="Describe the issue in detail"
+									maxLength={500}
+									multiline
+									numberOfLines={6}
+								/>
+							</View>
+
+							<View style={styles.editFormInfo}>
+								<Text style={styles.editFormInfoText}>
+									Note: Location, category, and priority cannot be changed after
+									posting.
+								</Text>
+							</View>
+						</ScrollView>
+					</View>
+				</Modal>
+			</TouchableOpacity>
+		</View>
+	);
 });
 
 export default HomeScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#ffffff',
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  titleIcon: {
-    marginRight: 12,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#000',
-    flex: 1,
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  searchButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '400',
-    paddingLeft: 44,
-  },
-  statsSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#ffffff',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginHorizontal: 4,
-  },
-  resolvedStatCard: {
-    backgroundColor: '#f0fdf4',
-  },
-  statIconContainer: {
-    marginBottom: 8,
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-    fontWeight: '400',
-  },
-  trendingSection: {
-    paddingVertical: 16,
-    backgroundColor: '#ffffff',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginLeft: 8,
-    flex: 1,
-  },
-  trendingBadge: {
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  trendingBadgeText: {
-    color: '#666',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  trendingList: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  trendingCard: {
-    width: 160,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 16,
-    marginRight: 12,
-  },
-  trendingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  trendingPriority: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  trendingTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 12,
-    lineHeight: 16,
-  },
-  trendingMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  trendingUpvotes: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#000',
-  },
-  trendingTime: {
-    fontSize: 10,
-    color: '#666',
-    fontWeight: '500',
-  },
-  filterContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#ffffff',
-  },
-  filterHeader: {
-    marginBottom: 12,
-  },
-  filterTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
-  },
-  filterSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '400',
-  },
-  filterButtons: {
-    maxHeight: 50,
-  },
-  filterScrollContent: {
-    paddingRight: 20,
-    alignItems: 'center',
-  },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#f8f9fa',
-    marginRight: 12,
-  },
-  filterButtonActive: {
-    backgroundColor: '#000',
-  },
-  filterText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  filterTextActive: {
-    color: '#fff',
-  },
-  listContainer: {
-    flex: 1,
-  },
-  list: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
-  },
-  issueCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    marginBottom: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  cardContent: {
-    padding: 20,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  priorityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginLeft: 8,
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-    textTransform: 'capitalize',
-  },
-  issueTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#000',
-    lineHeight: 20,
-  },
-  issueDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 12,
-  },
-  locationText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 4,
-    fontWeight: '500',
-    flex: 1,
-  },
-  metaContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  upvoteContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  metaText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '600',
-    marginLeft: 2,
-  },
-  timeText: {
-    fontSize: 12,
-    color: '#999',
-    fontWeight: '500',
-  },
-  upvotesText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#000',
-  },
-  postTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    lineHeight: 24,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    letterSpacing: -0.2,
-  },
-  categoryInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 12,
-  },
-  categoryText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 4,
-  },
-  priorityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 12,
-  },
-  priorityText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 4,
-    textTransform: 'capitalize',
-  },
-  emptyState: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 60,
-  },
-  emptyIconContainer: {
-    marginBottom: 24,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  // Filter Panel Styles
-  filterPanelOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-    zIndex: 1000,
-  },
-  filterPanel: {
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  filterPanelHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  filterPanelTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
-  },
-  filterPanelCloseButton: {
-    padding: 8,
-  },
-  filterPanelContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  filterSection: {
-    marginVertical: 20,
-  },
-  filterSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 12,
-  },
-  filterButtonsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  filterPanelButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  filterPanelButtonActive: {
-    backgroundColor: '#000',
-    borderColor: '#000',
-  },
-  filterPanelButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  filterPanelButtonTextActive: {
-    color: '#fff',
-  },
-  filterPanelFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    gap: 12,
-  },
-  clearFiltersButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    flex: 1,
-    justifyContent: 'center',
-  },
-  clearFiltersText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginLeft: 6,
-  },
-  applyFiltersButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    backgroundColor: '#000',
-    borderRadius: 20,
-    flex: 1,
-    alignItems: 'center',
-  },
-  applyFiltersText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  // Filter Summary Styles
-  filterSummary: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#f8f9fa',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  filterSummaryText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  clearFiltersLink: {
-    paddingVertical: 4,
-  },
-  clearFiltersLinkText: {
-    fontSize: 14,
-    color: '#1DA1F2',
-    fontWeight: '600',
-  },
-  // Instagram Feed Styles
-  feedContainer: {
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 20,
-  },
-  postCard: {
-    backgroundColor: '#ffffff',
-    marginBottom: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
-  },
-  postHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  authorInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  avatarContainer: {
-    marginRight: 12,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  defaultAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  defaultAvatarText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-  },
-  authorDetails: {
-    flex: 1,
-  },
-  authorNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  authorName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    marginRight: 4,
-  },
-  postTime: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  bookmarkButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  moreButton: {
-    padding: 8,
-  },
-  postText: {
-    fontSize: 15,
-    color: '#333',
-    lineHeight: 22,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    fontWeight: '400',
-  },
-  postImage: {
-    width: '100%',
-    height: 250,
-    marginBottom: 12,
-  },
-  hashtagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  hashtag: {
-    fontSize: 14,
-    color: '#1DA1F2',
-    marginRight: 8,
-    marginBottom: 4,
-  },
-  postFooter: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: 4,
-  },
-  engagementRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginBottom: 12,
-    marginTop: 4,
-  },
-  engagementButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    marginRight: 24,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
-    minWidth: 50,
-    justifyContent: 'center',
-  },
-  engagementText: {
-    fontSize: 14,
-    color: '#333',
-    marginLeft: 8,
-    fontWeight: '600',
-    minWidth: 20,
-    textAlign: 'center',
-  },
-  badgesContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    flexWrap: 'wrap',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 6,
-  },
-  statusIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  priorityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 6,
-  },
-  priorityIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  priorityBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  categoryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#f3f4f6',
-    gap: 4,
-  },
-  categoryBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6b7280',
-    textTransform: 'capitalize',
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.01)',
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-  },
-  locationText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 6,
-    flex: 1,
-    fontWeight: '500',
-  },
-  // Dropdown Menu Styles
-  dropdownMenu: {
-    position: 'absolute',
-    top: 60,
-    right: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 1000,
-    minWidth: 160,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  menuItemText: {
-    fontSize: 15,
-    color: '#333',
-    marginLeft: 12,
-    fontWeight: '500',
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: '#f0f0f0',
-    marginVertical: 4,
-    marginHorizontal: 8,
-  },
-  // Edit Modal Styles
-  editModalContainer: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  editModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#ffffff',
-  },
-  editModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-  },
-  editModalCancelText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
-  },
-  editModalSaveText: {
-    fontSize: 16,
-    color: '#1DA1F2',
-    fontWeight: '600',
-  },
-  editModalContent: {
-    flex: 1,
-    padding: 20,
-  },
-  editFormSection: {
-    marginBottom: 24,
-  },
-  editFormLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 8,
-  },
-  editFormInput: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: '#f8f9fa',
-    color: '#000',
-  },
-  editFormTextArea: {
-    height: 120,
-    textAlignVertical: 'top',
-  },
-  editFormInfo: {
-    backgroundColor: '#f0f8ff',
-    padding: 16,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#1DA1F2',
-  },
-  editFormInfoText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  loadingContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 16,
-    fontWeight: '500',
-  },
-  fullScreenLoading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    paddingTop: 60,
-  },
-  fullScreenLoadingText: {
-    fontSize: 18,
-    color: '#666',
-    marginTop: 24,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  skeletonHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-    paddingTop: 80,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  skeletonHeaderText: {
-    fontSize: 16,
-    color: '#666',
-    marginLeft: 12,
-    fontWeight: '500',
-  },
+	container: {
+		flex: 1,
+		backgroundColor: "#ffffff",
+	},
+	scrollView: {
+		flex: 1,
+	},
+	scrollContent: {
+		flexGrow: 1,
+	},
+	header: {
+		paddingHorizontal: 20,
+		paddingTop: 60,
+		paddingBottom: 20,
+		backgroundColor: "#ffffff",
+	},
+	titleContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		marginBottom: 8,
+	},
+	titleIcon: {
+		marginRight: 12,
+	},
+	title: {
+		fontSize: 24,
+		fontWeight: "600",
+		color: "#000",
+		flex: 1,
+	},
+	headerButtons: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	searchButton: {
+		padding: 8,
+		borderRadius: 20,
+		backgroundColor: "#f8f9fa",
+		borderWidth: 1,
+		borderColor: "#e0e0e0",
+	},
+	subtitle: {
+		fontSize: 14,
+		color: "#666",
+		fontWeight: "400",
+		paddingLeft: 44,
+	},
+	statsSection: {
+		paddingHorizontal: 20,
+		paddingVertical: 16,
+		backgroundColor: "#ffffff",
+	},
+	statsGrid: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		gap: 12,
+	},
+	statCard: {
+		flex: 1,
+		backgroundColor: "#f8f9fa",
+		borderRadius: 8,
+		padding: 16,
+		alignItems: "center",
+		marginHorizontal: 4,
+	},
+	resolvedStatCard: {
+		backgroundColor: "#f0fdf4",
+	},
+	statIconContainer: {
+		marginBottom: 8,
+	},
+	statNumber: {
+		fontSize: 18,
+		fontWeight: "600",
+		color: "#000",
+		marginBottom: 4,
+	},
+	statLabel: {
+		fontSize: 12,
+		color: "#666",
+		textAlign: "center",
+		fontWeight: "400",
+	},
+	trendingSection: {
+		paddingVertical: 16,
+		backgroundColor: "#ffffff",
+	},
+	sectionHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 20,
+		marginBottom: 16,
+	},
+	sectionTitle: {
+		fontSize: 16,
+		fontWeight: "600",
+		color: "#000",
+		marginLeft: 8,
+		flex: 1,
+	},
+	trendingBadge: {
+		backgroundColor: "#f8f9fa",
+		paddingHorizontal: 8,
+		paddingVertical: 4,
+		borderRadius: 8,
+	},
+	trendingBadgeText: {
+		color: "#666",
+		fontSize: 10,
+		fontWeight: "600",
+	},
+	trendingList: {
+		paddingHorizontal: 20,
+		gap: 12,
+	},
+	trendingCard: {
+		width: 160,
+		backgroundColor: "#f8f9fa",
+		borderRadius: 8,
+		padding: 16,
+		marginRight: 12,
+	},
+	trendingHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		marginBottom: 8,
+	},
+	trendingPriority: {
+		width: 8,
+		height: 8,
+		borderRadius: 4,
+	},
+	trendingTitle: {
+		fontSize: 13,
+		fontWeight: "600",
+		color: "#000",
+		marginBottom: 12,
+		lineHeight: 16,
+	},
+	trendingMeta: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+	},
+	trendingUpvotes: {
+		fontSize: 12,
+		fontWeight: "500",
+		color: "#000",
+	},
+	trendingTime: {
+		fontSize: 10,
+		color: "#666",
+		fontWeight: "500",
+	},
+	filterContainer: {
+		paddingHorizontal: 20,
+		paddingVertical: 16,
+		backgroundColor: "#ffffff",
+	},
+	filterHeader: {
+		marginBottom: 12,
+	},
+	filterTitle: {
+		fontSize: 16,
+		fontWeight: "600",
+		color: "#000",
+		marginBottom: 4,
+	},
+	filterSubtitle: {
+		fontSize: 14,
+		color: "#666",
+		fontWeight: "400",
+	},
+	filterButtons: {
+		maxHeight: 50,
+	},
+	filterScrollContent: {
+		paddingRight: 20,
+		alignItems: "center",
+	},
+	filterButton: {
+		paddingHorizontal: 16,
+		paddingVertical: 8,
+		borderRadius: 16,
+		backgroundColor: "#f8f9fa",
+		marginRight: 12,
+	},
+	filterButtonActive: {
+		backgroundColor: "#000",
+	},
+	filterText: {
+		fontSize: 14,
+		fontWeight: "600",
+		color: "#666",
+	},
+	filterTextActive: {
+		color: "#fff",
+	},
+	listContainer: {
+		flex: 1,
+	},
+	list: {
+		paddingHorizontal: 20,
+		paddingTop: 16,
+		paddingBottom: 20,
+	},
+	issueCard: {
+		backgroundColor: "#ffffff",
+		borderRadius: 8,
+		marginBottom: 16,
+		padding: 16,
+		borderWidth: 1,
+		borderColor: "#f0f0f0",
+	},
+	cardContent: {
+		padding: 20,
+	},
+	cardHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		marginBottom: 12,
+	},
+	categoryContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	priorityDot: {
+		width: 8,
+		height: 8,
+		borderRadius: 4,
+		marginLeft: 8,
+	},
+	statusContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	statusDot: {
+		width: 6,
+		height: 6,
+		borderRadius: 3,
+		marginRight: 6,
+	},
+	statusText: {
+		fontSize: 12,
+		fontWeight: "600",
+		color: "#666",
+		textTransform: "capitalize",
+	},
+	issueTitle: {
+		fontSize: 16,
+		fontWeight: "600",
+		marginBottom: 8,
+		color: "#000",
+		lineHeight: 20,
+	},
+	issueDescription: {
+		fontSize: 14,
+		color: "#666",
+		lineHeight: 20,
+		marginBottom: 16,
+	},
+	cardFooter: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+	},
+	locationContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		flex: 1,
+		marginRight: 12,
+	},
+	locationText: {
+		fontSize: 12,
+		color: "#666",
+		marginLeft: 4,
+		fontWeight: "500",
+		flex: 1,
+	},
+	metaContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	upvoteContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginRight: 12,
+	},
+	metaText: {
+		fontSize: 12,
+		color: "#666",
+		fontWeight: "600",
+		marginLeft: 2,
+	},
+	timeText: {
+		fontSize: 12,
+		color: "#999",
+		fontWeight: "500",
+	},
+	upvotesText: {
+		fontSize: 12,
+		fontWeight: "600",
+		color: "#000",
+	},
+	postTitle: {
+		fontSize: 17,
+		fontWeight: "700",
+		color: "#1a1a1a",
+		lineHeight: 24,
+		paddingHorizontal: 16,
+		marginBottom: 8,
+		letterSpacing: -0.2,
+	},
+	categoryInfoContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginLeft: 12,
+	},
+	categoryText: {
+		fontSize: 12,
+		color: "#666",
+		marginLeft: 4,
+	},
+	priorityContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginLeft: 12,
+	},
+	priorityText: {
+		fontSize: 12,
+		color: "#666",
+		marginLeft: 4,
+		textTransform: "capitalize",
+	},
+	emptyState: {
+		justifyContent: "center",
+		alignItems: "center",
+		paddingHorizontal: 40,
+		paddingVertical: 60,
+	},
+	emptyIconContainer: {
+		marginBottom: 24,
+	},
+	emptyText: {
+		fontSize: 18,
+		fontWeight: "600",
+		color: "#000",
+		textAlign: "center",
+		marginBottom: 8,
+	},
+	emptySubtext: {
+		fontSize: 16,
+		color: "#666",
+		textAlign: "center",
+		lineHeight: 22,
+	},
+	// Filter Panel Styles
+	filterPanelOverlay: {
+		position: "absolute",
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		backgroundColor: "rgba(0, 0, 0, 0.5)",
+		justifyContent: "flex-end",
+		zIndex: 1000,
+	},
+	filterPanel: {
+		backgroundColor: "#ffffff",
+		borderTopLeftRadius: 20,
+		borderTopRightRadius: 20,
+		maxHeight: "80%",
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: -4 },
+		shadowOpacity: 0.1,
+		shadowRadius: 12,
+		elevation: 8,
+	},
+	filterPanelHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		paddingHorizontal: 20,
+		paddingVertical: 20,
+		borderBottomWidth: 1,
+		borderBottomColor: "#f0f0f0",
+	},
+	filterPanelTitle: {
+		fontSize: 20,
+		fontWeight: "700",
+		color: "#000",
+	},
+	filterPanelCloseButton: {
+		padding: 8,
+	},
+	filterPanelContent: {
+		flex: 1,
+		paddingHorizontal: 20,
+	},
+	filterSection: {
+		marginVertical: 20,
+	},
+	filterSectionTitle: {
+		fontSize: 16,
+		fontWeight: "600",
+		color: "#000",
+		marginBottom: 12,
+	},
+	filterButtonsGrid: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 12,
+	},
+	filterPanelButton: {
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		borderRadius: 20,
+		backgroundColor: "#f8f9fa",
+		borderWidth: 1,
+		borderColor: "#e0e0e0",
+		minWidth: 80,
+		alignItems: "center",
+	},
+	filterPanelButtonActive: {
+		backgroundColor: "#000",
+		borderColor: "#000",
+	},
+	filterPanelButtonText: {
+		fontSize: 14,
+		fontWeight: "600",
+		color: "#666",
+	},
+	filterPanelButtonTextActive: {
+		color: "#fff",
+	},
+	filterPanelFooter: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		paddingHorizontal: 20,
+		paddingVertical: 20,
+		borderTopWidth: 1,
+		borderTopColor: "#f0f0f0",
+		gap: 12,
+	},
+	clearFiltersButton: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingVertical: 12,
+		paddingHorizontal: 20,
+		backgroundColor: "#f8f9fa",
+		borderRadius: 20,
+		borderWidth: 1,
+		borderColor: "#e0e0e0",
+		flex: 1,
+		justifyContent: "center",
+	},
+	clearFiltersText: {
+		fontSize: 14,
+		fontWeight: "600",
+		color: "#666",
+		marginLeft: 6,
+	},
+	applyFiltersButton: {
+		paddingVertical: 12,
+		paddingHorizontal: 20,
+		backgroundColor: "#000",
+		borderRadius: 20,
+		flex: 1,
+		alignItems: "center",
+	},
+	applyFiltersText: {
+		fontSize: 14,
+		fontWeight: "600",
+		color: "#fff",
+	},
+	// Filter Summary Styles
+	filterSummary: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		backgroundColor: "#f8f9fa",
+		borderBottomWidth: 1,
+		borderBottomColor: "#e0e0e0",
+	},
+	filterSummaryText: {
+		fontSize: 14,
+		color: "#666",
+		fontWeight: "500",
+	},
+	clearFiltersLink: {
+		paddingVertical: 4,
+	},
+	clearFiltersLinkText: {
+		fontSize: 14,
+		color: "#1DA1F2",
+		fontWeight: "600",
+	},
+	// Instagram Feed Styles
+	feedContainer: {
+		backgroundColor: "#f8f9fa",
+		paddingHorizontal: 16,
+		paddingTop: 8,
+		paddingBottom: 20,
+	},
+	postCard: {
+		backgroundColor: "#ffffff",
+		marginBottom: 16,
+		borderRadius: 12,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.08,
+		shadowRadius: 4,
+		elevation: 2,
+		borderWidth: 1,
+		borderColor: "rgba(0, 0, 0, 0.04)",
+	},
+	postHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+	},
+	authorInfo: {
+		flexDirection: "row",
+		alignItems: "center",
+		flex: 1,
+	},
+	avatarContainer: {
+		marginRight: 12,
+	},
+	avatar: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+	},
+	defaultAvatar: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		backgroundColor: "#e0e0e0",
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	defaultAvatarText: {
+		fontSize: 16,
+		fontWeight: "600",
+		color: "#666",
+	},
+	authorDetails: {
+		flex: 1,
+	},
+	authorNameRow: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	authorName: {
+		fontSize: 14,
+		fontWeight: "600",
+		color: "#000",
+		marginRight: 4,
+	},
+	postTime: {
+		fontSize: 12,
+		color: "#666",
+		marginTop: 2,
+	},
+	headerActions: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	bookmarkButton: {
+		padding: 8,
+		marginRight: 8,
+	},
+	moreButton: {
+		padding: 8,
+	},
+	postText: {
+		fontSize: 15,
+		color: "#333",
+		lineHeight: 22,
+		paddingHorizontal: 16,
+		paddingBottom: 16,
+		fontWeight: "400",
+	},
+	postImage: {
+		width: "100%",
+		height: 250,
+		marginBottom: 12,
+	},
+	hashtagsContainer: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		paddingHorizontal: 16,
+		paddingBottom: 12,
+	},
+	hashtag: {
+		fontSize: 14,
+		color: "#1DA1F2",
+		marginRight: 8,
+		marginBottom: 4,
+	},
+	postFooter: {
+		paddingHorizontal: 16,
+		paddingBottom: 16,
+		paddingTop: 4,
+	},
+	engagementRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "flex-start",
+		marginBottom: 12,
+		marginTop: 4,
+	},
+	engagementButton: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 8,
+		paddingVertical: 6,
+		marginRight: 24,
+		borderRadius: 16,
+		backgroundColor: "rgba(0, 0, 0, 0.02)",
+		minWidth: 50,
+		justifyContent: "center",
+	},
+	engagementText: {
+		fontSize: 14,
+		color: "#333",
+		marginLeft: 8,
+		fontWeight: "600",
+		minWidth: 20,
+		textAlign: "center",
+	},
+	badgesContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		marginTop: 12,
+		marginBottom: 12,
+		paddingHorizontal: 16,
+		flexWrap: "wrap",
+	},
+	statusBadge: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 12,
+		gap: 6,
+	},
+	statusIndicator: {
+		width: 8,
+		height: 8,
+		borderRadius: 4,
+	},
+	statusBadgeText: {
+		fontSize: 12,
+		fontWeight: "600",
+		textTransform: "capitalize",
+	},
+	priorityBadge: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 12,
+		gap: 6,
+	},
+	priorityIndicator: {
+		width: 8,
+		height: 8,
+		borderRadius: 4,
+	},
+	priorityBadgeText: {
+		fontSize: 12,
+		fontWeight: "600",
+		textTransform: "capitalize",
+	},
+	categoryBadge: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 12,
+		backgroundColor: "#f3f4f6",
+		gap: 4,
+	},
+	categoryBadgeText: {
+		fontSize: 12,
+		fontWeight: "500",
+		color: "#6b7280",
+		textTransform: "capitalize",
+	},
+	locationRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 16,
+		paddingBottom: 16,
+		paddingTop: 4,
+		backgroundColor: "rgba(0, 0, 0, 0.01)",
+		borderBottomLeftRadius: 12,
+		borderBottomRightRadius: 12,
+	},
+	locationText: {
+		fontSize: 12,
+		color: "#666",
+		marginLeft: 6,
+		flex: 1,
+		fontWeight: "500",
+	},
+	// Dropdown Menu Styles
+	dropdownMenu: {
+		position: "absolute",
+		top: 60,
+		right: 16,
+		backgroundColor: "#ffffff",
+		borderRadius: 8,
+		padding: 8,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.15,
+		shadowRadius: 8,
+		elevation: 8,
+		zIndex: 1000,
+		minWidth: 160,
+		borderWidth: 1,
+		borderColor: "#f0f0f0",
+	},
+	menuItem: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingVertical: 12,
+		paddingHorizontal: 12,
+		borderRadius: 6,
+	},
+	menuItemText: {
+		fontSize: 15,
+		color: "#333",
+		marginLeft: 12,
+		fontWeight: "500",
+	},
+	menuDivider: {
+		height: 1,
+		backgroundColor: "#f0f0f0",
+		marginVertical: 4,
+		marginHorizontal: 8,
+	},
+	// Edit Modal Styles
+	editModalContainer: {
+		flex: 1,
+		backgroundColor: "#ffffff",
+	},
+	editModalHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		paddingHorizontal: 20,
+		paddingVertical: 16,
+		paddingTop: 60,
+		borderBottomWidth: 1,
+		borderBottomColor: "#f0f0f0",
+		backgroundColor: "#ffffff",
+	},
+	editModalTitle: {
+		fontSize: 18,
+		fontWeight: "600",
+		color: "#000",
+	},
+	editModalCancelText: {
+		fontSize: 16,
+		color: "#666",
+		fontWeight: "500",
+	},
+	editModalSaveText: {
+		fontSize: 16,
+		color: "#1DA1F2",
+		fontWeight: "600",
+	},
+	editModalContent: {
+		flex: 1,
+		padding: 20,
+	},
+	editFormSection: {
+		marginBottom: 24,
+	},
+	editFormLabel: {
+		fontSize: 16,
+		fontWeight: "600",
+		color: "#000",
+		marginBottom: 8,
+	},
+	editFormInput: {
+		borderWidth: 1,
+		borderColor: "#e0e0e0",
+		borderRadius: 8,
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		fontSize: 16,
+		backgroundColor: "#f8f9fa",
+		color: "#000",
+	},
+	editFormTextArea: {
+		height: 120,
+		textAlignVertical: "top",
+	},
+	editFormInfo: {
+		backgroundColor: "#f0f8ff",
+		padding: 16,
+		borderRadius: 8,
+		borderLeftWidth: 4,
+		borderLeftColor: "#1DA1F2",
+	},
+	editFormInfoText: {
+		fontSize: 14,
+		color: "#666",
+		lineHeight: 20,
+	},
+	loadingContainer: {
+		justifyContent: "center",
+		alignItems: "center",
+		paddingVertical: 60,
+	},
+	loadingText: {
+		fontSize: 16,
+		color: "#666",
+		marginTop: 16,
+		fontWeight: "500",
+	},
+	fullScreenLoading: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+		backgroundColor: "#ffffff",
+		paddingTop: 60,
+	},
+	fullScreenLoadingText: {
+		fontSize: 18,
+		color: "#666",
+		marginTop: 24,
+		fontWeight: "600",
+		textAlign: "center",
+	},
+	skeletonHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		paddingVertical: 20,
+		paddingTop: 80,
+		backgroundColor: "#ffffff",
+		borderBottomWidth: 1,
+		borderBottomColor: "#f0f0f0",
+	},
+	skeletonHeaderText: {
+		fontSize: 16,
+		color: "#666",
+		marginLeft: 12,
+		fontWeight: "500",
+	},
 });

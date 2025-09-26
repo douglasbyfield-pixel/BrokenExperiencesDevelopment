@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
-import { useAuth } from '../services/AuthContext';
-import { dataService } from '../services/supabase';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import styled from "styled-components";
+import { useAuth } from "../services/AuthContext";
+import { dataService } from "../services/supabase";
 
 const ProfileContainer = styled.div`
   min-height: 100vh;
@@ -212,20 +212,26 @@ const IssueStatus = styled.div`
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: ${props => {
-    switch(props.status) {
-      case 'resolved': return '#dcfce7';
-      case 'in_progress': return '#fef3c7';
-      default: return '#f1f5f9';
-    }
-  }};
-  color: ${props => {
-    switch(props.status) {
-      case 'resolved': return '#16a34a';
-      case 'in_progress': return '#d97706';
-      default: return '#64748b';
-    }
-  }};
+  background: ${(props) => {
+		switch (props.status) {
+			case "resolved":
+				return "#dcfce7";
+			case "in_progress":
+				return "#fef3c7";
+			default:
+				return "#f1f5f9";
+		}
+	}};
+  color: ${(props) => {
+		switch (props.status) {
+			case "resolved":
+				return "#16a34a";
+			case "in_progress":
+				return "#d97706";
+			default:
+				return "#64748b";
+		}
+	}};
 `;
 
 const EmptyState = styled.div`
@@ -252,7 +258,7 @@ const EmptySubtitle = styled.p`
 
 const ActionButton = styled.button`
   width: 100%;
-  background: ${props => props.danger ? '#ef4444' : '#000000'};
+  background: ${(props) => (props.danger ? "#ef4444" : "#000000")};
   color: white;
   border: none;
   border-radius: 12px;
@@ -270,7 +276,7 @@ const ActionButton = styled.button`
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 15px ${props => props.danger ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+    box-shadow: 0 4px 15px ${(props) => (props.danger ? "rgba(239, 68, 68, 0.3)" : "rgba(0, 0, 0, 0.3)")};
   }
 `;
 
@@ -298,260 +304,345 @@ const LoadingSpinner = styled.div`
 `;
 
 const Profile = () => {
-  const [userIssues, setUserIssues] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [userStats, setUserStats] = useState({
-    totalIssues: 0,
-    resolvedIssues: 0,
-    points: 0
-  });
+	const [userIssues, setUserIssues] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [userStats, setUserStats] = useState({
+		totalIssues: 0,
+		resolvedIssues: 0,
+		points: 0,
+	});
 
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
+	const { user, signOut } = useAuth();
+	const navigate = useNavigate();
 
-  useEffect(() => {
-    if (user) {
-      loadUserData();
-    }
-  }, [user]);
+	useEffect(() => {
+		if (user) {
+			loadUserData();
+		}
+	}, [user]);
 
-  const loadUserData = async () => {
-    try {
-      setLoading(true);
-      
-      // Get user's issues
-      const allIssues = await dataService.getIssues();
-      const userOnlyIssues = allIssues.filter(issue => issue.reported_by === user.id);
-      setUserIssues(userOnlyIssues.slice(0, 5)); // Show latest 5
-      
-      // Calculate stats
-      const resolvedCount = userOnlyIssues.filter(issue => issue.status === 'resolved').length;
-      setUserStats({
-        totalIssues: userOnlyIssues.length,
-        resolvedIssues: resolvedCount,
-        points: userOnlyIssues.length * 10 + resolvedCount * 5 // Simple point system
-      });
-      
-    } catch (error) {
-      console.error('Error loading user data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+	const loadUserData = async () => {
+		try {
+			setLoading(true);
 
-  const formatTimeAgo = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    return `${Math.floor(diffInSeconds / 86400)}d ago`;
-  };
+			// Get user's issues
+			const allIssues = await dataService.getIssues();
+			const userOnlyIssues = allIssues.filter(
+				(issue) => issue.reported_by === user.id,
+			);
+			setUserIssues(userOnlyIssues.slice(0, 5)); // Show latest 5
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
+			// Calculate stats
+			const resolvedCount = userOnlyIssues.filter(
+				(issue) => issue.status === "resolved",
+			).length;
+			setUserStats({
+				totalIssues: userOnlyIssues.length,
+				resolvedIssues: resolvedCount,
+				points: userOnlyIssues.length * 10 + resolvedCount * 5, // Simple point system
+			});
+		} catch (error) {
+			console.error("Error loading user data:", error);
+		} finally {
+			setLoading(false);
+		}
+	};
 
-  const getUserInitials = () => {
-    if (user?.email) {
-      return user.email.charAt(0).toUpperCase();
-    }
-    return 'U';
-  };
+	const formatTimeAgo = (dateString) => {
+		const date = new Date(dateString);
+		const now = new Date();
+		const diffInSeconds = Math.floor((now - date) / 1000);
 
-  const getUserName = () => {
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name;
-    }
-    if (user?.email) {
-      return user.email.split('@')[0];
-    }
-    return 'User';
-  };
+		if (diffInSeconds < 60) return "Just now";
+		if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+		if (diffInSeconds < 86400)
+			return `${Math.floor(diffInSeconds / 3600)}h ago`;
+		return `${Math.floor(diffInSeconds / 86400)}d ago`;
+	};
 
-  if (!user) {
-    navigate('/');
-    return null;
-  }
+	const handleSignOut = async () => {
+		try {
+			await signOut();
+			navigate("/");
+		} catch (error) {
+			console.error("Error signing out:", error);
+		}
+	};
 
-  return (
-    <ProfileContainer>
-      <Header>
-        <HeaderContent>
-          <ProfileAvatar>{getUserInitials()}</ProfileAvatar>
-          <ProfileName>{getUserName()}</ProfileName>
-          <ProfileEmail>{user.email}</ProfileEmail>
-          
-          <ProfileStats>
-            <StatItem>
-              <StatNumber>{userStats.totalIssues}</StatNumber>
-              <StatLabel>Issues Reported</StatLabel>
-            </StatItem>
-            <StatItem>
-              <StatNumber>{userStats.resolvedIssues}</StatNumber>
-              <StatLabel>Resolved</StatLabel>
-            </StatItem>
-            <StatItem>
-              <StatNumber>{userStats.points}</StatNumber>
-              <StatLabel>Points</StatLabel>
-            </StatItem>
-          </ProfileStats>
-        </HeaderContent>
-      </Header>
+	const getUserInitials = () => {
+		if (user?.email) {
+			return user.email.charAt(0).toUpperCase();
+		}
+		return "U";
+	};
 
-      <MainContent>
-        {/* Recent Issues */}
-        <Section>
-          <SectionTitle>
-            <SectionIcon>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14,2 14,8 20,8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-                <polyline points="10,9 9,9 8,9"/>
-              </svg>
-            </SectionIcon>
-            Recent Issues
-          </SectionTitle>
-          
-          {loading ? (
-            <LoadingContainer>
-              <LoadingSpinner />
-              Loading your issues...
-            </LoadingContainer>
-          ) : userIssues.length === 0 ? (
-            <EmptyState>
-              <EmptyIcon>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14,2 14,8 20,8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10,9 9,9 8,9"/>
-                </svg>
-              </EmptyIcon>
-              <EmptyTitle>No issues reported yet</EmptyTitle>
-              <EmptySubtitle>Start by reporting your first community issue</EmptySubtitle>
-              <ActionButton onClick={() => navigate('/report')}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="12" y1="5" x2="12" y2="19"/>
-                  <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Report an Issue
-              </ActionButton>
-            </EmptyState>
-          ) : (
-            <RecentIssues>
-              {userIssues.map((issue) => (
-                <IssueItem key={issue.id}>
-                  <IssueInfo>
-                    <IssueTitle>{issue.title}</IssueTitle>
-                    <IssueDate>{formatTimeAgo(issue.created_at)}</IssueDate>
-                  </IssueInfo>
-                  <IssueStatus status={issue.status}>
-                    {issue.status}
-                  </IssueStatus>
-                </IssueItem>
-              ))}
-            </RecentIssues>
-          )}
-        </Section>
+	const getUserName = () => {
+		if (user?.user_metadata?.full_name) {
+			return user.user_metadata.full_name;
+		}
+		if (user?.email) {
+			return user.email.split("@")[0];
+		}
+		return "User";
+	};
 
-        {/* Settings */}
-        <Section>
-          <SectionTitle>
-            <SectionIcon>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-              </svg>
-            </SectionIcon>
-            Settings
-          </SectionTitle>
-          
-          <MenuItem onClick={() => alert('Notifications settings coming soon!')}>
-            <MenuItemLeft>
-              <MenuItemIcon>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-              </MenuItemIcon>
-              <MenuItemText>
-                <MenuItemTitle>Notifications</MenuItemTitle>
-                <MenuItemSubtitle>Manage push notifications</MenuItemSubtitle>
-              </MenuItemText>
-            </MenuItemLeft>
-            <MenuItemRight>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18l6-6-6-6"/>
-              </svg>
-            </MenuItemRight>
-          </MenuItem>
+	if (!user) {
+		navigate("/");
+		return null;
+	}
 
-          <MenuItem onClick={() => alert('Privacy settings coming soon!')}>
-            <MenuItemLeft>
-              <MenuItemIcon>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
-              </MenuItemIcon>
-              <MenuItemText>
-                <MenuItemTitle>Privacy</MenuItemTitle>
-                <MenuItemSubtitle>Control your data</MenuItemSubtitle>
-              </MenuItemText>
-            </MenuItemLeft>
-            <MenuItemRight>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18l6-6-6-6"/>
-              </svg>
-            </MenuItemRight>
-          </MenuItem>
+	return (
+		<ProfileContainer>
+			<Header>
+				<HeaderContent>
+					<ProfileAvatar>{getUserInitials()}</ProfileAvatar>
+					<ProfileName>{getUserName()}</ProfileName>
+					<ProfileEmail>{user.email}</ProfileEmail>
 
-          <MenuItem onClick={() => alert('About page coming soon!')}>
-            <MenuItemLeft>
-              <MenuItemIcon>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                  <line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-              </MenuItemIcon>
-              <MenuItemText>
-                <MenuItemTitle>About</MenuItemTitle>
-                <MenuItemSubtitle>App version and info</MenuItemSubtitle>
-              </MenuItemText>
-            </MenuItemLeft>
-            <MenuItemRight>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18l6-6-6-6"/>
-              </svg>
-            </MenuItemRight>
-          </MenuItem>
-        </Section>
+					<ProfileStats>
+						<StatItem>
+							<StatNumber>{userStats.totalIssues}</StatNumber>
+							<StatLabel>Issues Reported</StatLabel>
+						</StatItem>
+						<StatItem>
+							<StatNumber>{userStats.resolvedIssues}</StatNumber>
+							<StatLabel>Resolved</StatLabel>
+						</StatItem>
+						<StatItem>
+							<StatNumber>{userStats.points}</StatNumber>
+							<StatLabel>Points</StatLabel>
+						</StatItem>
+					</ProfileStats>
+				</HeaderContent>
+			</Header>
 
-        {/* Sign Out */}
-        <Section>
-          <ActionButton danger onClick={handleSignOut}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16,17 21,12 16,7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-            Sign Out
-          </ActionButton>
-        </Section>
-      </MainContent>
-    </ProfileContainer>
-  );
+			<MainContent>
+				{/* Recent Issues */}
+				<Section>
+					<SectionTitle>
+						<SectionIcon>
+							<svg
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+								<polyline points="14,2 14,8 20,8" />
+								<line x1="16" y1="13" x2="8" y2="13" />
+								<line x1="16" y1="17" x2="8" y2="17" />
+								<polyline points="10,9 9,9 8,9" />
+							</svg>
+						</SectionIcon>
+						Recent Issues
+					</SectionTitle>
+
+					{loading ? (
+						<LoadingContainer>
+							<LoadingSpinner />
+							Loading your issues...
+						</LoadingContainer>
+					) : userIssues.length === 0 ? (
+						<EmptyState>
+							<EmptyIcon>
+								<svg
+									width="48"
+									height="48"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="1"
+								>
+									<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+									<polyline points="14,2 14,8 20,8" />
+									<line x1="16" y1="13" x2="8" y2="13" />
+									<line x1="16" y1="17" x2="8" y2="17" />
+									<polyline points="10,9 9,9 8,9" />
+								</svg>
+							</EmptyIcon>
+							<EmptyTitle>No issues reported yet</EmptyTitle>
+							<EmptySubtitle>
+								Start by reporting your first community issue
+							</EmptySubtitle>
+							<ActionButton onClick={() => navigate("/report")}>
+								<svg
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+								>
+									<line x1="12" y1="5" x2="12" y2="19" />
+									<line x1="5" y1="12" x2="19" y2="12" />
+								</svg>
+								Report an Issue
+							</ActionButton>
+						</EmptyState>
+					) : (
+						<RecentIssues>
+							{userIssues.map((issue) => (
+								<IssueItem key={issue.id}>
+									<IssueInfo>
+										<IssueTitle>{issue.title}</IssueTitle>
+										<IssueDate>{formatTimeAgo(issue.created_at)}</IssueDate>
+									</IssueInfo>
+									<IssueStatus status={issue.status}>
+										{issue.status}
+									</IssueStatus>
+								</IssueItem>
+							))}
+						</RecentIssues>
+					)}
+				</Section>
+
+				{/* Settings */}
+				<Section>
+					<SectionTitle>
+						<SectionIcon>
+							<svg
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<circle cx="12" cy="12" r="3" />
+								<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+							</svg>
+						</SectionIcon>
+						Settings
+					</SectionTitle>
+
+					<MenuItem
+						onClick={() => alert("Notifications settings coming soon!")}
+					>
+						<MenuItemLeft>
+							<MenuItemIcon>
+								<svg
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+								>
+									<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+									<path d="M13.73 21a2 2 0 0 1-3.46 0" />
+								</svg>
+							</MenuItemIcon>
+							<MenuItemText>
+								<MenuItemTitle>Notifications</MenuItemTitle>
+								<MenuItemSubtitle>Manage push notifications</MenuItemSubtitle>
+							</MenuItemText>
+						</MenuItemLeft>
+						<MenuItemRight>
+							<svg
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<path d="M9 18l6-6-6-6" />
+							</svg>
+						</MenuItemRight>
+					</MenuItem>
+
+					<MenuItem onClick={() => alert("Privacy settings coming soon!")}>
+						<MenuItemLeft>
+							<MenuItemIcon>
+								<svg
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+								>
+									<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+								</svg>
+							</MenuItemIcon>
+							<MenuItemText>
+								<MenuItemTitle>Privacy</MenuItemTitle>
+								<MenuItemSubtitle>Control your data</MenuItemSubtitle>
+							</MenuItemText>
+						</MenuItemLeft>
+						<MenuItemRight>
+							<svg
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<path d="M9 18l6-6-6-6" />
+							</svg>
+						</MenuItemRight>
+					</MenuItem>
+
+					<MenuItem onClick={() => alert("About page coming soon!")}>
+						<MenuItemLeft>
+							<MenuItemIcon>
+								<svg
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+									<line x1="12" y1="17" x2="12.01" y2="17" />
+								</svg>
+							</MenuItemIcon>
+							<MenuItemText>
+								<MenuItemTitle>About</MenuItemTitle>
+								<MenuItemSubtitle>App version and info</MenuItemSubtitle>
+							</MenuItemText>
+						</MenuItemLeft>
+						<MenuItemRight>
+							<svg
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<path d="M9 18l6-6-6-6" />
+							</svg>
+						</MenuItemRight>
+					</MenuItem>
+				</Section>
+
+				{/* Sign Out */}
+				<Section>
+					<ActionButton danger onClick={handleSignOut}>
+						<svg
+							width="20"
+							height="20"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+						>
+							<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+							<polyline points="16,17 21,12 16,7" />
+							<line x1="21" y1="12" x2="9" y2="12" />
+						</svg>
+						Sign Out
+					</ActionButton>
+				</Section>
+			</MainContent>
+		</ProfileContainer>
+	);
 };
 
 export default Profile;

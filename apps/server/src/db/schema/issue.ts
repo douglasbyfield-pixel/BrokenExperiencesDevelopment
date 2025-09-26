@@ -1,8 +1,24 @@
-import { pgTable, text, timestamp, numeric, pgEnum, integer } from "drizzle-orm/pg-core";
+import {
+	integer,
+	numeric,
+	pgEnum,
+	pgTable,
+	text,
+	timestamp,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
-export const issueStatusEnum = pgEnum("issue_status", ["reported", "pending", "resolved"]);
-export const issueSeverityEnum = pgEnum("issue_severity", ["low", "medium", "high", "critical"]);
+export const issueStatusEnum = pgEnum("issue_status", [
+	"reported",
+	"pending",
+	"resolved",
+]);
+export const issueSeverityEnum = pgEnum("issue_severity", [
+	"low",
+	"medium",
+	"high",
+	"critical",
+]);
 
 export const issue = pgTable("issue", {
 	id: text("id").primaryKey(),
@@ -16,8 +32,9 @@ export const issue = pgTable("issue", {
 	reporterId: text("reporter_id")
 		.notNull()
 		.references(() => user.id, { onDelete: "cascade" }),
-	assigneeId: text("assignee_id")
-		.references(() => user.id, { onDelete: "set null" }),
+	assigneeId: text("assignee_id").references(() => user.id, {
+		onDelete: "set null",
+	}),
 	categoryId: text("category_id"),
 	imageUrls: text("image_urls").array(),
 	createdAt: timestamp("created_at").notNull().defaultNow(),

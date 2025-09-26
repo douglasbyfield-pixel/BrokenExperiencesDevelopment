@@ -12,7 +12,10 @@ export const getCategory = async (options?: { id: string }) => {
 	return options?.id;
 };
 
-export const updateCategory = async (options?: { id: string, data: CategoryUpdate }) => {
+export const updateCategory = async (options?: {
+	id: string;
+	data: CategoryUpdate;
+}) => {
 	return options?.id;
 };
 

@@ -1,14 +1,14 @@
 import "dotenv/config";
-import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
+import { Elysia } from "elysia";
+import logixlysia from "logixlysia";
 import { auth } from "./lib/auth";
 import { appRouter } from "./module";
-import logixlysia from "logixlysia";
 
 export const app = new Elysia()
-    .use(openapi())
-    .use(logixlysia())
+	.use(openapi())
+	.use(logixlysia())
 	.use(
 		cors({
 			origin: ["http://localhost:3001", "http://localhost:3000"],
@@ -18,6 +18,6 @@ export const app = new Elysia()
 		}),
 	)
 	.mount(auth.handler)
-	.use(appRouter)
+	.use(appRouter);
 
 export type App = typeof app;

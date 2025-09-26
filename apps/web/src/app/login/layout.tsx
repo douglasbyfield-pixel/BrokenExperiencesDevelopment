@@ -3,9 +3,5 @@ interface LoginLayoutProps {
 }
 
 export default function LoginLayout({ children }: LoginLayoutProps) {
-	return (
-		<div className="h-dvh w-full">
-			{children}
-		</div>
-	);
+	return <div className="h-dvh w-full">{children}</div>;
 }

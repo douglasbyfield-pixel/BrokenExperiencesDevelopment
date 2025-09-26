@@ -19,16 +19,16 @@ export const userService = {
 					issuesReported: 47,
 					issuesFixed: 12,
 					totalSponsored: 850,
-					impactScore: 92
+					impactScore: 92,
 				},
-				roles: ["Community Leader", "Top Contributor"]
+				roles: ["Community Leader", "Top Contributor"],
 			};
 		} catch (error) {
 			console.error("Error fetching user profile:", error);
 			throw new Error("User not found");
 		}
 	},
-	
+
 	async getUserRoles(userId: string) {
 		try {
 			// Return roles from mock profile
@@ -39,39 +39,42 @@ export const userService = {
 			return [];
 		}
 	},
-	
+
 	async addUserRole(userId: string, role: "reporter" | "fixer" | "sponsor") {
 		try {
 			// For now, just return success since database isn't set up
-			return { 
+			return {
 				id: `role_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
 				userId,
 				role,
-				message: "Role added successfully (mock)" 
+				message: "Role added successfully (mock)",
 			};
 		} catch (error) {
 			console.error("Error adding user role:", error);
 			throw new Error("Failed to add role");
 		}
 	},
-	
-	async updateUserProfile(userId: string, updates: {
-		name?: string;
-		bio?: string;
-		location?: string;
-		image?: string;
-	}) {
+
+	async updateUserProfile(
+		userId: string,
+		updates: {
+			name?: string;
+			bio?: string;
+			location?: string;
+			image?: string;
+		},
+	) {
 		try {
 			// Get current profile
 			const profile = await this.getUserProfile(userId);
-			
+
 			// Merge updates
 			const updatedProfile = {
 				...profile,
 				...updates,
-				updatedAt: new Date().toISOString()
+				updatedAt: new Date().toISOString(),
 			};
-			
+
 			// In a real implementation, this would save to database
 			return updatedProfile;
 		} catch (error) {
@@ -79,26 +82,32 @@ export const userService = {
 			throw new Error("Failed to update profile");
 		}
 	},
-	
-	async getUserActivity(userId: string, params?: { limit?: number; offset?: number }) {
+
+	async getUserActivity(
+		userId: string,
+		params?: { limit?: number; offset?: number },
+	) {
 		try {
 			const limit = params?.limit || 10;
 			const offset = params?.offset || 0;
-			
+
 			// Mock activity data
 			const activities = [
 				{
 					id: "activity-1",
 					type: "issue_reported",
 					title: "Reported an issue",
-					description: "Broken streetlight on Hope Road causing safety concerns",
+					description:
+						"Broken streetlight on Hope Road causing safety concerns",
 					icon: "MapPin",
-					timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+					timestamp: new Date(
+						Date.now() - 2 * 24 * 60 * 60 * 1000,
+					).toISOString(),
 					status: "Under Review",
 					metadata: {
 						issueId: "issue-1",
-						location: "Hope Road, Kingston 6, Jamaica"
-					}
+						location: "Hope Road, Kingston 6, Jamaica",
+					},
 				},
 				{
 					id: "activity-2",
@@ -106,12 +115,14 @@ export const userService = {
 					title: "Resolved an issue",
 					description: "Repaired potholes on Spanish Town Road",
 					icon: "Wrench",
-					timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+					timestamp: new Date(
+						Date.now() - 7 * 24 * 60 * 60 * 1000,
+					).toISOString(),
 					status: "Completed",
 					metadata: {
 						issueId: "issue-2",
-						location: "Spanish Town Road, Kingston, Jamaica"
-					}
+						location: "Spanish Town Road, Kingston, Jamaica",
+					},
 				},
 				{
 					id: "activity-3",
@@ -119,27 +130,29 @@ export const userService = {
 					title: "Sponsored repair",
 					description: "Contributed $50 to water main repair project",
 					icon: "DollarSign",
-					timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+					timestamp: new Date(
+						Date.now() - 14 * 24 * 60 * 60 * 1000,
+					).toISOString(),
 					status: "Community Impact",
 					metadata: {
 						amount: 50,
-						projectId: "project-1"
-					}
-				}
+						projectId: "project-1",
+					},
+				},
 			];
-			
+
 			// Paginate results
 			const paginatedActivities = activities.slice(offset, offset + limit);
-			
+
 			return {
 				activities: paginatedActivities,
 				total: activities.length,
 				limit,
-				offset
+				offset,
 			};
 		} catch (error) {
 			console.error("Error fetching user activity:", error);
 			throw new Error("Failed to fetch activity");
 		}
-	}
+	},
 };

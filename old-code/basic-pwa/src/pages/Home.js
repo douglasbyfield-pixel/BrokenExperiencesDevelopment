@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
-import { dataService } from '../services/supabase';
-import { useAuth } from '../services/AuthContext';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import styled from "styled-components";
+import { useAuth } from "../services/AuthContext";
+import { dataService } from "../services/supabase";
 
 const HomeContainer = styled.div`
   flex: 1;
@@ -103,7 +103,7 @@ const StatCard = styled.div`
 
 const StatIconContainer = styled.div`
   margin-bottom: 8px;
-  color: ${props => props.color || '#000'};
+  color: ${(props) => props.color || "#000"};
   display: flex;
   justify-content: center;
 `;
@@ -266,20 +266,26 @@ const StatusBadge = styled.span`
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
-  background: ${props => {
-    switch(props.status) {
-      case 'resolved': return '#f3f4f6';
-      case 'in_progress': return '#fef3c7';
-      default: return '#f3f4f6';
-    }
-  }};
-  color: ${props => {
-    switch(props.status) {
-      case 'resolved': return '#6b7280';
-      case 'in_progress': return '#92400e';
-      default: return '#6b7280';
-    }
-  }};
+  background: ${(props) => {
+		switch (props.status) {
+			case "resolved":
+				return "#f3f4f6";
+			case "in_progress":
+				return "#fef3c7";
+			default:
+				return "#f3f4f6";
+		}
+	}};
+  color: ${(props) => {
+		switch (props.status) {
+			case "resolved":
+				return "#6b7280";
+			case "in_progress":
+				return "#92400e";
+			default:
+				return "#6b7280";
+		}
+	}};
 `;
 
 const PriorityBadge = styled.span`
@@ -287,20 +293,26 @@ const PriorityBadge = styled.span`
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
-  background: ${props => {
-    switch(props.priority) {
-      case 'high': return '#fef3c7';
-      case 'medium': return '#fef3c7';
-      default: return '#f3f4f6';
-    }
-  }};
-  color: ${props => {
-    switch(props.priority) {
-      case 'high': return '#92400e';
-      case 'medium': return '#92400e';
-      default: return '#6b7280';
-    }
-  }};
+  background: ${(props) => {
+		switch (props.priority) {
+			case "high":
+				return "#fef3c7";
+			case "medium":
+				return "#fef3c7";
+			default:
+				return "#f3f4f6";
+		}
+	}};
+  color: ${(props) => {
+		switch (props.priority) {
+			case "high":
+				return "#92400e";
+			case "medium":
+				return "#92400e";
+			default:
+				return "#6b7280";
+		}
+	}};
 `;
 
 const IssueTitle = styled.h3`
@@ -434,254 +446,354 @@ const FAB = styled.button`
 `;
 
 const Home = () => {
-  const [issues, setIssues] = useState([]);
-  const [stats, setStats] = useState({
-    impactScore: 0,
-    activeMembers: 0,
-    resolvedThisWeek: 0
-  });
-  const [loading, setLoading] = useState(true);
-  const [showFilter, setShowFilter] = useState(false);
+	const [issues, setIssues] = useState([]);
+	const [stats, setStats] = useState({
+		impactScore: 0,
+		activeMembers: 0,
+		resolvedThisWeek: 0,
+	});
+	const [loading, setLoading] = useState(true);
+	const [showFilter, setShowFilter] = useState(false);
 
-  const { user } = useAuth();
-  const navigate = useNavigate();
+	const { user } = useAuth();
+	const navigate = useNavigate();
 
-  useEffect(() => {
-    loadData();
-  }, []);
+	useEffect(() => {
+		loadData();
+	}, []);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [issuesData, statsData] = await Promise.all([
-        dataService.getIssues(),
-        dataService.getCommunityStats()
-      ]);
-      
-      setIssues(issuesData.slice(0, 10)); // Show latest 10 issues
-      setStats(statsData);
-      
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+	const loadData = async () => {
+		try {
+			setLoading(true);
+			const [issuesData, statsData] = await Promise.all([
+				dataService.getIssues(),
+				dataService.getCommunityStats(),
+			]);
 
-  const formatTimeAgo = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    return `${Math.floor(diffInSeconds / 86400)}d ago`;
-  };
+			setIssues(issuesData.slice(0, 10)); // Show latest 10 issues
+			setStats(statsData);
+		} catch (error) {
+			console.error("Error loading data:", error);
+		} finally {
+			setLoading(false);
+		}
+	};
 
-  const handleIssueClick = (issue) => {
-    navigate('/map', { state: { selectedIssue: issue } });
-  };
+	const formatTimeAgo = (dateString) => {
+		const date = new Date(dateString);
+		const now = new Date();
+		const diffInSeconds = Math.floor((now - date) / 1000);
 
-  const handleSearchPress = () => {
-    alert('Search functionality coming soon!');
-  };
+		if (diffInSeconds < 60) return "Just now";
+		if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+		if (diffInSeconds < 86400)
+			return `${Math.floor(diffInSeconds / 3600)}h ago`;
+		return `${Math.floor(diffInSeconds / 86400)}d ago`;
+	};
 
-  // Animate stats numbers on mount
-  useEffect(() => {
-    if (!loading && stats) {
-      setTimeout(() => {
-        const impactElement = document.getElementById('impactScore');
-        const membersElement = document.getElementById('activeMembers');
-        const resolvedElement = document.getElementById('resolvedThisWeek');
-        
-        if (impactElement) impactElement.textContent = stats.impactScore;
-        if (membersElement) membersElement.textContent = stats.activeMembers;
-        if (resolvedElement) resolvedElement.textContent = stats.resolvedThisWeek;
-      }, 100);
-    }
-  }, [loading, stats]);
+	const handleIssueClick = (issue) => {
+		navigate("/map", { state: { selectedIssue: issue } });
+	};
 
-  return (
-    <HomeContainer>
-      <Header>
-        <HeaderContent>
-          <TitleContainer>
-            <TitleSection>
-              <TitleIcon>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                  <polyline points="9,22 9,12 15,12 15,22"/>
-                </svg>
-              </TitleIcon>
-              <Title>Jamaica Issues</Title>
-            </TitleSection>
-            
-            <HeaderButtons>
-              <SearchButton onClick={handleSearchPress}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="M21 21l-4.35-4.35"/>
-                </svg>
-              </SearchButton>
-            </HeaderButtons>
-          </TitleContainer>
-          
-          <Subtitle>Stay informed about Jamaica</Subtitle>
-        </HeaderContent>
-      </Header>
+	const handleSearchPress = () => {
+		alert("Search functionality coming soon!");
+	};
 
-      {/* Community Stats */}
-      <StatsSection>
-        <StatsGrid>
-          <StatCard>
-            <StatIconContainer>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-              </svg>
-            </StatIconContainer>
-            <StatNumber id="impactScore">0</StatNumber>
-            <StatLabel>Impact Score</StatLabel>
-          </StatCard>
-          
-          <StatCard>
-            <StatIconContainer>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
-            </StatIconContainer>
-            <StatNumber id="activeMembers">0</StatNumber>
-            <StatLabel>Active Members</StatLabel>
-          </StatCard>
-          
-          <StatCard className="resolved">
-            <StatIconContainer color="#16a34a">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 6L9 17l-5-5"/>
-              </svg>
-            </StatIconContainer>
-            <StatNumber id="resolvedThisWeek">0</StatNumber>
-            <StatLabel>Resolved This Week</StatLabel>
-          </StatCard>
-        </StatsGrid>
-      </StatsSection>
+	// Animate stats numbers on mount
+	useEffect(() => {
+		if (!loading && stats) {
+			setTimeout(() => {
+				const impactElement = document.getElementById("impactScore");
+				const membersElement = document.getElementById("activeMembers");
+				const resolvedElement = document.getElementById("resolvedThisWeek");
 
-      <MainContent>
-        {/* Filter Section */}
-        <FilterSection>
-          <FilterHeader>
-            <FilterTitle>Community Issues</FilterTitle>
-            <FilterButton onClick={() => setShowFilter(!showFilter)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"/>
-              </svg>
-              Filter
-            </FilterButton>
-          </FilterHeader>
-          
-          <FilterSummary>
-            <FilterSummaryText>Showing {issues.length} of {issues.length} issues</FilterSummaryText>
-            <ClearFiltersButton>Clear filters</ClearFiltersButton>
-          </FilterSummary>
-        </FilterSection>
+				if (impactElement) impactElement.textContent = stats.impactScore;
+				if (membersElement) membersElement.textContent = stats.activeMembers;
+				if (resolvedElement)
+					resolvedElement.textContent = stats.resolvedThisWeek;
+			}, 100);
+		}
+	}, [loading, stats]);
 
-        {/* Issues Feed */}
-        <IssuesFeed>
-          <IssuesContainer>
-            {loading ? (
-              <LoadingContainer>
-                <LoadingSpinner />
-                <p style={{ fontSize: '16px', fontWeight: '500', margin: 0 }}>
-                  Loading community issues...
-                </p>
-              </LoadingContainer>
-            ) : issues.length === 0 ? (
-              <EmptyState>
-                <EmptyIcon>
-                  <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14,2 14,8 20,8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/>
-                    <line x1="16" y1="17" x2="8" y2="17"/>
-                    <polyline points="10,9 9,9 8,9"/>
-                  </svg>
-                </EmptyIcon>
-                <EmptyTitle>No issues found</EmptyTitle>
-                <EmptySubtitle>Be the first to report an issue in Jamaica</EmptySubtitle>
-              </EmptyState>
-            ) : (
-              issues.map((issue) => (
-                <IssueCard key={issue.id} onClick={() => handleIssueClick(issue)}>
-                  <IssueHeader>
-                    <Avatar>
-                      {(issue.profiles?.name || 'A').charAt(0).toUpperCase()}
-                    </Avatar>
-                    <IssueUserInfo>
-                      <IssueUserName>{issue.profiles?.name || 'Anonymous'}</IssueUserName>
-                      <IssueTimeAgo>{formatTimeAgo(issue.created_at)}</IssueTimeAgo>
-                    </IssueUserInfo>
-                    <IssueBadges>
-                      <StatusBadge status={issue.status}>{issue.status}</StatusBadge>
-                      <PriorityBadge priority={issue.priority}>{issue.priority}</PriorityBadge>
-                    </IssueBadges>
-                  </IssueHeader>
-                  
-                  <IssueTitle>{issue.title}</IssueTitle>
-                  <IssueDescription>{issue.description}</IssueDescription>
-                  
-                  <IssueFooter>
-                    <IssueLocation>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                        <circle cx="12" cy="10" r="3"/>
-                      </svg>
-                      {issue.address || issue.location || 'Jamaica'}
-                    </IssueLocation>
-                    
-                    <IssueActions>
-                      <ActionButton>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M7 14l5-5 5 5"/>
-                        </svg>
-                        0
-                      </ActionButton>
-                      <ActionButton>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                        </svg>
-                        Comment
-                      </ActionButton>
-                      <ActionButton>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="18" cy="5" r="3"/>
-                          <circle cx="6" cy="12" r="3"/>
-                          <circle cx="18" cy="19" r="3"/>
-                          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                        </svg>
-                        Share
-                      </ActionButton>
-                    </IssueActions>
-                  </IssueFooter>
-                </IssueCard>
-              ))
-            )}
-          </IssuesContainer>
-        </IssuesFeed>
-      </MainContent>
+	return (
+		<HomeContainer>
+			<Header>
+				<HeaderContent>
+					<TitleContainer>
+						<TitleSection>
+							<TitleIcon>
+								<svg
+									width="32"
+									height="32"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+								>
+									<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+									<polyline points="9,22 9,12 15,12 15,22" />
+								</svg>
+							</TitleIcon>
+							<Title>Jamaica Issues</Title>
+						</TitleSection>
 
-      {/* Floating Action Button */}
-      <FAB onClick={() => navigate('/report')}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </FAB>
-    </HomeContainer>
-  );
+						<HeaderButtons>
+							<SearchButton onClick={handleSearchPress}>
+								<svg
+									width="24"
+									height="24"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+								>
+									<circle cx="11" cy="11" r="8" />
+									<path d="M21 21l-4.35-4.35" />
+								</svg>
+							</SearchButton>
+						</HeaderButtons>
+					</TitleContainer>
+
+					<Subtitle>Stay informed about Jamaica</Subtitle>
+				</HeaderContent>
+			</Header>
+
+			{/* Community Stats */}
+			<StatsSection>
+				<StatsGrid>
+					<StatCard>
+						<StatIconContainer>
+							<svg
+								width="24"
+								height="24"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+							</svg>
+						</StatIconContainer>
+						<StatNumber id="impactScore">0</StatNumber>
+						<StatLabel>Impact Score</StatLabel>
+					</StatCard>
+
+					<StatCard>
+						<StatIconContainer>
+							<svg
+								width="24"
+								height="24"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+								<circle cx="9" cy="7" r="4" />
+								<path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+								<path d="M16 3.13a4 4 0 0 1 0 7.75" />
+							</svg>
+						</StatIconContainer>
+						<StatNumber id="activeMembers">0</StatNumber>
+						<StatLabel>Active Members</StatLabel>
+					</StatCard>
+
+					<StatCard className="resolved">
+						<StatIconContainer color="#16a34a">
+							<svg
+								width="24"
+								height="24"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<path d="M20 6L9 17l-5-5" />
+							</svg>
+						</StatIconContainer>
+						<StatNumber id="resolvedThisWeek">0</StatNumber>
+						<StatLabel>Resolved This Week</StatLabel>
+					</StatCard>
+				</StatsGrid>
+			</StatsSection>
+
+			<MainContent>
+				{/* Filter Section */}
+				<FilterSection>
+					<FilterHeader>
+						<FilterTitle>Community Issues</FilterTitle>
+						<FilterButton onClick={() => setShowFilter(!showFilter)}>
+							<svg
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
+							</svg>
+							Filter
+						</FilterButton>
+					</FilterHeader>
+
+					<FilterSummary>
+						<FilterSummaryText>
+							Showing {issues.length} of {issues.length} issues
+						</FilterSummaryText>
+						<ClearFiltersButton>Clear filters</ClearFiltersButton>
+					</FilterSummary>
+				</FilterSection>
+
+				{/* Issues Feed */}
+				<IssuesFeed>
+					<IssuesContainer>
+						{loading ? (
+							<LoadingContainer>
+								<LoadingSpinner />
+								<p style={{ fontSize: "16px", fontWeight: "500", margin: 0 }}>
+									Loading community issues...
+								</p>
+							</LoadingContainer>
+						) : issues.length === 0 ? (
+							<EmptyState>
+								<EmptyIcon>
+									<svg
+										width="80"
+										height="80"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth="1"
+									>
+										<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+										<polyline points="14,2 14,8 20,8" />
+										<line x1="16" y1="13" x2="8" y2="13" />
+										<line x1="16" y1="17" x2="8" y2="17" />
+										<polyline points="10,9 9,9 8,9" />
+									</svg>
+								</EmptyIcon>
+								<EmptyTitle>No issues found</EmptyTitle>
+								<EmptySubtitle>
+									Be the first to report an issue in Jamaica
+								</EmptySubtitle>
+							</EmptyState>
+						) : (
+							issues.map((issue) => (
+								<IssueCard
+									key={issue.id}
+									onClick={() => handleIssueClick(issue)}
+								>
+									<IssueHeader>
+										<Avatar>
+											{(issue.profiles?.name || "A").charAt(0).toUpperCase()}
+										</Avatar>
+										<IssueUserInfo>
+											<IssueUserName>
+												{issue.profiles?.name || "Anonymous"}
+											</IssueUserName>
+											<IssueTimeAgo>
+												{formatTimeAgo(issue.created_at)}
+											</IssueTimeAgo>
+										</IssueUserInfo>
+										<IssueBadges>
+											<StatusBadge status={issue.status}>
+												{issue.status}
+											</StatusBadge>
+											<PriorityBadge priority={issue.priority}>
+												{issue.priority}
+											</PriorityBadge>
+										</IssueBadges>
+									</IssueHeader>
+
+									<IssueTitle>{issue.title}</IssueTitle>
+									<IssueDescription>{issue.description}</IssueDescription>
+
+									<IssueFooter>
+										<IssueLocation>
+											<svg
+												width="16"
+												height="16"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												strokeWidth="2"
+											>
+												<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+												<circle cx="12" cy="10" r="3" />
+											</svg>
+											{issue.address || issue.location || "Jamaica"}
+										</IssueLocation>
+
+										<IssueActions>
+											<ActionButton>
+												<svg
+													width="16"
+													height="16"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2"
+												>
+													<path d="M7 14l5-5 5 5" />
+												</svg>
+												0
+											</ActionButton>
+											<ActionButton>
+												<svg
+													width="16"
+													height="16"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2"
+												>
+													<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+												</svg>
+												Comment
+											</ActionButton>
+											<ActionButton>
+												<svg
+													width="16"
+													height="16"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2"
+												>
+													<circle cx="18" cy="5" r="3" />
+													<circle cx="6" cy="12" r="3" />
+													<circle cx="18" cy="19" r="3" />
+													<line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+													<line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+												</svg>
+												Share
+											</ActionButton>
+										</IssueActions>
+									</IssueFooter>
+								</IssueCard>
+							))
+						)}
+					</IssuesContainer>
+				</IssuesFeed>
+			</MainContent>
+
+			{/* Floating Action Button */}
+			<FAB onClick={() => navigate("/report")}>
+				<svg
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+				>
+					<line x1="12" y1="5" x2="12" y2="19" />
+					<line x1="5" y1="12" x2="19" y2="12" />
+				</svg>
+			</FAB>
+		</HomeContainer>
+	);
 };
 
 export default Home;

@@ -1,32 +1,42 @@
+import { AlertTriangle, MapPin, PlusCircle, User } from "lucide-react";
 import Link from "next/link";
-import { MapPin, PlusCircle, User, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function HomePage() {
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
 			{/* Hero Section */}
-			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8">
+			<div className="mx-auto max-w-7xl px-4 pt-12 pb-8 sm:px-6 lg:px-8">
 				<div className="text-center">
-					<h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 animate-fade-in">
+					<h1 className="mb-6 animate-fade-in font-bold text-4xl text-gray-900 md:text-6xl">
 						Welcome to <br />
 						<span className="bg-gradient-to-r from-black to-gray-700 bg-clip-text text-transparent">
 							Broken Experiences
 						</span>
 					</h1>
-					<p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto animate-slide-up">
-						Share and discover community issues. Together, we can make our neighborhoods better.
+					<p className="mx-auto mb-8 max-w-2xl animate-slide-up text-gray-600 text-xl">
+						Share and discover community issues. Together, we can make our
+						neighborhoods better.
 					</p>
-					<div className="flex flex-col sm:flex-row gap-4 justify-center">
-						<Button asChild size="lg" className="bg-black hover:bg-gray-800 text-white px-8 py-3">
+					<div className="flex flex-col justify-center gap-4 sm:flex-row">
+						<Button
+							asChild
+							size="lg"
+							className="bg-black px-8 py-3 text-white hover:bg-gray-800"
+						>
 							<Link href="/report">
-								<PlusCircle className="w-5 h-5 mr-2" />
+								<PlusCircle className="mr-2 h-5 w-5" />
 								Report an Issue
 							</Link>
 						</Button>
-						<Button asChild variant="outline" size="lg" className="border-black text-black hover:bg-black hover:text-white px-8 py-3">
+						<Button
+							asChild
+							variant="outline"
+							size="lg"
+							className="border-black px-8 py-3 text-black hover:bg-black hover:text-white"
+						>
 							<Link href="/map">
-								<MapPin className="w-5 h-5 mr-2" />
+								<MapPin className="mr-2 h-5 w-5" />
 								Explore Map
 							</Link>
 						</Button>
@@ -35,54 +45,63 @@ export default function HomePage() {
 			</div>
 
 			{/* Features Grid */}
-			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+			<div className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+				<div className="grid grid-cols-1 gap-8 md:grid-cols-3">
 					{/* Report Issues Card */}
-					<div className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100">
-						<div className="bg-black rounded-xl p-4 w-fit mb-6 group-hover:scale-110 transition-transform duration-300">
-							<AlertTriangle className="w-8 h-8 text-white" />
+					<div className="group hover:-translate-y-1 rounded-2xl border border-gray-100 bg-white p-8 shadow-lg transition-all duration-300 hover:shadow-xl">
+						<div className="mb-6 w-fit rounded-xl bg-black p-4 transition-transform duration-300 group-hover:scale-110">
+							<AlertTriangle className="h-8 w-8 text-white" />
 						</div>
-						<h3 className="text-2xl font-bold text-gray-900 mb-4">Report Issues</h3>
-						<p className="text-gray-600 mb-6 leading-relaxed">
-							Share problems you've encountered in your area. Help build a comprehensive database of community issues.
+						<h3 className="mb-4 font-bold text-2xl text-gray-900">
+							Report Issues
+						</h3>
+						<p className="mb-6 text-gray-600 leading-relaxed">
+							Share problems you've encountered in your area. Help build a
+							comprehensive database of community issues.
 						</p>
-						<Link 
-							href="/report" 
-							className="text-black font-semibold hover:underline inline-flex items-center group-hover:translate-x-2 transition-transform duration-300"
+						<Link
+							href="/report"
+							className="inline-flex items-center font-semibold text-black transition-transform duration-300 hover:underline group-hover:translate-x-2"
 						>
 							Get Started →
 						</Link>
 					</div>
 
 					{/* Explore Map Card */}
-					<div className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100">
-						<div className="bg-black rounded-xl p-4 w-fit mb-6 group-hover:scale-110 transition-transform duration-300">
-							<MapPin className="w-8 h-8 text-white" />
+					<div className="group hover:-translate-y-1 rounded-2xl border border-gray-100 bg-white p-8 shadow-lg transition-all duration-300 hover:shadow-xl">
+						<div className="mb-6 w-fit rounded-xl bg-black p-4 transition-transform duration-300 group-hover:scale-110">
+							<MapPin className="h-8 w-8 text-white" />
 						</div>
-						<h3 className="text-2xl font-bold text-gray-900 mb-4">Explore Map</h3>
-						<p className="text-gray-600 mb-6 leading-relaxed">
-							Discover issues reported by others nearby. Get real-time updates on community problems and their status.
+						<h3 className="mb-4 font-bold text-2xl text-gray-900">
+							Explore Map
+						</h3>
+						<p className="mb-6 text-gray-600 leading-relaxed">
+							Discover issues reported by others nearby. Get real-time updates
+							on community problems and their status.
 						</p>
-						<Link 
-							href="/map" 
-							className="text-black font-semibold hover:underline inline-flex items-center group-hover:translate-x-2 transition-transform duration-300"
+						<Link
+							href="/map"
+							className="inline-flex items-center font-semibold text-black transition-transform duration-300 hover:underline group-hover:translate-x-2"
 						>
 							View Map →
 						</Link>
 					</div>
 
 					{/* Profile Card */}
-					<div className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100">
-						<div className="bg-black rounded-xl p-4 w-fit mb-6 group-hover:scale-110 transition-transform duration-300">
-							<User className="w-8 h-8 text-white" />
+					<div className="group hover:-translate-y-1 rounded-2xl border border-gray-100 bg-white p-8 shadow-lg transition-all duration-300 hover:shadow-xl">
+						<div className="mb-6 w-fit rounded-xl bg-black p-4 transition-transform duration-300 group-hover:scale-110">
+							<User className="h-8 w-8 text-white" />
 						</div>
-						<h3 className="text-2xl font-bold text-gray-900 mb-4">Your Profile</h3>
-						<p className="text-gray-600 mb-6 leading-relaxed">
-							Manage your account, track your contributions, and see how you're helping improve the community.
+						<h3 className="mb-4 font-bold text-2xl text-gray-900">
+							Your Profile
+						</h3>
+						<p className="mb-6 text-gray-600 leading-relaxed">
+							Manage your account, track your contributions, and see how you're
+							helping improve the community.
 						</p>
-						<Link 
-							href="/profile" 
-							className="text-black font-semibold hover:underline inline-flex items-center group-hover:translate-x-2 transition-transform duration-300"
+						<Link
+							href="/profile"
+							className="inline-flex items-center font-semibold text-black transition-transform duration-300 hover:underline group-hover:translate-x-2"
 						>
 							View Profile →
 						</Link>
@@ -91,23 +110,25 @@ export default function HomePage() {
 			</div>
 
 			{/* Stats Section */}
-			<div className="bg-black text-white py-16">
-				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="text-center mb-12">
-						<h2 className="text-3xl font-bold mb-4">Community Impact</h2>
-						<p className="text-gray-300 text-lg">Together we're making a difference</p>
+			<div className="bg-black py-16 text-white">
+				<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+					<div className="mb-12 text-center">
+						<h2 className="mb-4 font-bold text-3xl">Community Impact</h2>
+						<p className="text-gray-300 text-lg">
+							Together we're making a difference
+						</p>
 					</div>
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+					<div className="grid grid-cols-1 gap-8 md:grid-cols-3">
 						<div className="text-center">
-							<div className="text-4xl font-bold text-white mb-2">0</div>
+							<div className="mb-2 font-bold text-4xl text-white">0</div>
 							<div className="text-gray-300">Issues Reported</div>
 						</div>
 						<div className="text-center">
-							<div className="text-4xl font-bold text-white mb-2">0</div>
+							<div className="mb-2 font-bold text-4xl text-white">0</div>
 							<div className="text-gray-300">Issues Resolved</div>
 						</div>
 						<div className="text-center">
-							<div className="text-4xl font-bold text-white mb-2">0</div>
+							<div className="mb-2 font-bold text-4xl text-white">0</div>
 							<div className="text-gray-300">Active Users</div>
 						</div>
 					</div>

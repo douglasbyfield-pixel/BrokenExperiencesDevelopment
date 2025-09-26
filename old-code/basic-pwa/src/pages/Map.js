@@ -1,15 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import styled from 'styled-components';
-import L from 'leaflet';
-import { dataService } from '../services/supabase';
+import L from "leaflet";
+import React, { useEffect, useRef, useState } from "react";
+import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import styled from "styled-components";
+import { dataService } from "../services/supabase";
 
 // Fix for default markers in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+	iconRetinaUrl:
+		"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+	iconUrl:
+		"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+	shadowUrl:
+		"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
 const MapPageContainer = styled.div`
@@ -205,7 +208,7 @@ const IssuesList = styled.div`
   z-index: 999;
   overflow-y: auto;
   padding: 20px;
-  transform: translateX(${props => props.show ? '0' : '100%'});
+  transform: translateX(${(props) => (props.show ? "0" : "100%")});
   transition: transform 0.3s ease;
 `;
 
@@ -251,14 +254,14 @@ const PriorityDot = styled.div`
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: ${props => props.color};
+  background: ${(props) => props.color};
 `;
 
 const PriorityText = styled.span`
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  color: ${props => props.color};
+  color: ${(props) => props.color};
   text-transform: uppercase;
 `;
 
@@ -331,42 +334,42 @@ const FAB = styled.button`
 
 // Custom hook to update map center
 const MapController = ({ center, zoom }) => {
-  const map = useMap();
-  
-  useEffect(() => {
-    if (center) {
-      map.setView(center, zoom || 15);
-    }
-  }, [map, center, zoom]);
-  
-  return null;
+	const map = useMap();
+
+	useEffect(() => {
+		if (center) {
+			map.setView(center, zoom || 15);
+		}
+	}, [map, center, zoom]);
+
+	return null;
 };
 
 // Create custom icons for different priorities
 const createCustomIcon = (priority, category) => {
-  const colors = {
-    high: '#ef4444',
-    medium: '#f59e0b',
-    low: '#10b981',
-    critical: '#dc2626'
-  };
+	const colors = {
+		high: "#ef4444",
+		medium: "#f59e0b",
+		low: "#10b981",
+		critical: "#dc2626",
+	};
 
-  const icons = {
-    infrastructure: '🏗️',
-    road_maintenance: '🚧',
-    safety: '🛡️',
-    environment: '🌿',
-    maintenance: '🔧',
-    accessibility: '♿'
-  };
+	const icons = {
+		infrastructure: "🏗️",
+		road_maintenance: "🚧",
+		safety: "🛡️",
+		environment: "🌿",
+		maintenance: "🔧",
+		accessibility: "♿",
+	};
 
-  const color = colors[priority] || '#6b7280';
-  const icon = icons[category] || '⚠️';
-  const size = priority === 'critical' ? 44 : priority === 'high' ? 40 : 36;
+	const color = colors[priority] || "#6b7280";
+	const icon = icons[category] || "⚠️";
+	const size = priority === "critical" ? 44 : priority === "high" ? 40 : 36;
 
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `
+	return L.divIcon({
+		className: "custom-marker",
+		html: `
       <div style="
         width: ${size}px;
         height: ${size}px;
@@ -376,193 +379,232 @@ const createCustomIcon = (priority, category) => {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: ${size > 40 ? '18px' : '16px'};
+        font-size: ${size > 40 ? "18px" : "16px"};
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         cursor: pointer;
         transition: transform 0.2s ease;
       ">${icon}</div>
     `,
-    iconSize: [size + 6, size + 6],
-    iconAnchor: [(size + 6) / 2, (size + 6) / 2]
-  });
+		iconSize: [size + 6, size + 6],
+		iconAnchor: [(size + 6) / 2, (size + 6) / 2],
+	});
 };
 
 const Map = () => {
-  const [issues, setIssues] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showList, setShowList] = useState(false);
-  const [userLocation, setUserLocation] = useState(null);
-  const [mapCenter, setMapCenter] = useState([18.1500, -77.3000]);
-  const [mapZoom, setMapZoom] = useState(8);
+	const [issues, setIssues] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [showList, setShowList] = useState(false);
+	const [userLocation, setUserLocation] = useState(null);
+	const [mapCenter, setMapCenter] = useState([18.15, -77.3]);
+	const [mapZoom, setMapZoom] = useState(8);
 
-  useEffect(() => {
-    loadIssues();
-  }, []);
+	useEffect(() => {
+		loadIssues();
+	}, []);
 
-  const loadIssues = async () => {
-    try {
-      setLoading(true);
-      const data = await dataService.getIssues();
-      // Filter issues with valid coordinates
-      const validIssues = data.filter(issue => 
-        issue.latitude && issue.longitude && 
-        !isNaN(parseFloat(issue.latitude)) && 
-        !isNaN(parseFloat(issue.longitude))
-      );
-      setIssues(validIssues);
-    } catch (error) {
-      console.error('Error loading issues:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+	const loadIssues = async () => {
+		try {
+			setLoading(true);
+			const data = await dataService.getIssues();
+			// Filter issues with valid coordinates
+			const validIssues = data.filter(
+				(issue) =>
+					issue.latitude &&
+					issue.longitude &&
+					!isNaN(Number.parseFloat(issue.latitude)) &&
+					!isNaN(Number.parseFloat(issue.longitude)),
+			);
+			setIssues(validIssues);
+		} catch (error) {
+			console.error("Error loading issues:", error);
+		} finally {
+			setLoading(false);
+		}
+	};
 
-  const getUserLocation = async () => {
-    try {
-      const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject);
-      });
+	const getUserLocation = async () => {
+		try {
+			const position = await new Promise((resolve, reject) => {
+				navigator.geolocation.getCurrentPosition(resolve, reject);
+			});
 
-      const { latitude, longitude } = position.coords;
-      setUserLocation({ lat: latitude, lng: longitude });
+			const { latitude, longitude } = position.coords;
+			setUserLocation({ lat: latitude, lng: longitude });
 
-      // Center map on user location if in Jamaica
-      if (latitude > 17.5 && latitude < 18.8 && longitude > -78.5 && longitude < -76.0) {
-        setMapCenter([latitude, longitude]);
-        setMapZoom(15);
-      }
-    } catch (error) {
-      console.error('Error getting location:', error);
-      alert('Unable to get your location. Please enable location services.');
-    }
-  };
+			// Center map on user location if in Jamaica
+			if (
+				latitude > 17.5 &&
+				latitude < 18.8 &&
+				longitude > -78.5 &&
+				longitude < -76.0
+			) {
+				setMapCenter([latitude, longitude]);
+				setMapZoom(15);
+			}
+		} catch (error) {
+			console.error("Error getting location:", error);
+			alert("Unable to get your location. Please enable location services.");
+		}
+	};
 
-  const centerOnJamaica = () => {
-    setMapCenter([18.1500, -77.3000]);
-    setMapZoom(8);
-  };
+	const centerOnJamaica = () => {
+		setMapCenter([18.15, -77.3]);
+		setMapZoom(8);
+	};
 
-  const selectIssue = (issue) => {
-    const lat = parseFloat(issue.latitude);
-    const lng = parseFloat(issue.longitude);
-    
-    if (showList) {
-      setShowList(false);
-    }
-    
-    setMapCenter([lat, lng]);
-    setMapZoom(16);
-  };
+	const selectIssue = (issue) => {
+		const lat = Number.parseFloat(issue.latitude);
+		const lng = Number.parseFloat(issue.longitude);
 
-  const formatTimeAgo = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    return `${Math.floor(diffInSeconds / 86400)}d ago`;
-  };
+		if (showList) {
+			setShowList(false);
+		}
 
-  const getPriorityColor = (priority) => {
-    const colors = {
-      high: '#ef4444',
-      medium: '#f59e0b',
-      low: '#10b981',
-      critical: '#dc2626'
-    };
-    return colors[priority] || '#6b7280';
-  };
+		setMapCenter([lat, lng]);
+		setMapZoom(16);
+	};
 
-  return (
-    <MapPageContainer>
-      {/* Header */}
-      <MapHeader>
-        <HeaderContent>
-          <TitleRow>
-            <TitleSection>
-              <IconContainer>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polygon points="1,6 1,22 8,18 16,22 23,18 23,2 16,6 8,2"/>
-                  <line x1="8" y1="2" x2="8" y2="18"/>
-                  <line x1="16" y1="6" x2="16" y2="22"/>
-                </svg>
-              </IconContainer>
-              <div>
-                <Title>Explore Issues</Title>
-                <Subtitle>Jamaica Community Map</Subtitle>
-              </div>
-            </TitleSection>
-            
-            <HeaderActions>
-              <ActionButton onClick={loadIssues} disabled={loading}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="23,4 23,10 17,10"/>
-                  <polyline points="1,20 1,14 7,14"/>
-                  <path d="m20.49,9a9,9,0,0,0-2.12-5.12,9,9,0,0,0-13.74,0"/>
-                  <path d="M3.51,15a9,9,0,0,0,13.74,0,9,9,0,0,0,2.12-5.12"/>
-                </svg>
-              </ActionButton>
-              
-              <ViewToggle onClick={() => setShowList(!showList)}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  {showList ? (
-                    <>
-                      <polygon points="1,6 1,22 8,18 16,22 23,18 23,2 16,6 8,2"/>
-                      <line x1="8" y1="2" x2="8" y2="18"/>
-                      <line x1="16" y1="6" x2="16" y2="22"/>
-                    </>
-                  ) : (
-                    <>
-                      <line x1="8" y1="6" x2="21" y2="6"/>
-                      <line x1="8" y1="12" x2="21" y2="12"/>
-                      <line x1="8" y1="18" x2="21" y2="18"/>
-                      <line x1="3" y1="6" x2="3.01" y2="6"/>
-                      <line x1="3" y1="12" x2="3.01" y2="12"/>
-                      <line x1="3" y1="18" x2="3.01" y2="18"/>
-                    </>
-                  )}
-                </svg>
-                <span>{showList ? 'Map' : 'List'}</span>
-              </ViewToggle>
-            </HeaderActions>
-          </TitleRow>
-          
-          {userLocation && (
-            <LocationIndicator>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
-              <span>Location: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}</span>
-            </LocationIndicator>
-          )}
-        </HeaderContent>
-      </MapHeader>
+	const formatTimeAgo = (dateString) => {
+		const date = new Date(dateString);
+		const now = new Date();
+		const diffInSeconds = Math.floor((now - date) / 1000);
 
-      {/* Map */}
-      {!showList && (
-        <MapWrapper>
-          <MapContainer
-            center={mapCenter}
-            zoom={mapZoom}
-            style={{ height: '100%', width: '100%' }}
-          >
-            <MapController center={mapCenter} zoom={mapZoom} />
-            
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            />
-            
-            {/* User location marker */}
-            {userLocation && (
-              <Marker 
-                position={[userLocation.lat, userLocation.lng]}
-                icon={L.divIcon({
-                  className: 'user-location-marker',
-                  html: `
+		if (diffInSeconds < 60) return "Just now";
+		if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+		if (diffInSeconds < 86400)
+			return `${Math.floor(diffInSeconds / 3600)}h ago`;
+		return `${Math.floor(diffInSeconds / 86400)}d ago`;
+	};
+
+	const getPriorityColor = (priority) => {
+		const colors = {
+			high: "#ef4444",
+			medium: "#f59e0b",
+			low: "#10b981",
+			critical: "#dc2626",
+		};
+		return colors[priority] || "#6b7280";
+	};
+
+	return (
+		<MapPageContainer>
+			{/* Header */}
+			<MapHeader>
+				<HeaderContent>
+					<TitleRow>
+						<TitleSection>
+							<IconContainer>
+								<svg
+									width="24"
+									height="24"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+								>
+									<polygon points="1,6 1,22 8,18 16,22 23,18 23,2 16,6 8,2" />
+									<line x1="8" y1="2" x2="8" y2="18" />
+									<line x1="16" y1="6" x2="16" y2="22" />
+								</svg>
+							</IconContainer>
+							<div>
+								<Title>Explore Issues</Title>
+								<Subtitle>Jamaica Community Map</Subtitle>
+							</div>
+						</TitleSection>
+
+						<HeaderActions>
+							<ActionButton onClick={loadIssues} disabled={loading}>
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+								>
+									<polyline points="23,4 23,10 17,10" />
+									<polyline points="1,20 1,14 7,14" />
+									<path d="m20.49,9a9,9,0,0,0-2.12-5.12,9,9,0,0,0-13.74,0" />
+									<path d="M3.51,15a9,9,0,0,0,13.74,0,9,9,0,0,0,2.12-5.12" />
+								</svg>
+							</ActionButton>
+
+							<ViewToggle onClick={() => setShowList(!showList)}>
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+								>
+									{showList ? (
+										<>
+											<polygon points="1,6 1,22 8,18 16,22 23,18 23,2 16,6 8,2" />
+											<line x1="8" y1="2" x2="8" y2="18" />
+											<line x1="16" y1="6" x2="16" y2="22" />
+										</>
+									) : (
+										<>
+											<line x1="8" y1="6" x2="21" y2="6" />
+											<line x1="8" y1="12" x2="21" y2="12" />
+											<line x1="8" y1="18" x2="21" y2="18" />
+											<line x1="3" y1="6" x2="3.01" y2="6" />
+											<line x1="3" y1="12" x2="3.01" y2="12" />
+											<line x1="3" y1="18" x2="3.01" y2="18" />
+										</>
+									)}
+								</svg>
+								<span>{showList ? "Map" : "List"}</span>
+							</ViewToggle>
+						</HeaderActions>
+					</TitleRow>
+
+					{userLocation && (
+						<LocationIndicator>
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+								<circle cx="12" cy="10" r="3" />
+							</svg>
+							<span>
+								Location: {userLocation.lat.toFixed(4)},{" "}
+								{userLocation.lng.toFixed(4)}
+							</span>
+						</LocationIndicator>
+					)}
+				</HeaderContent>
+			</MapHeader>
+
+			{/* Map */}
+			{!showList && (
+				<MapWrapper>
+					<MapContainer
+						center={mapCenter}
+						zoom={mapZoom}
+						style={{ height: "100%", width: "100%" }}
+					>
+						<MapController center={mapCenter} zoom={mapZoom} />
+
+						<TileLayer
+							attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+							url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+						/>
+
+						{/* User location marker */}
+						{userLocation && (
+							<Marker
+								position={[userLocation.lat, userLocation.lng]}
+								icon={L.divIcon({
+									className: "user-location-marker",
+									html: `
                     <div style="
                       width: 20px;
                       height: 20px;
@@ -579,157 +621,270 @@ const Map = () => {
                       }
                     </style>
                   `,
-                  iconSize: [26, 26],
-                  iconAnchor: [13, 13]
-                })}
-              >
-                <Popup>Your Location</Popup>
-              </Marker>
-            )}
-            
-            {/* Issue markers */}
-            {issues.map((issue) => {
-              const lat = parseFloat(issue.latitude);
-              const lng = parseFloat(issue.longitude);
-              
-              if (isNaN(lat) || isNaN(lng)) return null;
-              
-              return (
-                <Marker
-                  key={issue.id}
-                  position={[lat, lng]}
-                  icon={createCustomIcon(issue.priority, issue.category)}
-                >
-                  <Popup>
-                    <div style={{ fontFamily: 'Poppins, sans-serif', minWidth: '200px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                        <div style={{ 
-                          padding: '4px 8px', 
-                          borderRadius: '12px', 
-                          fontSize: '10px', 
-                          fontWeight: '700', 
-                          textTransform: 'uppercase', 
-                          background: getPriorityColor(issue.priority),
-                          color: 'white'
-                        }}>
-                          {issue.priority}
-                        </div>
-                      </div>
-                      
-                      <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>
-                        {issue.title}
-                      </h4>
-                      
-                      <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
-                        {issue.description}
-                      </p>
-                      
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                            <circle cx="12" cy="10" r="3"/>
-                          </svg>
-                          {issue.address || 'Jamaica'}
-                        </div>
-                        <div>
-                          by {issue.profiles?.name || 'Anonymous'} • {formatTimeAgo(issue.created_at)}
-                        </div>
-                      </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
-          </MapContainer>
-        </MapWrapper>
-      )}
+									iconSize: [26, 26],
+									iconAnchor: [13, 13],
+								})}
+							>
+								<Popup>Your Location</Popup>
+							</Marker>
+						)}
 
-      {/* Issues List */}
-      <IssuesList show={showList}>
-        <IssuesContent>
-          {loading ? (
-            <LoadingContainer>
-              <LoadingSpinner />
-              <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>Loading issues...</p>
-            </LoadingContainer>
-          ) : issues.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '16px' }}>
-                <polygon points="1,6 1,22 8,18 16,22 23,18 23,2 16,6 8,2"/>
-                <line x1="8" y1="2" x2="8" y2="18"/>
-                <line x1="16" y1="6" x2="16" y2="22"/>
-              </svg>
-              <h3 style={{ fontSize: '18px', fontWeight: '600', margin: '16px 0 8px 0', color: '#64748b' }}>
-                No Issues Found
-              </h3>
-              <p style={{ fontSize: '14px', margin: 0 }}>
-                Be the first to report an issue in your area
-              </p>
-            </div>
-          ) : (
-            issues.map((issue) => (
-              <IssueCard key={issue.id} onClick={() => selectIssue(issue)}>
-                <CardHeader>
-                  <PriorityBadge>
-                    <PriorityDot color={getPriorityColor(issue.priority)} />
-                    <PriorityText color={getPriorityColor(issue.priority)}>
-                      {issue.priority}
-                    </PriorityText>
-                  </PriorityBadge>
-                </CardHeader>
-                
-                <IssueTitle>{issue.title}</IssueTitle>
-                <IssueDescription>{issue.description}</IssueDescription>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#94a3b8' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                      <circle cx="12" cy="10" r="3"/>
-                    </svg>
-                    {issue.address || 'Jamaica'}
-                  </div>
-                  <div>
-                    {formatTimeAgo(issue.created_at)}
-                  </div>
-                </div>
-              </IssueCard>
-            ))
-          )}
-        </IssuesContent>
-      </IssuesList>
+						{/* Issue markers */}
+						{issues.map((issue) => {
+							const lat = Number.parseFloat(issue.latitude);
+							const lng = Number.parseFloat(issue.longitude);
 
-      {/* Map Controls */}
-      {!showList && (
-        <MapControls>
-          <ControlButton onClick={centerOnJamaica}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 6v6l4 2"/>
-            </svg>
-            <span>Jamaica</span>
-          </ControlButton>
+							if (isNaN(lat) || isNaN(lng)) return null;
 
-          <ControlButton onClick={getUserLocation}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/>
-            </svg>
-            <span>My Location</span>
-          </ControlButton>
-        </MapControls>
-      )}
+							return (
+								<Marker
+									key={issue.id}
+									position={[lat, lng]}
+									icon={createCustomIcon(issue.priority, issue.category)}
+								>
+									<Popup>
+										<div
+											style={{
+												fontFamily: "Poppins, sans-serif",
+												minWidth: "200px",
+											}}
+										>
+											<div
+												style={{
+													display: "flex",
+													justifyContent: "space-between",
+													alignItems: "flex-start",
+													marginBottom: "8px",
+												}}
+											>
+												<div
+													style={{
+														padding: "4px 8px",
+														borderRadius: "12px",
+														fontSize: "10px",
+														fontWeight: "700",
+														textTransform: "uppercase",
+														background: getPriorityColor(issue.priority),
+														color: "white",
+													}}
+												>
+													{issue.priority}
+												</div>
+											</div>
 
-      {/* FAB */}
-      <FAB onClick={() => window.location.href = '/report'}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </FAB>
-    </MapPageContainer>
-  );
+											<h4
+												style={{
+													margin: "0 0 6px 0",
+													fontSize: "14px",
+													fontWeight: "700",
+													color: "#1e293b",
+												}}
+											>
+												{issue.title}
+											</h4>
+
+											<p
+												style={{
+													margin: "0 0 8px 0",
+													fontSize: "12px",
+													color: "#64748b",
+													lineHeight: "1.4",
+												}}
+											>
+												{issue.description}
+											</p>
+
+											<div
+												style={{
+													display: "flex",
+													justifyContent: "space-between",
+													alignItems: "center",
+													fontSize: "11px",
+													color: "#94a3b8",
+												}}
+											>
+												<div
+													style={{
+														display: "flex",
+														alignItems: "center",
+														gap: "4px",
+													}}
+												>
+													<svg
+														width="12"
+														height="12"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														strokeWidth="2"
+													>
+														<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+														<circle cx="12" cy="10" r="3" />
+													</svg>
+													{issue.address || "Jamaica"}
+												</div>
+												<div>
+													by {issue.profiles?.name || "Anonymous"} •{" "}
+													{formatTimeAgo(issue.created_at)}
+												</div>
+											</div>
+										</div>
+									</Popup>
+								</Marker>
+							);
+						})}
+					</MapContainer>
+				</MapWrapper>
+			)}
+
+			{/* Issues List */}
+			<IssuesList show={showList}>
+				<IssuesContent>
+					{loading ? (
+						<LoadingContainer>
+							<LoadingSpinner />
+							<p style={{ fontSize: "14px", fontWeight: "500", margin: 0 }}>
+								Loading issues...
+							</p>
+						</LoadingContainer>
+					) : issues.length === 0 ? (
+						<div
+							style={{
+								textAlign: "center",
+								padding: "60px 20px",
+								color: "#94a3b8",
+							}}
+						>
+							<svg
+								width="48"
+								height="48"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="1"
+								style={{ marginBottom: "16px" }}
+							>
+								<polygon points="1,6 1,22 8,18 16,22 23,18 23,2 16,6 8,2" />
+								<line x1="8" y1="2" x2="8" y2="18" />
+								<line x1="16" y1="6" x2="16" y2="22" />
+							</svg>
+							<h3
+								style={{
+									fontSize: "18px",
+									fontWeight: "600",
+									margin: "16px 0 8px 0",
+									color: "#64748b",
+								}}
+							>
+								No Issues Found
+							</h3>
+							<p style={{ fontSize: "14px", margin: 0 }}>
+								Be the first to report an issue in your area
+							</p>
+						</div>
+					) : (
+						issues.map((issue) => (
+							<IssueCard key={issue.id} onClick={() => selectIssue(issue)}>
+								<CardHeader>
+									<PriorityBadge>
+										<PriorityDot color={getPriorityColor(issue.priority)} />
+										<PriorityText color={getPriorityColor(issue.priority)}>
+											{issue.priority}
+										</PriorityText>
+									</PriorityBadge>
+								</CardHeader>
+
+								<IssueTitle>{issue.title}</IssueTitle>
+								<IssueDescription>{issue.description}</IssueDescription>
+
+								<div
+									style={{
+										display: "flex",
+										justifyContent: "space-between",
+										alignItems: "center",
+										fontSize: "12px",
+										color: "#94a3b8",
+									}}
+								>
+									<div
+										style={{
+											display: "flex",
+											alignItems: "center",
+											gap: "4px",
+										}}
+									>
+										<svg
+											width="12"
+											height="12"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+										>
+											<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+											<circle cx="12" cy="10" r="3" />
+										</svg>
+										{issue.address || "Jamaica"}
+									</div>
+									<div>{formatTimeAgo(issue.created_at)}</div>
+								</div>
+							</IssueCard>
+						))
+					)}
+				</IssuesContent>
+			</IssuesList>
+
+			{/* Map Controls */}
+			{!showList && (
+				<MapControls>
+					<ControlButton onClick={centerOnJamaica}>
+						<svg
+							width="20"
+							height="20"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<path d="M12 6v6l4 2" />
+						</svg>
+						<span>Jamaica</span>
+					</ControlButton>
+
+					<ControlButton onClick={getUserLocation}>
+						<svg
+							width="20"
+							height="20"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+						>
+							<circle cx="12" cy="12" r="3" />
+							<path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24" />
+						</svg>
+						<span>My Location</span>
+					</ControlButton>
+				</MapControls>
+			)}
+
+			{/* FAB */}
+			<FAB onClick={() => (window.location.href = "/report")}>
+				<svg
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+				>
+					<line x1="12" y1="5" x2="12" y2="19" />
+					<line x1="5" y1="12" x2="19" y2="12" />
+				</svg>
+			</FAB>
+		</MapPageContainer>
+	);
 };
 
 export default Map;

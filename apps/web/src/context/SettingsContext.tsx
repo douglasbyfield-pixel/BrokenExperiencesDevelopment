@@ -1,7 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import i18n from '@/lib/i18n';
+import {
+	createContext,
+	type ReactNode,
+	useContext,
+	useEffect,
+	useState,
+} from "react";
+import i18n from "@/lib/i18n";
 
 interface UserSettings {
 	notifications: {
@@ -34,21 +40,23 @@ const defaultSettings: UserSettings = {
 		email: true,
 		push: true,
 		issueUpdates: true,
-		weeklyReport: false
+		weeklyReport: false,
 	},
 	privacy: {
 		showProfile: true,
 		showActivity: true,
-		showStats: true
+		showStats: true,
 	},
 	display: {
 		theme: "light",
 		language: "en",
-		mapStyle: "satellite-v9"
-	}
+		mapStyle: "satellite-v9",
+	},
 };
 
-const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
+const SettingsContext = createContext<SettingsContextType | undefined>(
+	undefined,
+);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
 	const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -72,7 +80,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 	const loadSettings = async () => {
 		try {
 			// Try to load from localStorage first
-			const savedSettings = localStorage.getItem('userSettings');
+			const savedSettings = localStorage.getItem("userSettings");
 			if (savedSettings) {
 				const parsed = JSON.parse(savedSettings);
 				setSettings(parsed);
@@ -83,11 +91,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 			}
 
 			// Try to fetch from API
-			const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`);
+			const response = await fetch(
+				`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`,
+			);
 			if (response.ok) {
 				const data = await response.json();
 				setSettings(data);
-				localStorage.setItem('userSettings', JSON.stringify(data));
+				localStorage.setItem("userSettings", JSON.stringify(data));
 				applyTheme(data.display.theme);
 			}
 		} catch (error) {
@@ -109,23 +119,23 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 		const updatedSettings: UserSettings = {
 			notifications: {
 				...settings.notifications,
-				...(newSettings.notifications || {})
+				...(newSettings.notifications || {}),
 			},
 			privacy: {
 				...settings.privacy,
-				...(newSettings.privacy || {})
+				...(newSettings.privacy || {}),
 			},
 			display: {
 				...settings.display,
-				...(newSettings.display || {})
-			}
+				...(newSettings.display || {}),
+			},
 		};
 
 		// Update local state immediately
 		setSettings(updatedSettings);
-		
+
 		// Save to localStorage
-		localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
+		localStorage.setItem("userSettings", JSON.stringify(updatedSettings));
 
 		// Apply theme if it changed
 		if (newSettings.display?.theme) {
@@ -140,9 +150,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 		// Send to API
 		try {
 			await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`, {
-				method: 'PATCH',
+				method: "PATCH",
 				headers: {
-					'Content-Type': 'application/json',
+					"Content-Type": "application/json",
 				},
 				body: JSON.stringify(newSettings),
 			});
@@ -153,25 +163,28 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
 	const applyTheme = (theme: "light" | "dark" | "system") => {
 		const root = document.documentElement;
-		
+
 		if (theme === "system") {
 			// Use system preference
-			const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-			root.classList.toggle('dark', systemTheme === 'dark');
+			const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+				.matches
+				? "dark"
+				: "light";
+			root.classList.toggle("dark", systemTheme === "dark");
 		} else {
 			// Use explicit theme
-			root.classList.toggle('dark', theme === 'dark');
+			root.classList.toggle("dark", theme === "dark");
 		}
 
 		// Store the theme preference
-		localStorage.setItem('theme', theme);
+		localStorage.setItem("theme", theme);
 	};
 
 	const value: SettingsContextType = {
 		settings,
 		updateSettings,
 		applyTheme,
-		loading
+		loading,
 	};
 
 	return (
@@ -184,7 +197,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 export function useSettings() {
 	const context = useContext(SettingsContext);
 	if (context === undefined) {
-		throw new Error('useSettings must be used within a SettingsProvider');
+		throw new Error("useSettings must be used within a SettingsProvider");
 	}
 	return context;
 }

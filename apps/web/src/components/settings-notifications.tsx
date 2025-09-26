@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect } from 'react';
-import { useSettings } from '@/context/SettingsContext';
+import { useEffect } from "react";
+import { useSettings } from "@/context/SettingsContext";
 
 export function SettingsNotifications() {
 	const { settings } = useSettings();
 
 	useEffect(() => {
 		// Apply push notification permissions if enabled
-		if (settings?.notifications?.push && 'Notification' in window) {
-			if (Notification.permission === 'default') {
-				Notification.requestPermission().then(permission => {
-					if (permission === 'granted') {
-						console.log('Push notifications enabled');
+		if (settings?.notifications?.push && "Notification" in window) {
+			if (Notification.permission === "default") {
+				Notification.requestPermission().then((permission) => {
+					if (permission === "granted") {
+						console.log("Push notifications enabled");
 					}
 				});
 			}
@@ -22,7 +22,7 @@ export function SettingsNotifications() {
 	// Simulate weekly report email (would be handled by backend in production)
 	useEffect(() => {
 		if (settings?.notifications?.weeklyReport) {
-			console.log('Weekly report emails enabled');
+			console.log("Weekly report emails enabled");
 		}
 	}, [settings?.notifications?.weeklyReport]);
 

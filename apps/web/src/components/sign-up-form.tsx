@@ -1,17 +1,17 @@
-import { supabase } from "@/lib/supabase-client";
 import { useForm } from "@tanstack/react-form";
+import { Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 import z from "zod";
+import { checkEmailExists } from "@/lib/api";
+import { supabase } from "@/lib/supabase-client";
+import { useSupabaseSession } from "@/lib/use-supabase-session";
+import { AppleLogo } from "./icons/apple-logo";
+import { GoogleLogo } from "./icons/google-logo";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { useRouter } from "next/navigation";
-import { useSupabaseSession } from "@/lib/use-supabase-session";
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
-import { AppleLogo } from "./icons/apple-logo";
-import { GoogleLogo } from "./icons/google-logo";
-import { checkEmailExists } from "@/lib/api";
 
 export default function SignUpForm({
 	onSwitchToSignIn,
@@ -19,9 +19,9 @@ export default function SignUpForm({
 	onSwitchToSignIn: () => void;
 }) {
 	const router = useRouter();
-    const { loading } = useSupabaseSession();
+	const { loading } = useSupabaseSession();
 	const [showPassword, setShowPassword] = useState(false);
-    const [serverEmailError, setServerEmailError] = useState<string | null>(null);
+	const [serverEmailError, setServerEmailError] = useState<string | null>(null);
 
 	const form = useForm({
 		defaultValues: {
@@ -29,39 +29,49 @@ export default function SignUpForm({
 			password: "",
 			name: "",
 		},
-        onSubmit: async ({ value }) => {
-            // hard pre-check against server to avoid async race UX
-            const exists = await checkEmailExists(value.email);
-            if (exists) {
-                setServerEmailError("Email already in use. Try logging in or reset password.");
-                await supabase.auth.resend({ type: "signup", email: value.email });
-                return;
-            }
-            const { data, error } = await supabase.auth.signUp({
-                email: value.email,
-                password: value.password,
-                options: {
-                    data: { name: value.name },
-                    emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-                },
-            });
-            if (error) {
-                const msg = error.message?.toLowerCase() ?? "";
-                const looksLikeExisting = error?.status === 422 || /already|exists|duplicate/.test(msg);
-                if (looksLikeExisting) {
-                    // If the email already exists (possibly unconfirmed), resend verification
-                    await supabase.auth.resend({ type: "signup", email: value.email });
-                    setServerEmailError("Email already in use. Try logging in or check your inbox for verification.");
-                    toast.success("If this email wasn’t confirmed, we re‑sent the verification link.");
-                } else {
-                    setServerEmailError(error.message);
-                    toast.error(error.message);
-                }
-                return;
-            }
-            toast.success("Sign up successful. Check your email to confirm.");
-            router.push(`/verify?email=${encodeURIComponent(value.email)}`);
-        },
+		onSubmit: async ({ value }) => {
+			// hard pre-check against server to avoid async race UX
+			const exists = await checkEmailExists(value.email);
+			if (exists) {
+				setServerEmailError(
+					"Email already in use. Try logging in or reset password.",
+				);
+				await supabase.auth.resend({ type: "signup", email: value.email });
+				return;
+			}
+			const { data, error } = await supabase.auth.signUp({
+				email: value.email,
+				password: value.password,
+				options: {
+					data: { name: value.name },
+					emailRedirectTo:
+						typeof window !== "undefined"
+							? `${window.location.origin}/auth/callback`
+							: undefined,
+				},
+			});
+			if (error) {
+				const msg = error.message?.toLowerCase() ?? "";
+				const looksLikeExisting =
+					error?.status === 422 || /already|exists|duplicate/.test(msg);
+				if (looksLikeExisting) {
+					// If the email already exists (possibly unconfirmed), resend verification
+					await supabase.auth.resend({ type: "signup", email: value.email });
+					setServerEmailError(
+						"Email already in use. Try logging in or check your inbox for verification.",
+					);
+					toast.success(
+						"If this email wasn’t confirmed, we re‑sent the verification link.",
+					);
+				} else {
+					setServerEmailError(error.message);
+					toast.error(error.message);
+				}
+				return;
+			}
+			toast.success("Sign up successful. Check your email to confirm.");
+			router.push(`/verify?email=${encodeURIComponent(value.email)}`);
+		},
 		validators: {
 			onSubmit: z.object({
 				name: z.string().min(2, "Name must be at least 2 characters"),
@@ -71,13 +81,17 @@ export default function SignUpForm({
 		},
 	});
 
-    // Show form even if loading
+	// Show form even if loading
 
 	return (
 		<div className="w-full">
-			<div className="text-center mb-8">
-				<h2 className="text-2xl font-bold text-black mb-2">Welcome to Broken Experience</h2>
-				<p className="text-gray-600">It only takes a minute to start making an impact.</p>
+			<div className="mb-8 text-center">
+				<h2 className="mb-2 font-bold text-2xl text-black">
+					Welcome to Broken Experience
+				</h2>
+				<p className="text-gray-600">
+					It only takes a minute to start making an impact.
+				</p>
 			</div>
 
 			<form
@@ -92,7 +106,10 @@ export default function SignUpForm({
 					<form.Field name="name">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name} className="text-sm font-medium text-black">
+								<Label
+									htmlFor={field.name}
+									className="font-medium text-black text-sm"
+								>
 									Full name
 								</Label>
 								<Input
@@ -102,10 +119,10 @@ export default function SignUpForm({
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
-									className="w-full h-12 px-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black bg-white transition-all duration-200"
+									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
 								/>
 								{field.state.meta.errors.map((error) => (
-									<p key={error?.message} className="text-sm text-red-500 mt-1">
+									<p key={error?.message} className="mt-1 text-red-500 text-sm">
 										{error?.message}
 									</p>
 								))}
@@ -115,10 +132,13 @@ export default function SignUpForm({
 				</div>
 
 				<div>
-                    <form.Field name="email">
+					<form.Field name="email">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name} className="text-sm font-medium text-black">
+								<Label
+									htmlFor={field.name}
+									className="font-medium text-black text-sm"
+								>
 									Email address
 								</Label>
 								<Input
@@ -128,20 +148,22 @@ export default function SignUpForm({
 									placeholder="Enter your email"
 									value={field.state.value}
 									onBlur={field.handleBlur}
-                                    onChange={(e) => {
-                                        setServerEmailError(null);
-                                        field.handleChange(e.target.value);
-                                    }}
-                                    className={`w-full h-12 px-4 border-2 rounded-xl focus:ring-2 focus:ring-black bg-white transition-all duration-200 ${serverEmailError ? 'border-red-500' : 'border-gray-300 focus:border-black'}`}
+									onChange={(e) => {
+										setServerEmailError(null);
+										field.handleChange(e.target.value);
+									}}
+									className={`h-12 w-full rounded-xl border-2 bg-white px-4 transition-all duration-200 focus:ring-2 focus:ring-black ${serverEmailError ? "border-red-500" : "border-gray-300 focus:border-black"}`}
 								/>
 								{field.state.meta.errors.map((error) => (
-									<p key={error?.message} className="text-sm text-red-500 mt-1">
+									<p key={error?.message} className="mt-1 text-red-500 text-sm">
 										{error?.message}
 									</p>
 								))}
-                                {serverEmailError ? (
-                                    <p className="text-sm text-red-500 mt-1">{serverEmailError}</p>
-                                ) : null}
+								{serverEmailError ? (
+									<p className="mt-1 text-red-500 text-sm">
+										{serverEmailError}
+									</p>
+								) : null}
 							</div>
 						)}
 					</form.Field>
@@ -151,7 +173,10 @@ export default function SignUpForm({
 					<form.Field name="password">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name} className="text-sm font-medium text-black">
+								<Label
+									htmlFor={field.name}
+									className="font-medium text-black text-sm"
+								>
 									Password
 								</Label>
 								<div className="relative">
@@ -163,7 +188,7 @@ export default function SignUpForm({
 										value={field.state.value}
 										onBlur={field.handleBlur}
 										onChange={(e) => field.handleChange(e.target.value)}
-										className="w-full h-12 pr-12 px-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black bg-white transition-all duration-200"
+										className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 pr-12 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
 									/>
 									<button
 										type="button"
@@ -175,17 +200,17 @@ export default function SignUpForm({
 									</button>
 								</div>
 								{field.state.meta.errors.map((error) => (
-									<p key={error?.message} className="text-sm text-red-500 mt-1">
+									<p key={error?.message} className="mt-1 text-red-500 text-sm">
 										{error?.message}
 									</p>
 								))}
-								<div className="grid grid-cols-2 gap-x-6 text-xs text-gray-500 mt-2 text-left">
-									<ul className="list-disc list-inside space-y-1">
+								<div className="mt-2 grid grid-cols-2 gap-x-6 text-left text-gray-500 text-xs">
+									<ul className="list-inside list-disc space-y-1">
 										<li>minimum 8 characters</li>
 										<li>one special character</li>
 										<li>one number</li>
 									</ul>
-									<ul className="list-disc list-inside space-y-1">
+									<ul className="list-inside list-disc space-y-1">
 										<li>one uppercase character</li>
 										<li>one lowercase character</li>
 									</ul>
@@ -199,7 +224,7 @@ export default function SignUpForm({
 					{(state) => (
 						<Button
 							type="submit"
-							className="w-full h-12 bg-black hover:bg-gray-800 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+							className="h-12 w-full rounded-xl bg-black font-medium text-white shadow-lg transition-all duration-200 hover:bg-gray-800 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
 							disabled={!state.canSubmit || state.isSubmitting}
 						>
 							{state.isSubmitting ? "Creating account..." : "Create an account"}
@@ -208,9 +233,14 @@ export default function SignUpForm({
 				</form.Subscribe>
 			</form>
 
-			<div className="text-center text-sm mt-3">
-				<span className="text-gray-600">I already have an account.{' '}</span>
-				<button onClick={onSwitchToSignIn} className="text-black font-medium underline">Log in</button>
+			<div className="mt-3 text-center text-sm">
+				<span className="text-gray-600">I already have an account. </span>
+				<button
+					onClick={onSwitchToSignIn}
+					className="font-medium text-black underline"
+				>
+					Log in
+				</button>
 			</div>
 
 			<div className="relative my-5">
@@ -225,14 +255,17 @@ export default function SignUpForm({
 			<div className="w-full">
 				<Button
 					variant="outline"
-					className="w-full h-12 justify-center text-black border-gray-300 hover:bg-gray-50 hover:text-black"
-                    onClick={async () => {
-                        const { error } = await supabase.auth.signInWithOAuth({
-                            provider: "google",
-                            options: {
-                                redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
-                            },
-                        });
+					className="h-12 w-full justify-center border-gray-300 text-black hover:bg-gray-50 hover:text-black"
+					onClick={async () => {
+						const { error } = await supabase.auth.signInWithOAuth({
+							provider: "google",
+							options: {
+								redirectTo:
+									typeof window !== "undefined"
+										? `${window.location.origin}/auth/callback`
+										: undefined,
+							},
+						});
 						if (error) toast.error(error.message);
 					}}
 				>
@@ -241,15 +274,18 @@ export default function SignUpForm({
 			</div>
 
 			<div className="mt-6">
-				<p className="text-xs text-gray-500 text-center leading-relaxed">
-					By continuing, you agree to Broken Experience{' '}
-					<a href="#" className="text-black hover:text-gray-700 underline">Terms of Service</a>{' '}
-					and{' '}
-					<a href="#" className="text-black hover:text-gray-700 underline">Privacy Policy</a>.
+				<p className="text-center text-gray-500 text-xs leading-relaxed">
+					By continuing, you agree to Broken Experience{" "}
+					<a href="#" className="text-black underline hover:text-gray-700">
+						Terms of Service
+					</a>{" "}
+					and{" "}
+					<a href="#" className="text-black underline hover:text-gray-700">
+						Privacy Policy
+					</a>
+					.
 				</p>
 			</div>
-
-
 		</div>
 	);
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Providers from "@/components/providers";
 import ConditionalHeader from "@/components/conditional-header";
+import Providers from "@/components/providers";
 import "../index.css";
 
 const geistSans = Geist({
@@ -19,16 +19,14 @@ export const metadata: Metadata = {
 	description: "broken-experiences",
 };
 
-export default function RootLayout(props: LayoutProps<'/'>) {
+export default function RootLayout(props: LayoutProps<"/">) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
 				<Providers>
-					<ConditionalHeader>
-						{props.children}
-					</ConditionalHeader>
+					<ConditionalHeader>{props.children}</ConditionalHeader>
 				</Providers>
 			</body>
 		</html>

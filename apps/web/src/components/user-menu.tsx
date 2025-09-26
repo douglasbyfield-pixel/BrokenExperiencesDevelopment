@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -6,24 +8,26 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useSupabaseSession } from "@/lib/use-supabase-session";
 import { supabase } from "@/lib/supabase-client";
+import { useSupabaseSession } from "@/lib/use-supabase-session";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 export default function UserMenu() {
-    const router = useRouter();
-    const { user, loading } = useSupabaseSession();
+	const router = useRouter();
+	const { user, loading } = useSupabaseSession();
 
-    if (loading) {
+	if (loading) {
 		return <Skeleton className="h-9 w-24" />;
 	}
 
-    if (!user) {
+	if (!user) {
 		return (
-			<Button variant="outline" asChild className="text-black border-black hover:bg-black hover:text-white transition-colors">
+			<Button
+				variant="outline"
+				asChild
+				className="border-black text-black transition-colors hover:bg-black hover:text-white"
+			>
 				<Link href="/login">Sign In</Link>
 			</Button>
 		);
@@ -32,20 +36,23 @@ export default function UserMenu() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="outline" className="text-black border-black hover:bg-black hover:text-white transition-colors">
-					{user.email || user.user_metadata?.name || 'User'}
+				<Button
+					variant="outline"
+					className="border-black text-black transition-colors hover:bg-black hover:text-white"
+				>
+					{user.email || user.user_metadata?.name || "User"}
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="bg-card">
 				<DropdownMenuLabel>My Account</DropdownMenuLabel>
 				<DropdownMenuSeparator />
-                <DropdownMenuItem>{user.email}</DropdownMenuItem>
+				<DropdownMenuItem>{user.email}</DropdownMenuItem>
 				<DropdownMenuItem asChild>
 					<Button
 						variant="destructive"
 						className="w-full"
 						onClick={() => {
-                            supabase.auth.signOut().then(() => router.push("/"));
+							supabase.auth.signOut().then(() => router.push("/"));
 						}}
 					>
 						Sign Out

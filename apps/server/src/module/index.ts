@@ -1,11 +1,11 @@
 import Elysia from "elysia";
+import { authRouter } from "./auth/router";
 import { categoryRouter } from "./category/router";
 import { experienceRouter } from "./experience/router";
-import { miscRouter } from "./misc/router";
-import { userRouter } from "./user/router";
 import { issueRouter } from "./issue/router";
-import { authRouter } from "./auth/router";
+import { miscRouter } from "./misc/router";
 import { settingsRouter } from "./settings/router";
+import { userRouter } from "./user/router";
 
 export const appRouter = new Elysia()
 	.use(authRouter)

@@ -1,81 +1,81 @@
 {
-  "expo": {
-    "name": "mobile",
-    "slug": "mobile",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.brokenexperience.mobile",
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
-    },
-    "android": {
-      "package": "com.brokenexperience.mobile",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "permissions": [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.RECORD_AUDIO"
-      ]
-    },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "name": "BrokenExp - Report Issues",
-      "shortName": "BrokenExp",
-      "lang": "en",
-      "scope": "/",
-      "startUrl": "/",
-      "backgroundColor": "#ffffff",
-      "themeColor": "#000000",
-      "description": "Report, track, and fix community issues in Jamaica",
-      "orientation": "portrait",
-      "display": "standalone",
-      "categories": ["utilities", "productivity", "social"],
-      "screenshots": [],
-      "bundler": "metro",
-      "output": "static"
-    },
-    "plugins": [
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "This app uses location to show your position on the map."
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "This app needs access to your photo library to attach images to reports.",
-          "cameraPermission": "This app needs access to your camera to take photos for reports."
-        }
-      ],
-      "expo-font"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "c02e31ae-4e73-4dcf-916b-468606f4d6e3"
-      }
-    },
-    "owner": "dougy123",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/c02e31ae-4e73-4dcf-916b-468606f4d6e3"
-    }
-  }
+	"expo": {
+		"name": "mobile",
+		"slug": "mobile",
+		"version": "1.0.0",
+		"orientation": "portrait",
+		"icon": "./assets/icon.png",
+		"userInterfaceStyle": "light",
+		"newArchEnabled": true,
+		"splash": {
+			"image": "./assets/splash-icon.png",
+			"resizeMode": "contain",
+			"backgroundColor": "#ffffff"
+		},
+		"ios": {
+			"supportsTablet": true,
+			"bundleIdentifier": "com.brokenexperience.mobile",
+			"infoPlist": {
+				"ITSAppUsesNonExemptEncryption": false
+			}
+		},
+		"android": {
+			"package": "com.brokenexperience.mobile",
+			"adaptiveIcon": {
+				"foregroundImage": "./assets/adaptive-icon.png",
+				"backgroundColor": "#ffffff"
+			},
+			"edgeToEdgeEnabled": true,
+			"permissions": [
+				"android.permission.ACCESS_COARSE_LOCATION",
+				"android.permission.ACCESS_FINE_LOCATION",
+				"android.permission.RECORD_AUDIO"
+			]
+		},
+		"web": {
+			"favicon": "./assets/favicon.png",
+			"name": "BrokenExp - Report Issues",
+			"shortName": "BrokenExp",
+			"lang": "en",
+			"scope": "/",
+			"startUrl": "/",
+			"backgroundColor": "#ffffff",
+			"themeColor": "#000000",
+			"description": "Report, track, and fix community issues in Jamaica",
+			"orientation": "portrait",
+			"display": "standalone",
+			"categories": ["utilities", "productivity", "social"],
+			"screenshots": [],
+			"bundler": "metro",
+			"output": "static"
+		},
+		"plugins": [
+			[
+				"expo-location",
+				{
+					"locationAlwaysAndWhenInUsePermission": "This app uses location to show your position on the map."
+				}
+			],
+			[
+				"expo-image-picker",
+				{
+					"photosPermission": "This app needs access to your photo library to attach images to reports.",
+					"cameraPermission": "This app needs access to your camera to take photos for reports."
+				}
+			],
+			"expo-font"
+		],
+		"extra": {
+			"eas": {
+				"projectId": "c02e31ae-4e73-4dcf-916b-468606f4d6e3"
+			}
+		},
+		"owner": "dougy123",
+		"runtimeVersion": {
+			"policy": "appVersion"
+		},
+		"updates": {
+			"url": "https://u.expo.dev/c02e31ae-4e73-4dcf-916b-468606f4d6e3"
+		}
+	}
 }

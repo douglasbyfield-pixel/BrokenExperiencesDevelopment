@@ -1,260 +1,340 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert, ScrollView, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RouteProp } from '@react-navigation/native';
-import * as Location from 'expo-location';
-import WebView from 'react-native-webview';
-import { getPriorityColor, getCategoryIcon, formatTimeAgo } from '../data/mockData';
-import { DataService } from '../services/dataService';
-import { CacheService } from '../services/cacheService';
-import { DiagnosticsService } from '../services/diagnostics';
-import type { Issue } from '../types/database';
-
+import { Ionicons } from "@expo/vector-icons";
+import {
+	type RouteProp,
+	useNavigation,
+	useRoute,
+} from "@react-navigation/native";
+import type { StackNavigationProp } from "@react-navigation/stack";
+import * as Location from "expo-location";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
+import {
+	Alert,
+	Platform,
+	ScrollView,
+	StatusBar,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	View,
+} from "react-native";
+import WebView from "react-native-webview";
+import {
+	formatTimeAgo,
+	getCategoryIcon,
+	getPriorityColor,
+} from "../data/mockData";
+import { CacheService } from "../services/cacheService";
+import { DataService } from "../services/dataService";
+import { DiagnosticsService } from "../services/diagnostics";
+import type { Issue } from "../types/database";
 
 type MainTabParamList = {
-  Home: undefined;
-  Map: { issueId?: string; latitude?: number; longitude?: number } | undefined;
-  Report: undefined;
-  Profile: undefined;
+	Home: undefined;
+	Map: { issueId?: string; latitude?: number; longitude?: number } | undefined;
+	Report: undefined;
+	Profile: undefined;
 };
 
-type MapScreenNavigationProp = StackNavigationProp<MainTabParamList, 'Map'>;
-type MapScreenRouteProp = RouteProp<MainTabParamList, 'Map'>;
+type MapScreenNavigationProp = StackNavigationProp<MainTabParamList, "Map">;
+type MapScreenRouteProp = RouteProp<MainTabParamList, "Map">;
 
 const MapScreen = memo(() => {
-  const navigation = useNavigation<MapScreenNavigationProp>();
-  const route = useRoute<MapScreenRouteProp>();
-  
-  const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
-  const [showMap, setShowMap] = useState(true);
-  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [mapReady, setMapReady] = useState(false);
-  const webViewRef = useRef<WebView>(null);
+	const navigation = useNavigation<MapScreenNavigationProp>();
+	const route = useRoute<MapScreenRouteProp>();
 
-  const updateMapWithIssues = useCallback((issuesData: Issue[]) => {
-    if (webViewRef.current && mapReady) {
-      // Filter issues with valid coordinates (handle string coordinates)
-      const validIssues = issuesData.filter(issue => {
-        const lat = typeof issue.latitude === 'string' ? parseFloat(issue.latitude) : issue.latitude;
-        const lng = typeof issue.longitude === 'string' ? parseFloat(issue.longitude) : issue.longitude;
-        return lat && lng && !isNaN(lat) && !isNaN(lng);
-      }).map(issue => ({
-        ...issue,
-        latitude: typeof issue.latitude === 'string' ? parseFloat(issue.latitude) : issue.latitude,
-        longitude: typeof issue.longitude === 'string' ? parseFloat(issue.longitude) : issue.longitude
-      }));
-      
-      console.log('Updating map with', validIssues.length, 'valid issues out of', issuesData.length, 'total');
-      
-      validIssues.forEach(issue => {
-        console.log(`Issue "${issue.title}" at lat: ${issue.latitude}, lng: ${issue.longitude}`);
-      });
-      
-      const message = JSON.stringify({
-        type: 'UPDATE_ISSUES',
-        issues: validIssues.map(issue => ({
-          id: issue.id,
-          title: issue.title,
-          description: issue.description,
-          priority: issue.priority,
-          category: issue.category,
-          latitude: issue.latitude,
-          longitude: issue.longitude,
-          address: issue.address,
-          upvotes: (issue as any).upvotes?.[0]?.count || 0,
-          reportedBy: (issue as any).profiles?.name || 'Anonymous'
-        }))
-      });
-      webViewRef.current.postMessage(message);
-    }
-  }, [mapReady]);
+	const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
+	const [showMap, setShowMap] = useState(true);
+	const [userLocation, setUserLocation] =
+		useState<Location.LocationObject | null>(null);
+	const [issues, setIssues] = useState<Issue[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [mapReady, setMapReady] = useState(false);
+	const webViewRef = useRef<WebView>(null);
 
-  const loadIssues = useCallback(async () => {
-    try {
-      setLoading(true);
-      console.log('MapScreen: Loading issues for map...');
-      const issuesData = await DataService.getIssues();
-      console.log('MapScreen: Loaded', issuesData.length, 'issues from database');
-      
-      // Additional debugging for coordinates (handle string coordinates)
-      const issuesWithCoords = issuesData.filter((issue: any) => {
-        const lat = typeof issue.latitude === 'string' ? parseFloat(issue.latitude) : issue.latitude;
-        const lng = typeof issue.longitude === 'string' ? parseFloat(issue.longitude) : issue.longitude;
-        return lat && lng && !isNaN(lat) && !isNaN(lng);
-      });
-      console.log('MapScreen: Issues with valid coordinates:', issuesWithCoords.length, 'out of', issuesData.length);
-      
-      // Show first few issues for debugging
-      issuesWithCoords.slice(0, 3).forEach((issue: any, i: number) => {
-        console.log(`MapScreen: Issue ${i + 1} coords:`, {
-          title: issue.title,
-          lat: issue.latitude,
-          lng: issue.longitude,
-          latType: typeof issue.latitude,
-          lngType: typeof issue.longitude
-        });
-      });
-      
-      setIssues(issuesData);
-    } catch (error) {
-      console.error('MapScreen: Error loading issues:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+	const updateMapWithIssues = useCallback(
+		(issuesData: Issue[]) => {
+			if (webViewRef.current && mapReady) {
+				// Filter issues with valid coordinates (handle string coordinates)
+				const validIssues = issuesData
+					.filter((issue) => {
+						const lat =
+							typeof issue.latitude === "string"
+								? Number.parseFloat(issue.latitude)
+								: issue.latitude;
+						const lng =
+							typeof issue.longitude === "string"
+								? Number.parseFloat(issue.longitude)
+								: issue.longitude;
+						return lat && lng && !isNaN(lat) && !isNaN(lng);
+					})
+					.map((issue) => ({
+						...issue,
+						latitude:
+							typeof issue.latitude === "string"
+								? Number.parseFloat(issue.latitude)
+								: issue.latitude,
+						longitude:
+							typeof issue.longitude === "string"
+								? Number.parseFloat(issue.longitude)
+								: issue.longitude,
+					}));
 
-  const getCurrentLocation = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Location Permission', 'Location access is needed to show your position on the map.');
-        return;
-      }
+				console.log(
+					"Updating map with",
+					validIssues.length,
+					"valid issues out of",
+					issuesData.length,
+					"total",
+				);
 
-      const location = await Location.getCurrentPositionAsync({});
-      setUserLocation(location);
-      
-      // Send location to WebView map
-      if (webViewRef.current) {
-        const message = JSON.stringify({
-          type: 'SET_USER_LOCATION',
-          lat: location.coords.latitude,
-          lng: location.coords.longitude
-        });
-        webViewRef.current.postMessage(message);
-      }
-      
-      // Center map on user's location if they're in Jamaica
-      if (location.coords.latitude > 17.5 && location.coords.latitude < 18.8 &&
-          location.coords.longitude > -78.5 && location.coords.longitude < -76.0) {
-        
-        if (webViewRef.current) {
-          const centerMessage = JSON.stringify({
-            type: 'SET_CENTER',
-            lat: location.coords.latitude,
-            lng: location.coords.longitude,
-            zoom: 15
-          });
-          webViewRef.current.postMessage(centerMessage);
-        }
-      }
-    } catch (error) {
-      console.log('Location error:', error);
-    }
-  };
+				validIssues.forEach((issue) => {
+					console.log(
+						`Issue "${issue.title}" at lat: ${issue.latitude}, lng: ${issue.longitude}`,
+					);
+				});
 
-  const navigateToScreen = (screenName: keyof MainTabParamList) => {
-    navigation.navigate(screenName);
-  };
+				const message = JSON.stringify({
+					type: "UPDATE_ISSUES",
+					issues: validIssues.map((issue) => ({
+						id: issue.id,
+						title: issue.title,
+						description: issue.description,
+						priority: issue.priority,
+						category: issue.category,
+						latitude: issue.latitude,
+						longitude: issue.longitude,
+						address: issue.address,
+						upvotes: (issue as any).upvotes?.[0]?.count || 0,
+						reportedBy: (issue as any).profiles?.name || "Anonymous",
+					})),
+				});
+				webViewRef.current.postMessage(message);
+			}
+		},
+		[mapReady],
+	);
 
-  const handleMarkerPress = (issueId: string) => {
-    setSelectedIssue(selectedIssue === issueId ? null : issueId);
-  };
+	const loadIssues = useCallback(async () => {
+		try {
+			setLoading(true);
+			console.log("MapScreen: Loading issues for map...");
+			const issuesData = await DataService.getIssues();
+			console.log(
+				"MapScreen: Loaded",
+				issuesData.length,
+				"issues from database",
+			);
 
-  const handleMapMarkerPress = (issue: Issue) => {
-    setSelectedIssue(issue.id);
-  };
+			// Additional debugging for coordinates (handle string coordinates)
+			const issuesWithCoords = issuesData.filter((issue: any) => {
+				const lat =
+					typeof issue.latitude === "string"
+						? Number.parseFloat(issue.latitude)
+						: issue.latitude;
+				const lng =
+					typeof issue.longitude === "string"
+						? Number.parseFloat(issue.longitude)
+						: issue.longitude;
+				return lat && lng && !isNaN(lat) && !isNaN(lng);
+			});
+			console.log(
+				"MapScreen: Issues with valid coordinates:",
+				issuesWithCoords.length,
+				"out of",
+				issuesData.length,
+			);
 
-  const resetToJamaica = () => {
-    if (webViewRef.current) {
-      const message = JSON.stringify({
-        type: 'SET_CENTER',
-        lat: 18.1500,
-        lng: -77.3000,
-        zoom: 8
-      });
-      webViewRef.current.postMessage(message);
-    }
-  };
+			// Show first few issues for debugging
+			issuesWithCoords.slice(0, 3).forEach((issue: any, i: number) => {
+				console.log(`MapScreen: Issue ${i + 1} coords:`, {
+					title: issue.title,
+					lat: issue.latitude,
+					lng: issue.longitude,
+					latType: typeof issue.latitude,
+					lngType: typeof issue.longitude,
+				});
+			});
 
-  const toggleView = () => {
-    setShowMap(!showMap);
-  };
+			setIssues(issuesData);
+		} catch (error) {
+			console.error("MapScreen: Error loading issues:", error);
+		} finally {
+			setLoading(false);
+		}
+	}, []);
 
-  // Load issues again when map becomes ready
-  useEffect(() => {
-    if (mapReady && issues.length > 0) {
-      updateMapWithIssues(issues);
-    }
-  }, [mapReady, issues, updateMapWithIssues]);
+	const getCurrentLocation = async () => {
+		try {
+			const { status } = await Location.requestForegroundPermissionsAsync();
+			if (status !== "granted") {
+				Alert.alert(
+					"Location Permission",
+					"Location access is needed to show your position on the map.",
+				);
+				return;
+			}
 
-  // Initial load and location
-  useEffect(() => {
-    getCurrentLocation();
-    loadIssues();
-    
-    // Run diagnostics in development
-    if (__DEV__) {
-      setTimeout(() => {
-        DiagnosticsService.runMapDiagnostics();
-        DiagnosticsService.testCoordinateValidation();
-      }, 2000);
-    }
-  }, []);
+			const location = await Location.getCurrentPositionAsync({});
+			setUserLocation(location);
 
-  // Refresh issues when screen comes into focus
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      console.log('Map screen focused, reloading issues');
-      loadIssues();
-    });
-    return unsubscribe;
-  }, [navigation]);
+			// Send location to WebView map
+			if (webViewRef.current) {
+				const message = JSON.stringify({
+					type: "SET_USER_LOCATION",
+					lat: location.coords.latitude,
+					lng: location.coords.longitude,
+				});
+				webViewRef.current.postMessage(message);
+			}
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Ionicons name="map" size={32} color="#000" style={styles.titleIcon} />
-          <Text style={styles.title}>Issue Locations</Text>
-          <View style={styles.headerButtons}>
-            <TouchableOpacity style={styles.refreshButton} onPress={async () => {
-              console.log('MapScreen: Manual refresh triggered - invalidating cache');
-              try {
-                setLoading(true);
-                await CacheService.invalidate('issues');
-                const freshIssues = await DataService.getIssues();
-                console.log('MapScreen: Force refreshed', freshIssues.length, 'issues');
-                setIssues(freshIssues);
-              } catch (error) {
-                console.error('MapScreen: Error during force refresh:', error);
-              } finally {
-                setLoading(false);
-              }
-            }}>
-              <Ionicons name="refresh" size={20} color="#000" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.toggleButton} onPress={toggleView}>
-              <Ionicons 
-                name={showMap ? "list-outline" : "map-outline"} 
-                size={24} 
-                color="#000" 
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <Text style={styles.subtitle}>The Broken Experience - Jamaica</Text>
-        {userLocation && (
-          <Text style={styles.locationText}>
-            📍 Your Location: {userLocation.coords.latitude.toFixed(4)}, {userLocation.coords.longitude.toFixed(4)}
-          </Text>
-        )}
-      </View>
+			// Center map on user's location if they're in Jamaica
+			if (
+				location.coords.latitude > 17.5 &&
+				location.coords.latitude < 18.8 &&
+				location.coords.longitude > -78.5 &&
+				location.coords.longitude < -76.0
+			) {
+				if (webViewRef.current) {
+					const centerMessage = JSON.stringify({
+						type: "SET_CENTER",
+						lat: location.coords.latitude,
+						lng: location.coords.longitude,
+						zoom: 15,
+					});
+					webViewRef.current.postMessage(centerMessage);
+				}
+			}
+		} catch (error) {
+			console.log("Location error:", error);
+		}
+	};
 
-      {/* Map View */}
-      {showMap && (
-        <View style={styles.mapContainer}>
-          <WebView
-            ref={webViewRef}
-            source={{ 
-              html: `<!DOCTYPE html>
+	const navigateToScreen = (screenName: keyof MainTabParamList) => {
+		navigation.navigate(screenName);
+	};
+
+	const handleMarkerPress = (issueId: string) => {
+		setSelectedIssue(selectedIssue === issueId ? null : issueId);
+	};
+
+	const handleMapMarkerPress = (issue: Issue) => {
+		setSelectedIssue(issue.id);
+	};
+
+	const resetToJamaica = () => {
+		if (webViewRef.current) {
+			const message = JSON.stringify({
+				type: "SET_CENTER",
+				lat: 18.15,
+				lng: -77.3,
+				zoom: 8,
+			});
+			webViewRef.current.postMessage(message);
+		}
+	};
+
+	const toggleView = () => {
+		setShowMap(!showMap);
+	};
+
+	// Load issues again when map becomes ready
+	useEffect(() => {
+		if (mapReady && issues.length > 0) {
+			updateMapWithIssues(issues);
+		}
+	}, [mapReady, issues, updateMapWithIssues]);
+
+	// Initial load and location
+	useEffect(() => {
+		getCurrentLocation();
+		loadIssues();
+
+		// Run diagnostics in development
+		if (__DEV__) {
+			setTimeout(() => {
+				DiagnosticsService.runMapDiagnostics();
+				DiagnosticsService.testCoordinateValidation();
+			}, 2000);
+		}
+	}, []);
+
+	// Refresh issues when screen comes into focus
+	useEffect(() => {
+		const unsubscribe = navigation.addListener("focus", () => {
+			console.log("Map screen focused, reloading issues");
+			loadIssues();
+		});
+		return unsubscribe;
+	}, [navigation]);
+
+	return (
+		<View style={styles.container}>
+			<StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+
+			{/* Header */}
+			<View style={styles.header}>
+				<View style={styles.titleContainer}>
+					<Ionicons
+						name="map"
+						size={32}
+						color="#000"
+						style={styles.titleIcon}
+					/>
+					<Text style={styles.title}>Issue Locations</Text>
+					<View style={styles.headerButtons}>
+						<TouchableOpacity
+							style={styles.refreshButton}
+							onPress={async () => {
+								console.log(
+									"MapScreen: Manual refresh triggered - invalidating cache",
+								);
+								try {
+									setLoading(true);
+									await CacheService.invalidate("issues");
+									const freshIssues = await DataService.getIssues();
+									console.log(
+										"MapScreen: Force refreshed",
+										freshIssues.length,
+										"issues",
+									);
+									setIssues(freshIssues);
+								} catch (error) {
+									console.error(
+										"MapScreen: Error during force refresh:",
+										error,
+									);
+								} finally {
+									setLoading(false);
+								}
+							}}
+						>
+							<Ionicons name="refresh" size={20} color="#000" />
+						</TouchableOpacity>
+						<TouchableOpacity style={styles.toggleButton} onPress={toggleView}>
+							<Ionicons
+								name={showMap ? "list-outline" : "map-outline"}
+								size={24}
+								color="#000"
+							/>
+						</TouchableOpacity>
+					</View>
+				</View>
+				<Text style={styles.subtitle}>The Broken Experience - Jamaica</Text>
+				{userLocation && (
+					<Text style={styles.locationText}>
+						📍 Your Location: {userLocation.coords.latitude.toFixed(4)},{" "}
+						{userLocation.coords.longitude.toFixed(4)}
+					</Text>
+				)}
+			</View>
+
+			{/* Map View */}
+			{showMap && (
+				<View style={styles.mapContainer}>
+					<WebView
+						ref={webViewRef}
+						source={{
+							html: `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -545,396 +625,399 @@ const MapScreen = memo(() => {
         document.addEventListener('DOMContentLoaded', initMap);
     </script>
 </body>
-</html>`
-            }}
-            style={styles.map}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={true}
-            scalesPageToFit={true}
-            bounces={false}
-            scrollEnabled={false}
-            onError={(syntheticEvent) => {
-              const { nativeEvent } = syntheticEvent;
-              console.log('WebView error: ', nativeEvent);
-            }}
-            onLoadEnd={() => {
-              console.log('Map loaded successfully');
-              setMapReady(true);
-            }}
-            allowsInlineMediaPlayback
-            mediaPlaybackRequiresUserAction={false}
-          />
-        </View>
-      )}
+</html>`,
+						}}
+						style={styles.map}
+						javaScriptEnabled={true}
+						domStorageEnabled={true}
+						startInLoadingState={true}
+						scalesPageToFit={true}
+						bounces={false}
+						scrollEnabled={false}
+						onError={(syntheticEvent) => {
+							const { nativeEvent } = syntheticEvent;
+							console.log("WebView error: ", nativeEvent);
+						}}
+						onLoadEnd={() => {
+							console.log("Map loaded successfully");
+							setMapReady(true);
+						}}
+						allowsInlineMediaPlayback
+						mediaPlaybackRequiresUserAction={false}
+					/>
+				</View>
+			)}
 
-      {/* Issues List */}
-      <ScrollView 
-        style={[styles.issuesList, showMap && styles.issuesListHidden]} 
-        showsVerticalScrollIndicator={false}
-      >
-        {issues.map((issue) => (
-          <TouchableOpacity
-            key={issue.id}
-            style={[
-              styles.issueCard,
-              selectedIssue === issue.id && styles.selectedCard
-            ]}
-            onPress={() => handleMarkerPress(issue.id)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.cardHeader}>
-              <View style={styles.categoryContainer}>
-                <View style={[
-                  styles.customMarker,
-                  { backgroundColor: getPriorityColor(issue.priority) }
-                ]}>
-                  <Ionicons 
-                    name={getCategoryIcon(issue.category) as any}
-                    size={25} 
-                    color="white"
-                  />
-                </View>
-                <View style={styles.cardHeaderText}>
-                  <Text style={styles.priorityLabel}>{issue.priority}</Text>
-                  <Text style={styles.categoryLabel}>{issue.category}</Text>
-                </View>
-              </View>
-              <Text style={styles.upvotesText}>↑ {(issue as any).upvotes?.[0]?.count || 0}</Text>
-            </View>
-            
-            <Text style={styles.issueTitle}>{issue.title}</Text>
-            <Text style={styles.issueDescription}>{issue.description}</Text>
-            
-            <View style={styles.locationInfo}>
-              <Ionicons name="location-outline" size={16} color="#666" />
-              <Text style={styles.addressText}>{issue.address}</Text>
-            </View>
-            
-            <View style={styles.coordinatesContainer}>
-              <Text style={styles.coordinatesText}>
-                📍 {issue.latitude?.toFixed(4)}, {issue.longitude?.toFixed(4)}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+			{/* Issues List */}
+			<ScrollView
+				style={[styles.issuesList, showMap && styles.issuesListHidden]}
+				showsVerticalScrollIndicator={false}
+			>
+				{issues.map((issue) => (
+					<TouchableOpacity
+						key={issue.id}
+						style={[
+							styles.issueCard,
+							selectedIssue === issue.id && styles.selectedCard,
+						]}
+						onPress={() => handleMarkerPress(issue.id)}
+						activeOpacity={0.7}
+					>
+						<View style={styles.cardHeader}>
+							<View style={styles.categoryContainer}>
+								<View
+									style={[
+										styles.customMarker,
+										{ backgroundColor: getPriorityColor(issue.priority) },
+									]}
+								>
+									<Ionicons
+										name={getCategoryIcon(issue.category) as any}
+										size={25}
+										color="white"
+									/>
+								</View>
+								<View style={styles.cardHeaderText}>
+									<Text style={styles.priorityLabel}>{issue.priority}</Text>
+									<Text style={styles.categoryLabel}>{issue.category}</Text>
+								</View>
+							</View>
+							<Text style={styles.upvotesText}>
+								↑ {(issue as any).upvotes?.[0]?.count || 0}
+							</Text>
+						</View>
 
+						<Text style={styles.issueTitle}>{issue.title}</Text>
+						<Text style={styles.issueDescription}>{issue.description}</Text>
 
-      {/* Map Controls - Redesigned for better visibility */}
-      {showMap && (
-        <View style={styles.mapControls}>
-          <TouchableOpacity 
-            style={styles.controlButton} 
-            onPress={resetToJamaica}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="globe-outline" size={20} color="#fff" />
-            <Text style={styles.controlButtonText}>Jamaica</Text>
-          </TouchableOpacity>
+						<View style={styles.locationInfo}>
+							<Ionicons name="location-outline" size={16} color="#666" />
+							<Text style={styles.addressText}>{issue.address}</Text>
+						</View>
 
-          <TouchableOpacity 
-            style={styles.controlButton} 
-            onPress={getCurrentLocation}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="locate" size={20} color="#fff" />
-            <Text style={styles.controlButtonText}>My Location</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+						<View style={styles.coordinatesContainer}>
+							<Text style={styles.coordinatesText}>
+								📍 {issue.latitude?.toFixed(4)}, {issue.longitude?.toFixed(4)}
+							</Text>
+						</View>
+					</TouchableOpacity>
+				))}
+			</ScrollView>
 
-      {/* Minimalistic FAB */}
-      <TouchableOpacity 
-        style={styles.fab} 
-        onPress={() => navigateToScreen('Report')}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="add" size={24} color="white" />
-      </TouchableOpacity>
-    </View>
-  );
+			{/* Map Controls - Redesigned for better visibility */}
+			{showMap && (
+				<View style={styles.mapControls}>
+					<TouchableOpacity
+						style={styles.controlButton}
+						onPress={resetToJamaica}
+						activeOpacity={0.8}
+					>
+						<Ionicons name="globe-outline" size={20} color="#fff" />
+						<Text style={styles.controlButtonText}>Jamaica</Text>
+					</TouchableOpacity>
+
+					<TouchableOpacity
+						style={styles.controlButton}
+						onPress={getCurrentLocation}
+						activeOpacity={0.8}
+					>
+						<Ionicons name="locate" size={20} color="#fff" />
+						<Text style={styles.controlButtonText}>My Location</Text>
+					</TouchableOpacity>
+				</View>
+			)}
+
+			{/* Minimalistic FAB */}
+			<TouchableOpacity
+				style={styles.fab}
+				onPress={() => navigateToScreen("Report")}
+				activeOpacity={0.8}
+			>
+				<Ionicons name="add" size={24} color="white" />
+			</TouchableOpacity>
+		</View>
+	);
 });
 
 export default MapScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    justifyContent: 'space-between',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  refreshButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
-  },
-  toggleButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
-  },
-  titleIcon: {
-    marginRight: 12,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#000',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '400',
-    paddingLeft: 44,
-    marginBottom: 8,
-  },
-  locationText: {
-    fontSize: 12,
-    color: '#999',
-    paddingLeft: 44,
-  },
-  issuesList: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  issuesListHidden: {
-    display: 'none',
-  },
-  mapContainer: {
-    flex: 1,
-    height: 400,
-  },
-  map: {
-    flex: 1,
-  },
-  mapMarker: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  markerContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  markerPin: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  markerTail: {
-    width: 0,
-    height: 0,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderBottomWidth: 0,
-    borderTopWidth: 8,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    marginTop: -1,
-  },
-  customMarker: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-    marginRight: 12,
-  },
-  issueCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  selectedCard: {
-    borderColor: '#000',
-    borderWidth: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  cardHeaderText: {
-    flex: 1,
-  },
-  categoryLabel: {
-    fontSize: 12,
-    color: '#999',
-    textTransform: 'capitalize',
-    marginTop: 2,
-  },
-  cardHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  priorityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  priorityLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-    textTransform: 'capitalize',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  issueTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 8,
-    lineHeight: 22,
-  },
-  issueDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardLocationText: {
-    fontSize: 12,
-    color: '#999',
-    flex: 1,
-    marginRight: 8,
-  },
-  upvotesText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#000',
-  },
-  locationInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  addressText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 6,
-    flex: 1,
-  },
-  coordinatesContainer: {
-    marginTop: 8,
-  },
-  coordinatesText: {
-    fontSize: 11,
-    color: '#999',
-    fontFamily: 'monospace',
-  },
-  mapControls: {
-    position: 'absolute',
-    bottom: 100,
-    left: 16,
-    right: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    zIndex: 1000,
-  },
-  controlButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 25,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  controlButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 32,
-    right: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
+	container: {
+		flex: 1,
+		backgroundColor: "#ffffff",
+	},
+	header: {
+		paddingHorizontal: 20,
+		paddingTop: 60,
+		paddingBottom: 20,
+		backgroundColor: "#ffffff",
+		borderBottomWidth: 1,
+		borderBottomColor: "#f0f0f0",
+	},
+	titleContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 8,
+		justifyContent: "space-between",
+	},
+	headerButtons: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	refreshButton: {
+		padding: 8,
+		borderRadius: 8,
+		backgroundColor: "#f0f0f0",
+	},
+	toggleButton: {
+		padding: 8,
+		borderRadius: 8,
+		backgroundColor: "#f0f0f0",
+	},
+	titleIcon: {
+		marginRight: 12,
+	},
+	title: {
+		fontSize: 24,
+		fontWeight: "600",
+		color: "#000",
+	},
+	subtitle: {
+		fontSize: 14,
+		color: "#666",
+		fontWeight: "400",
+		paddingLeft: 44,
+		marginBottom: 8,
+	},
+	locationText: {
+		fontSize: 12,
+		color: "#999",
+		paddingLeft: 44,
+	},
+	issuesList: {
+		flex: 1,
+		paddingHorizontal: 16,
+	},
+	issuesListHidden: {
+		display: "none",
+	},
+	mapContainer: {
+		flex: 1,
+		height: 400,
+	},
+	map: {
+		flex: 1,
+	},
+	mapMarker: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		justifyContent: "center",
+		alignItems: "center",
+		borderWidth: 2,
+		borderColor: "#ffffff",
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.25,
+		shadowRadius: 4,
+		elevation: 4,
+	},
+	markerContainer: {
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	markerPin: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		justifyContent: "center",
+		alignItems: "center",
+		borderWidth: 3,
+		borderColor: "#ffffff",
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 3 },
+		shadowOpacity: 0.3,
+		shadowRadius: 6,
+		elevation: 6,
+	},
+	markerTail: {
+		width: 0,
+		height: 0,
+		backgroundColor: "transparent",
+		borderStyle: "solid",
+		borderLeftWidth: 6,
+		borderRightWidth: 6,
+		borderBottomWidth: 0,
+		borderTopWidth: 8,
+		borderLeftColor: "transparent",
+		borderRightColor: "transparent",
+		marginTop: -1,
+	},
+	customMarker: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		justifyContent: "center",
+		alignItems: "center",
+		borderWidth: 2,
+		borderColor: "#ffffff",
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.25,
+		shadowRadius: 4,
+		elevation: 4,
+		marginRight: 12,
+	},
+	issueCard: {
+		backgroundColor: "#ffffff",
+		borderRadius: 12,
+		padding: 16,
+		marginVertical: 8,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.1,
+		shadowRadius: 4,
+		elevation: 3,
+		borderWidth: 1,
+		borderColor: "#f0f0f0",
+	},
+	selectedCard: {
+		borderColor: "#000",
+		borderWidth: 2,
+	},
+	cardHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "flex-start",
+		marginBottom: 12,
+	},
+	categoryContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		flex: 1,
+	},
+	cardHeaderText: {
+		flex: 1,
+	},
+	categoryLabel: {
+		fontSize: 12,
+		color: "#999",
+		textTransform: "capitalize",
+		marginTop: 2,
+	},
+	cardHeaderLeft: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	priorityDot: {
+		width: 8,
+		height: 8,
+		borderRadius: 4,
+		marginRight: 8,
+	},
+	priorityLabel: {
+		fontSize: 12,
+		fontWeight: "600",
+		color: "#666",
+		textTransform: "capitalize",
+	},
+	closeButton: {
+		padding: 4,
+	},
+	issueTitle: {
+		fontSize: 16,
+		fontWeight: "600",
+		color: "#000",
+		marginBottom: 8,
+		lineHeight: 22,
+	},
+	issueDescription: {
+		fontSize: 14,
+		color: "#666",
+		lineHeight: 20,
+		marginBottom: 12,
+	},
+	cardFooter: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+	},
+	cardLocationText: {
+		fontSize: 12,
+		color: "#999",
+		flex: 1,
+		marginRight: 8,
+	},
+	upvotesText: {
+		fontSize: 12,
+		fontWeight: "600",
+		color: "#000",
+	},
+	locationInfo: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginTop: 12,
+		marginBottom: 8,
+	},
+	addressText: {
+		fontSize: 14,
+		color: "#666",
+		marginLeft: 6,
+		flex: 1,
+	},
+	coordinatesContainer: {
+		marginTop: 8,
+	},
+	coordinatesText: {
+		fontSize: 11,
+		color: "#999",
+		fontFamily: "monospace",
+	},
+	mapControls: {
+		position: "absolute",
+		bottom: 100,
+		left: 16,
+		right: 16,
+		flexDirection: "row",
+		justifyContent: "space-between",
+		zIndex: 1000,
+	},
+	controlButton: {
+		flexDirection: "row",
+		alignItems: "center",
+		backgroundColor: "rgba(0, 0, 0, 0.8)",
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		borderRadius: 25,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.3,
+		shadowRadius: 8,
+		elevation: 6,
+		borderWidth: 1,
+		borderColor: "rgba(255, 255, 255, 0.2)",
+	},
+	controlButtonText: {
+		color: "#fff",
+		fontSize: 14,
+		fontWeight: "600",
+		marginLeft: 6,
+	},
+	fab: {
+		position: "absolute",
+		bottom: 32,
+		right: 16,
+		width: 56,
+		height: 56,
+		borderRadius: 28,
+		backgroundColor: "#000",
+		justifyContent: "center",
+		alignItems: "center",
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.3,
+		shadowRadius: 8,
+		elevation: 8,
+	},
 });
