@@ -385,7 +385,7 @@ export default function MapPage() {
 					style: 'mapbox://styles/mapbox/dark-v11',
 					center: [userLocation.lng, userLocation.lat],
 					zoom: 14,
-					pitch: 60,
+					pitch: 68,
 					bearing: 0,
 					transformRequest: (url, resourceType) => {
 						// Block all telemetry and analytics requests
@@ -441,7 +441,7 @@ export default function MapPage() {
 						mapInstance.flyTo({
 							center: [userLocation.lng, userLocation.lat],
 							zoom: 16.5,
-							pitch: 60,
+							pitch: 68,
 							bearing: 0,
 							duration: 2500,
 							essential: true
@@ -469,8 +469,8 @@ export default function MapPage() {
 					showUserHeading: true,
 					showAccuracyCircle: true,
 					fitBoundsOptions: {
-						maxZoom: 15, // Prevent zooming out too far
-						pitch: 60,   // Maintain 3D tilt
+						maxZoom: 15,
+						pitch: 68,
 						bearing: 0
 					}
 				});
@@ -496,7 +496,7 @@ export default function MapPage() {
 						mapInstance.flyTo({
 							center: [newLocation.lng, newLocation.lat],
 							zoom: 16,
-							pitch: 60,
+							pitch: 68,
 							bearing: 0,
 							duration: 1500
 						});
@@ -562,7 +562,7 @@ export default function MapPage() {
 								
 								mapInstance.fitBounds(bounds, {
 									padding: 50,
-									pitch: 60,
+									pitch: 68,
 									duration: 1500
 								});
 								
@@ -598,7 +598,7 @@ export default function MapPage() {
 						mapInstance.flyTo({
 							center: [closestIssue.longitude, closestIssue.latitude],
 							zoom: 17,
-							pitch: 60,
+							pitch: 68,
 							duration: 2000
 						});
 						
@@ -907,7 +907,7 @@ export default function MapPage() {
 									map?.flyTo({
 										center: [closestIssue.longitude, closestIssue.latitude],
 										zoom: 17,
-										pitch: 60,
+										pitch: 68,
 										duration: 2000
 									});
 									
@@ -941,7 +941,7 @@ export default function MapPage() {
 											
 											map?.fitBounds(bounds, {
 												padding: 50,
-												pitch: 60,
+												pitch: 68,
 												duration: 1500
 											});
 										});
@@ -972,7 +972,7 @@ export default function MapPage() {
 										
 										map?.fitBounds(bounds, {
 											padding: 50,
-											pitch: 60,
+											pitch: 68,
 											duration: 1500
 										});
 									});
@@ -993,7 +993,7 @@ export default function MapPage() {
 									map.flyTo({
 										center: [userLocation.lng, userLocation.lat],
 										zoom: 16.5,
-										pitch: 60,
+										pitch: 68,
 										duration: 1500
 									});
 									setShowQuickActions(false);
