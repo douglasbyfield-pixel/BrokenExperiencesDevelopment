@@ -183,6 +183,9 @@ export default function MapPage() {
 	const [watchId, setWatchId] = useState<number | null>(null);
 	const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
 	const [showQuickActions, setShowQuickActions] = useState(false);
+	const [currentRoute, setCurrentRoute] = useState<any>(null);
+	const [isNavigating, setIsNavigating] = useState(false);
+	const [navPanelMinimized, setNavPanelMinimized] = useState(false);
 	const { settings } = useSettings();
 
 	// Debounce search query
@@ -334,6 +337,90 @@ export default function MapPage() {
 		} catch (error) {
 			console.error("Failed to vote:", error);
 		}
+	};
+
+	const getDirections = async (startLng: number, startLat: number, endLng: number, endLat: number) => {
+		try {
+			const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+			const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?steps=true&geometries=geojson&access_token=${accessToken}`;
+			
+			const response = await fetch(url);
+			const data = await response.json();
+			
+			if (data.routes && data.routes.length > 0) {
+				return data.routes[0];
+			}
+			return null;
+		} catch (error) {
+			console.error('Error getting directions:', error);
+			return null;
+		}
+	};
+
+	const showRoute = async (startLocation: {lat: number, lng: number}, endLocation: {lat: number, lng: number}) => {
+		if (!map) return;
+
+		const route = await getDirections(startLocation.lng, startLocation.lat, endLocation.lng, endLocation.lat);
+		
+		if (route) {
+			setCurrentRoute(route);
+			setIsNavigating(true);
+			setNavPanelMinimized(false);
+
+			if (map.getSource('route')) {
+				map.removeLayer('route');
+				map.removeSource('route');
+			}
+
+			map.addSource('route', {
+				type: 'geojson',
+				data: {
+					type: 'Feature',
+					properties: {},
+					geometry: route.geometry
+				}
+			});
+
+			map.addLayer({
+				id: 'route',
+				type: 'line',
+				source: 'route',
+				layout: {
+					'line-join': 'round',
+					'line-cap': 'round'
+				},
+				paint: {
+					'line-color': '#3b82f6',
+					'line-width': 5,
+					'line-opacity': 0.8
+				}
+			});
+
+			const coordinates = route.geometry.coordinates;
+			const bounds = new (window as any).mapboxgl.LngLatBounds();
+			coordinates.forEach((coord: any) => bounds.extend(coord));
+			
+			map.fitBounds(bounds, {
+				padding: 50,
+				pitch: 68,
+				duration: 1500
+			});
+
+			// Auto-minimize after 5 seconds for better UX
+			setTimeout(() => {
+				setNavPanelMinimized(true);
+			}, 5000);
+		}
+	};
+
+	const clearRoute = () => {
+		if (map && map.getSource('route')) {
+			map.removeLayer('route');
+			map.removeSource('route');
+		}
+		setCurrentRoute(null);
+		setIsNavigating(false);
+		setNavPanelMinimized(false);
 	};
 
 	// Initialize Mapbox when component mounts and user location is available
@@ -917,7 +1004,7 @@ export default function MapPage() {
 							}}
 						>
 							<Navigation className="h-4 w-4" />
-							<span>Nearest</span>
+							<span>Find Nearest</span>
 						</Button>
 						
 						<Button
@@ -925,33 +1012,12 @@ export default function MapPage() {
 							variant="ghost"
 							className="flex flex-col items-center gap-1 h-auto p-3 text-xs"
 							onClick={() => {
-								if (userLocation) {
-									const nearby = filteredIssues.filter(issue => {
-										const distance = getDistance(userLocation.lat, userLocation.lng, issue.latitude, issue.longitude);
-										return distance <= 2;
-									});
-									
-									if (nearby.length > 0) {
-										import('mapbox-gl').then(({ default: mapboxgl }) => {
-											const bounds = new mapboxgl.LngLatBounds();
-											nearby.forEach(issue => {
-												bounds.extend([issue.longitude, issue.latitude]);
-											});
-											bounds.extend([userLocation.lng, userLocation.lat]);
-											
-											map?.fitBounds(bounds, {
-												padding: 50,
-												pitch: 68,
-												duration: 1500
-											});
-										});
-									}
-									setShowQuickActions(false);
-								}
+								setShowSearchPanel(true);
+								setShowQuickActions(false);
 							}}
 						>
-							<Focus className="h-4 w-4" />
-							<span>Nearby</span>
+							<Search className="h-4 w-4" />
+							<span>Search Issues</span>
 						</Button>
 						
 						<Button
@@ -959,14 +1025,14 @@ export default function MapPage() {
 							variant="ghost"
 							className="flex flex-col items-center gap-1 h-auto p-3 text-xs"
 							onClick={() => {
-								const highPriority = filteredIssues.filter(issue => 
-									issue.severity === 'high' || issue.severity === 'critical'
-								);
+								const recentIssues = filteredIssues
+									.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+									.slice(0, 10);
 								
-								if (highPriority.length > 0) {
+								if (recentIssues.length > 0) {
 									import('mapbox-gl').then(({ default: mapboxgl }) => {
 										const bounds = new mapboxgl.LngLatBounds();
-										highPriority.forEach(issue => {
+										recentIssues.forEach(issue => {
 											bounds.extend([issue.longitude, issue.latitude]);
 										});
 										
@@ -980,8 +1046,8 @@ export default function MapPage() {
 								setShowQuickActions(false);
 							}}
 						>
-							<AlertCircle className="h-4 w-4" />
-							<span>High Priority</span>
+							<Timer className="h-4 w-4" />
+							<span>Recent Issues</span>
 						</Button>
 						
 						<Button
@@ -1000,7 +1066,7 @@ export default function MapPage() {
 								}
 							}}
 						>
-							<MapPin className="h-4 w-4" />
+							<Compass className="h-4 w-4" />
 							<span>My Location</span>
 						</Button>
 					</div>
@@ -1219,17 +1285,19 @@ export default function MapPage() {
 						<div className="flex items-center gap-2">
 							<Button 
 								size="sm" 
-								variant="outline"
+								variant={isNavigating ? "default" : "outline"}
 								onClick={() => {
 									if (userLocation && selectedIssue) {
-										// Open directions in default map app
-										const url = `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${selectedIssue.latitude},${selectedIssue.longitude}`;
-										window.open(url, '_blank');
+										if (isNavigating) {
+											clearRoute();
+										} else {
+											showRoute(userLocation, {lat: selectedIssue.latitude, lng: selectedIssue.longitude});
+										}
 									}
 								}}
 							>
 								<Route className="h-3 w-3 mr-1" />
-								Directions
+								{isNavigating ? "Clear Route" : "Get Directions"}
 							</Button>
 							<Button 
 								size="sm" 
@@ -1256,6 +1324,98 @@ export default function MapPage() {
 							</span>
 						)}
 					</div>
+				</div>
+			)}
+
+			{/* Navigation Panel */}
+			{isNavigating && currentRoute && (
+				<div className={`absolute bottom-4 right-4 bg-white dark:bg-gray-900 rounded-lg shadow-lg z-20 transition-all duration-300 ${
+					navPanelMinimized ? 'w-48' : 'w-80'
+				}`}>
+					{/* Minimized State */}
+					{navPanelMinimized ? (
+						<div className="p-3">
+							<div className="flex items-center justify-between mb-2">
+								<div className="flex items-center gap-2">
+									<Navigation className="h-4 w-4 text-blue-500" />
+									<span className="text-sm font-medium">{(currentRoute.distance / 1000).toFixed(1)} km • {Math.round(currentRoute.duration / 60)} min</span>
+								</div>
+								<div className="flex items-center gap-1">
+									<Button
+										size="icon"
+										variant="ghost"
+										className="h-6 w-6"
+										onClick={() => setNavPanelMinimized(false)}
+									>
+										<ChevronUp className="h-3 w-3" />
+									</Button>
+									<Button
+										size="icon"
+										variant="ghost" 
+										className="h-6 w-6"
+										onClick={clearRoute}
+									>
+										<X className="h-3 w-3" />
+									</Button>
+								</div>
+							</div>
+							{currentRoute.legs?.[0]?.steps?.[0] && (
+								<div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+									Next: {currentRoute.legs[0].steps[0].maneuver?.instruction || 'Continue straight'}
+								</div>
+							)}
+						</div>
+					) : (
+						/* Expanded State */
+						<div className="p-4">
+							<div className="flex items-center justify-between mb-3">
+								<div className="flex items-center gap-2">
+									<Navigation className="h-4 w-4 text-blue-500" />
+									<h3 className="font-semibold text-sm">Navigation</h3>
+								</div>
+								<div className="flex items-center gap-1">
+									<Button
+										size="icon"
+										variant="ghost"
+										className="h-6 w-6"
+										onClick={() => setNavPanelMinimized(true)}
+									>
+										<ChevronDown className="h-3 w-3" />
+									</Button>
+									<Button
+										size="icon"
+										variant="ghost"
+										className="h-6 w-6"
+										onClick={clearRoute}
+									>
+										<X className="h-3 w-3" />
+									</Button>
+								</div>
+							</div>
+
+							<div className="space-y-2 mb-3">
+								<div className="flex items-center justify-between">
+									<span className="text-sm text-gray-600 dark:text-gray-400">Distance:</span>
+									<span className="text-sm font-medium">{(currentRoute.distance / 1000).toFixed(1)} km</span>
+								</div>
+								<div className="flex items-center justify-between">
+									<span className="text-sm text-gray-600 dark:text-gray-400">Duration:</span>
+									<span className="text-sm font-medium">{Math.round(currentRoute.duration / 60)} min</span>
+								</div>
+							</div>
+							
+							<div className="space-y-1 max-h-32 overflow-y-auto">
+								{currentRoute.legs?.[0]?.steps?.slice(0, 5).map((step: any, index: number) => (
+									<div key={index} className="flex items-start gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs">
+										<div className="flex-shrink-0 w-5 h-5 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-medium text-xs">
+											{index + 1}
+										</div>
+										<p className="text-gray-700 dark:text-gray-300 leading-relaxed">{step.maneuver?.instruction || 'Continue straight'}</p>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
 				</div>
 			)}
 
