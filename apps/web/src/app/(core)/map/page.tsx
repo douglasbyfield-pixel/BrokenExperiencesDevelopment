@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useSettings } from "@/context/SettingsContext";
 import { 
 	MapPin, 
 	Filter, 
@@ -30,19 +29,8 @@ import {
 	Navigation,
 	Route,
 	Share2,
-	Bookmark,
 	Timer,
-	User,
-	Calendar,
-	TrendingUp,
-	ExternalLink,
 	Info,
-	Focus,
-	ArrowUp,
-	ArrowDown,
-	ArrowLeft,
-	ArrowRight,
-	RotateCcw,
 	Compass
 } from "lucide-react";
 
@@ -186,7 +174,6 @@ export default function MapPage() {
 	const [currentRoute, setCurrentRoute] = useState<any>(null);
 	const [isNavigating, setIsNavigating] = useState(false);
 	const [navPanelMinimized, setNavPanelMinimized] = useState(false);
-	const { settings } = useSettings();
 
 	// Debounce search query
 	useEffect(() => {
@@ -474,13 +461,13 @@ export default function MapPage() {
 					zoom: 14,
 					pitch: 68,
 					bearing: 0,
-					transformRequest: (url, resourceType) => {
+					transformRequest: (url) => {
 						// Block all telemetry and analytics requests
 						if (url.includes('events.mapbox.com') || 
 							url.includes('api.mapbox.com/events') ||
 							url.includes('/events/')) {
 							console.log('🚫 Blocked telemetry:', url);
-							return null;
+							return { url: '' };
 						}
 						return { url };
 					}
