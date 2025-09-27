@@ -18,14 +18,14 @@ export const metadata: Metadata = {
 	description: "broken-experiences",
 };
 
-export default function RootLayout(props: LayoutProps<'/'>) {
+export default async function RootLayout(props: LayoutProps<"/">) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
 				<Providers>
-					<div className="flex h-dvh w-full flex-col">
+					<div className="flex min-h-dvh w-full flex-col">
 						<main className="relative min-h-0 w-full flex-1">
 							{props.children}
 						</main>

@@ -1,0 +1,312 @@
+---
+description: Creating Modules
+alwaysApply: false
+---
+
+# Server Module Creation Guide
+
+## Overview
+This guide outlines the standard pattern for creating modules in the `@server/` application. Each module follows a consistent structure with specific files and naming conventions.
+
+## Module Structure
+
+### Standard Module Pattern
+```
+src/module/{moduleName}/
+├── router.ts      # Elysia router with API endpoints
+├── service.ts     # Business logic and database operations
+├── schema.ts      # Zod schemas and Elysia models for validation
+└── utils.ts       # Helper functions (optional)
+```
+
+### Alternative Patterns
+- **Simple modules**: Only `router.ts` and `service.ts` (like stats)
+- **Complex modules**: Include `schema.ts` for validation
+- **Utility modules**: May include `utils.ts` for helper functions
+
+## File Templates
+
+### 1. Router Template (`router.ts`)
+```typescript
+import Elysia from "elysia";
+import { {moduleName}Model } from "./schema";
+import {
+    create{ModuleName},
+    delete{ModuleName},
+    get{ModuleName},
+    get{ModuleName}s,
+    update{ModuleName},
+} from "./service";
+
+export const {moduleName}Router = new Elysia({
+    prefix: "/{moduleName}",
+    tags: ["{ModuleName}"],
+})
+    .use({moduleName}Model)
+    .get(
+        "/",
+        async ({ query }) => {
+            try {
+                const results = await get{ModuleName}s({ query: query });
+                return results;
+            } catch (error) {
+                console.log(error);
+                return {
+                    status: 500,
+                    message: "Internal server error",
+                };
+            }
+        },
+        {
+            query: "{moduleName}.query",
+            detail: {
+                summary: "Get all {moduleName}s",
+                description: "Returns a list of all {moduleName}s in the database.",
+            },
+        },
+    )
+    .post(
+        "/",
+        ({ body }) => {
+            const result = create{ModuleName}({ data: body });
+            return result;
+        },
+        {
+            body: "{moduleName}.create",
+            detail: {
+                summary: "Add a {moduleName}",
+                description: "Creates and stores a new {moduleName} in the database using the provided details.",
+            },
+        },
+    )
+    .get(
+        "/:{moduleName}Id",
+        ({ params }) => {
+            const result = get{ModuleName}({ id: params.{moduleName}Id });
+            return result;
+        },
+        {
+            params: "{moduleName}.identifier.params",
+            detail: {
+                summary: "Get a {moduleName} by id",
+                description: "Returns a {moduleName} by id from the database.",
+            },
+        },
+    )
+    .put(
+        "/:{moduleName}Id",
+        ({ params, body }) => {
+            const result = update{ModuleName}({ id: params.{moduleName}Id, data: body });
+            return result;
+        },
+        {
+            params: "{moduleName}.identifier.params",
+            body: "{moduleName}.update",
+            detail: {
+                summary: "Update a {moduleName} by id",
+                description: "Updates a {moduleName} by id in the database using the provided details.",
+            },
+        },
+    )
+    .delete(
+        "/:{moduleName}Id",
+        ({ params }) => {
+            const result = delete{ModuleName}({ id: params.{moduleName}Id });
+            return result;
+        },
+        {
+            params: "{moduleName}.identifier.params",
+            detail: {
+                summary: "Delete a {moduleName} by id",
+                description: "Deletes a {moduleName} by id from the database.",
+            },
+        },
+    );
+```
+
+### 2. Service Template (`service.ts`)
+```typescript
+import { db } from "@/db";
+import { {moduleName} } from "@/db/schema";
+import type { {ModuleName}Create, {ModuleName}Query, {ModuleName}Update } from "./schema";
+
+export const get{ModuleName}s = async (options: { query: {ModuleName}Query }) => {
+    const page = options.query.page ?? 1;
+    const limit = options.query.limit ?? 10;
+    const offset = (page - 1) * limit;
+
+    const {moduleName}s = await db
+        .select()
+        .from({moduleName})
+        .limit(limit)
+        .offset(offset);
+
+    return {moduleName}s ?? [];
+};
+
+export const create{ModuleName} = async (options: { data: {ModuleName}Create }) => {
+    const { data } = options;
+    const created{ModuleName} = await db.insert({moduleName}).values(data).returning();
+
+    return created{ModuleName};
+};
+
+export const get{ModuleName} = async (options: { id: string }) => {
+    const { id } = options;
+    const get{ModuleName} = await db.query.{moduleName}.findFirst({
+        where: ({moduleName}, { eq }) => eq({moduleName}.id, id),
+    });
+    return get{ModuleName};
+};
+
+export const update{ModuleName} = async (options?: {
+    id: string;
+    data: {ModuleName}Update;
+}) => {
+    return options?.id;
+};
+
+export const delete{ModuleName} = async (options?: { id: string }) => {
+    return options?.id;
+};
+```
+
+### 3. Schema Template (`schema.ts`)
+```typescript
+import { createInsertSchema } from "drizzle-typebox";
+import Elysia, { type Static, t } from "elysia";
+import { {moduleName} } from "../../db/schema/{moduleName}";
+
+const base{ModuleName}InsertSchema = createInsertSchema({moduleName});
+
+const {moduleName}QuerySchema = t.Optional(t.Object({
+    limit: t.Number({ default: 10 }),
+    offset: t.Number({ default: 0 }),
+    query: t.Optional(t.String({ default: undefined })),
+    page: t.Optional(t.Number({ default: 1 })),
+}));
+
+const {moduleName}CreateSchema = t.Object({
+    // Define fields based on your schema
+    name: base{ModuleName}InsertSchema.properties.name,
+});
+
+const {moduleName}UpdateSchema = t.Partial({moduleName}CreateSchema);
+
+export type {ModuleName}Create = Static<typeof {moduleName}CreateSchema>;
+export type {ModuleName}Update = Static<typeof {moduleName}UpdateSchema>;
+export type {ModuleName}Query = Static<typeof {moduleName}QuerySchema>;
+
+export const {moduleName}Model = new Elysia().model({
+    "{moduleName}.identifier.params": t.Object({
+        {moduleName}Id: t.String({ format: "uuid" }),
+    }),
+    "{moduleName}.create": {moduleName}CreateSchema,
+    "{moduleName}.update": {moduleName}UpdateSchema,
+    "{moduleName}.query": {moduleName}QuerySchema,
+});
+```
+
+## Step-by-Step Creation Process
+
+### 1. Create Module Directory
+```bash
+mkdir src/module/{moduleName}
+```
+
+### 2. Create Required Files
+- `router.ts` - API endpoints
+- `service.ts` - Business logic
+- `schema.ts` - Validation schemas (if needed)
+
+### 3. Update Module Index
+Add the new router to `src/module/index.ts`:
+```typescript
+import { {moduleName}Router } from "./{moduleName}/router";
+
+export const appRouter = new Elysia()
+    .use(categoryRouter)
+    .use(experienceRouter)
+    .use(miscRouter)
+    .use({moduleName}Router); // Add this line
+```
+
+### 4. Database Schema
+Ensure your database schema is defined in `src/db/schema/{moduleName}.ts` and exported in `src/db/schema/index.ts`.
+
+## Naming Conventions
+
+- **Module names**: lowercase, kebab-case (e.g., `user-profile`, `order-item`)
+- **File names**: lowercase, kebab-case (e.g., `router.ts`, `service.ts`, `schema.ts`)
+- **Function names**: camelCase (e.g., `getUserProfile`, `createOrderItem`)
+- **Type names**: PascalCase (e.g., `UserProfileCreate`, `OrderItemQuery`)
+- **Router names**: camelCase with "Router" suffix (e.g., `userProfileRouter`)
+- **Model names**: camelCase with "Model" suffix (e.g., `userProfileModel`)
+
+## Common Patterns
+
+### CRUD Operations
+Every module should implement standard CRUD operations:
+- `GET /` - List all items
+- `POST /` - Create new item
+- `GET /:id` - Get item by ID
+- `PUT /:id` - Update item by ID
+- `DELETE /:id` - Delete item by ID
+
+### Error Handling
+Always wrap database operations in try-catch blocks and return consistent error responses:
+```typescript
+try {
+    const results = await getItems({ query: query });
+    return results;
+} catch (error) {
+    console.log(error);
+    return {
+        status: 500,
+        message: "Internal server error",
+    };
+}
+```
+
+### Database Transactions
+Use transactions for complex operations involving multiple tables:
+```typescript
+const result = await db.transaction(async (tx) => {
+    const [newItem] = await tx
+        .insert(table)
+        .values(data)
+        .returning();
+    
+    // Additional operations...
+    
+    return newItem;
+});
+```
+
+## Examples
+
+### Simple Module (Stats)
+- Only `router.ts` and `service.ts`
+- No validation schemas needed
+- Basic data retrieval operations
+
+### Complex Module (Experience)
+- Includes `schema.ts` for validation
+- Complex validation with enums and file uploads
+- Database transactions for related data
+
+### Utility Module (Misc)
+- Simple endpoints for health checks
+- HTML responses
+- No database operations
+
+## Best Practices
+
+1. **Consistency**: Follow the established patterns exactly
+2. **Error Handling**: Always handle errors gracefully
+3. **Type Safety**: Use TypeScript types throughout
+4. **Documentation**: Include detailed API documentation in route definitions
+5. **Validation**: Use Zod schemas for input validation
+6. **Database**: Use Drizzle ORM patterns consistently
+7. **Testing**: Consider adding test files for complex modules
+8. **Schema Naming**: Always use `schema.ts` (not `model.ts`) for validation files

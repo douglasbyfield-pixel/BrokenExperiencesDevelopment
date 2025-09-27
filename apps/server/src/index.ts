@@ -20,3 +20,4 @@ process.on("unhandledRejection", (error) => {
 });
 
 export const server = app.listen(env.PORT);
+export type App = typeof server;

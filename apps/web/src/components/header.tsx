@@ -12,12 +12,16 @@ export default function Header() {
 	] as const;
 
 	return (
-		<div className="bg-white border-b border-gray-200">
+		<div className="border-gray-200 border-b bg-white">
 			<div className="flex flex-row items-center justify-between px-2 py-1 sm:py-2">
-				<nav className="flex gap-2 sm:gap-4 text-sm sm:text-lg">
+				<nav className="flex gap-2 text-sm sm:gap-4 sm:text-lg">
 					{links.map(({ to, label }) => {
 						return (
-							<Link key={to} href={to} className="text-black hover:text-gray-600 transition-colors">
+							<Link
+								key={to}
+								href={to}
+								className="text-black transition-colors hover:text-gray-600"
+							>
 								{label}
 							</Link>
 						);

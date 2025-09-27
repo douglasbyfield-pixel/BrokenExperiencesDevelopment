@@ -18,7 +18,8 @@ export const session = p.pgTable("session", {
 	updatedAt: p.timestamp().notNull(),
 	ipAddress: p.text(),
 	userAgent: p.text(),
-	userId: p.uuid()
+	userId: p
+		.uuid()
 		.notNull()
 		.references(() => user.id, { onDelete: "cascade" }),
 });
@@ -27,7 +28,8 @@ export const account = p.pgTable("account", {
 	id: p.uuid().primaryKey().defaultRandom(),
 	accountId: p.text().notNull(),
 	providerId: p.text().notNull(),
-	userId: p.uuid()
+	userId: p
+		.uuid()
 		.notNull()
 		.references(() => user.id, { onDelete: "cascade" }),
 	accessToken: p.text(),

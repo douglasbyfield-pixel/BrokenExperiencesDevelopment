@@ -1,5 +1,5 @@
 import { treaty } from "@elysiajs/eden";
-import type { App } from "@server/server";
+import type { App } from "@server/index";
 
 export function createEdenApi(baseUrl?: string) {
 	const urlToUse = baseUrl ?? process.env.NEXT_PUBLIC_SERVER_URL;
@@ -8,7 +8,7 @@ export function createEdenApi(baseUrl?: string) {
 		fetch: {
 			credentials: "include",
 			mode: "cors",
-		}
+		},
 	});
 }
 

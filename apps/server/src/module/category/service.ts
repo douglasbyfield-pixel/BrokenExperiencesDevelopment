@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import type { CategoryCreate, CategoryQuery, CategoryUpdate } from "./schema";
 import { category } from "@/db/schema";
+import type { CategoryCreate, CategoryQuery, CategoryUpdate } from "./schema";
 
 export const getCategories = async (options: { query: CategoryQuery }) => {
 	const page = options.query.page ?? 1;
@@ -31,7 +31,10 @@ export const getCategory = async (options: { id: string }) => {
 	return getCategory;
 };
 
-export const updateCategory = async (options?: { id: string, data: CategoryUpdate }) => {
+export const updateCategory = async (options?: {
+	id: string;
+	data: CategoryUpdate;
+}) => {
 	return options?.id;
 };
 

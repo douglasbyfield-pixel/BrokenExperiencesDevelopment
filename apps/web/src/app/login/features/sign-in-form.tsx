@@ -2,11 +2,11 @@ import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import z from "zod";
-import { authClient } from "@/lib/auth-client";
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/auth-client";
 
 export default function SignInForm({
 	onSwitchToSignUp,
@@ -69,7 +69,10 @@ export default function SignInForm({
 					<form.Field name="email">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name} className="font-medium text-black text-sm">
+								<Label
+									htmlFor={field.name}
+									className="font-medium text-black text-sm"
+								>
 									Email address
 								</Label>
 								<Input
@@ -96,7 +99,10 @@ export default function SignInForm({
 					<form.Field name="password">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name} className="font-medium text-black text-sm">
+								<Label
+									htmlFor={field.name}
+									className="font-medium text-black text-sm"
+								>
 									Password
 								</Label>
 								<Input

@@ -4,12 +4,12 @@ import { category } from "../../db/schema/category";
 
 const baseCategoryInsertSchema = createInsertSchema(category);
 
-const categoryQuerySchema = t.Object({
+const categoryQuerySchema = t.Optional(t.Object({
 	limit: t.Number({ default: 10 }),
 	offset: t.Number({ default: 0 }),
 	query: t.Optional(t.String({ default: undefined })),
 	page: t.Optional(t.Number({ default: 1 })),
-});
+}));
 
 const categoryCreateSchema = t.Object({
 	name: baseCategoryInsertSchema.properties.name,

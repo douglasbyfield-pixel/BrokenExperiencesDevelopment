@@ -1,6 +1,6 @@
+import { relations } from "drizzle-orm";
 import * as p from "drizzle-orm/pg-core";
 import { experience } from "./experience";
-import { relations } from "drizzle-orm";
 
 export const experienceImage = p.pgTable("experience_image", {
 	id: p.uuid().primaryKey().defaultRandom(),
@@ -12,9 +12,12 @@ export const experienceImage = p.pgTable("experience_image", {
 	updatedAt: p.timestamp().notNull().defaultNow(),
 });
 
-export const experienceImageRelations = relations(experienceImage, ({ one }) => ({
-	experience: one(experience, {
-		fields: [experienceImage.experienceId],
-		references: [experience.id],
+export const experienceImageRelations = relations(
+	experienceImage,
+	({ one }) => ({
+		experience: one(experience, {
+			fields: [experienceImage.experienceId],
+			references: [experience.id],
+		}),
 	}),
-}));
+);

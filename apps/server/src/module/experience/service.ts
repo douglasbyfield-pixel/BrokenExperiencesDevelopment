@@ -1,12 +1,18 @@
 import { db } from "@/db";
+import { experience, experienceImage } from "@/db/schema";
 import type {
 	ExperienceCreate,
 	ExperienceQuery,
 	ExperienceUpdate,
+	ExperienceVote,
 } from "./schema";
-import { experience, experienceImage } from "@/db/schema";
 
 export const getExperiences = async (options: { query: ExperienceQuery }) => {
+	console.log(options);
+	return options;
+};
+
+export const getNearbyExperiences = async (options: { query: ExperienceQuery }) => {
 	console.log(options);
 	return options;
 };
@@ -53,6 +59,10 @@ export const getExperience = async (options?: { id: string }) => {
 	});
 
 	return getExperience;
+};
+
+export const voteOnExperience = async (options?: { id: string; data: ExperienceVote }) => {
+	return options?.data;
 };
 
 export const updateExperience = async (options?: {

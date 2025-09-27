@@ -1,17 +1,21 @@
 import { createInsertSchema } from "drizzle-typebox";
 import Elysia, { type Static, t } from "elysia";
-import { ExperiencePriorityEnum, ExperienceStatusEnum, experience } from "../../db/schema/experience";
+import {
+	ExperiencePriorityEnum,
+	ExperienceStatusEnum,
+	experience,
+} from "../../db/schema/experience";
 
 const baseExperienceInsertSchema = createInsertSchema(experience);
 
-const experienceQuerySchema = t.Object({
-    severity: t.Optional(t.String()),
-    status: t.Optional(t.String()),
-    north: t.Optional(t.String()),
-    south: t.Optional(t.String()),
-    east: t.Optional(t.String()),
-    west: t.Optional(t.String())
-});
+const experienceQuerySchema = t.Optional(t.Object({
+	severity: t.Optional(t.String()),
+	status: t.Optional(t.String()),
+	north: t.Optional(t.String()),
+	south: t.Optional(t.String()),
+	east: t.Optional(t.String()),
+	west: t.Optional(t.String()),
+}));
 
 export const experienceCreateSchema = t.Object({
 	title: baseExperienceInsertSchema.properties.title,
@@ -20,19 +24,32 @@ export const experienceCreateSchema = t.Object({
 	longitude: baseExperienceInsertSchema.properties.longitude,
 	address: baseExperienceInsertSchema.properties.address,
 	categoryId: baseExperienceInsertSchema.properties.categoryId,
-	status: t.Enum(ExperienceStatusEnum, {default: ExperienceStatusEnum.pending}),
-	priority: t.Enum(ExperiencePriorityEnum, {default: ExperiencePriorityEnum.medium}),
-	experience_images: t.Files()
+	status: t.Enum(ExperienceStatusEnum, {
+		default: ExperienceStatusEnum.pending,
+	}),
+	priority: t.Enum(ExperiencePriorityEnum, {
+		default: ExperiencePriorityEnum.medium,
+	}),
+	experience_images: t.Files(),
 });
 
 export const experienceUpdateSchema = t.Partial(experienceCreateSchema);
 
+export const experienceVoteSchema = t.Object({
+	vote: t.Boolean(),
+});
+
+export type ExperienceVote = Static<typeof experienceVoteSchema>;
 export type ExperienceCreate = Static<typeof experienceCreateSchema>;
 export type ExperienceUpdate = Static<typeof experienceUpdateSchema>;
 export type ExperienceQuery = Static<typeof experienceQuerySchema>;
 
 export const experienceModel = new Elysia().model({
-	"experience.identifier.params": t.Object({ experienceId: t.String({ format: "uuid" }) }),
+	"experience.identifier.params": t.Object({
+		experienceId: t.String({ format: "uuid" }),
+	}),
+	"experience.vote": experienceVoteSchema,
+	"experience.nearby.query": experienceQuerySchema,
 	"experience.create": experienceCreateSchema,
 	"experience.update": experienceUpdateSchema,
 	"experience.query": experienceQuerySchema,
