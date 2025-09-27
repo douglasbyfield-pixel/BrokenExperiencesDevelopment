@@ -8,14 +8,24 @@ import {
 
 const baseExperienceInsertSchema = createInsertSchema(experience);
 
-const experienceQuerySchema = t.Optional(t.Object({
-	severity: t.Optional(t.String()),
-	status: t.Optional(t.String()),
-	north: t.Optional(t.String()),
-	south: t.Optional(t.String()),
-	east: t.Optional(t.String()),
-	west: t.Optional(t.String()),
-}));
+const experienceQuerySchema = t.Optional(
+	t.Object({
+		status: t.Optional(
+			t.Enum(ExperienceStatusEnum, {
+				default: ExperienceStatusEnum.pending,
+			}),
+		),
+		priority: t.Optional(
+			t.Enum(ExperiencePriorityEnum, {
+				default: ExperiencePriorityEnum.medium,
+			}),
+		),
+		latitude: t.Optional(t.Number()),
+		longitude: t.Optional(t.Number()),
+		radius: t.Optional(t.Number({ default: 5000 })),
+		limit: t.Optional(t.Number({ default: 10 })),
+	}),
+);
 
 export const experienceCreateSchema = t.Object({
 	title: baseExperienceInsertSchema.properties.title,
@@ -30,7 +40,7 @@ export const experienceCreateSchema = t.Object({
 	priority: t.Enum(ExperiencePriorityEnum, {
 		default: ExperiencePriorityEnum.medium,
 	}),
-	experience_images: t.Files(),
+	// experience_images: t.Files(),
 });
 
 export const experienceUpdateSchema = t.Partial(experienceCreateSchema);

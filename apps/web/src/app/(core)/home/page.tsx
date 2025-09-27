@@ -1,13 +1,15 @@
 import { Button } from "@/components/ui/button";
+import { eden } from "@/lib/eden";
 import { mockPosts } from "@/mock/post";
 import CreatePost from "./features/create-post-card";
 import ExperienceCard from "./features/experience-card";
-import { eden } from "@/lib/eden";
 
 export default async function HomePage() {
-	const experiences = await eden.experience.get({$query: {}});
-	const createCategories = await eden.category.post({name: "Animals"});
-	const categories = await eden.category.get({$query: {limit: 10, offset: 0}});
+	const experiences = await eden.experience.get({ $query: {} });
+	const createCategories = await eden.category.post({ name: "Animals" });
+	const categories = await eden.category.get({
+		$query: { limit: 10, offset: 0 },
+	});
 	return (
 		<div className="container mx-auto flex min-h-screen text-white">
 			<pre>{JSON.stringify(createCategories, null, 2)}</pre>

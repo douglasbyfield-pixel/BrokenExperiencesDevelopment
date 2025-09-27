@@ -17,8 +17,8 @@ export const experienceRouter = new Elysia({
 	.use(experienceModel)
 	.get(
 		"/",
-		({ query }) => {
-			const result = getExperiences({ query: query });
+		async ({ query }) => {
+			const result = await getExperiences({ query: query });
 			return result;
 		},
 		{
@@ -31,8 +31,8 @@ export const experienceRouter = new Elysia({
 	)
 	.get(
 		"/nearby",
-		({ query }) => {
-			const result = getNearbyExperiences({ query: query });
+		async ({ query }) => {
+			const result = await getNearbyExperiences({ query: query });
 			return result;
 		},
 		{
@@ -45,8 +45,8 @@ export const experienceRouter = new Elysia({
 	)
 	.post(
 		"/",
-		({ body }) => {
-			const result = createExperience({ data: body });
+		async ({ body }) => {
+			const result = await createExperience({ data: body });
 			return result;
 		},
 		{
@@ -60,8 +60,12 @@ export const experienceRouter = new Elysia({
 	)
 	.post(
 		"/:experienceId/vote",
-		({ body, params }) => {
-			const result = voteOnExperience({ id: params.experienceId, data: body });
+		async ({ body, params }) => {
+			const result = await voteOnExperience({
+				id: params.experienceId,
+				data: body,
+				userId: "6a826832-aea4-481e-b3a1-c9639f96bdb2",
+			});
 			return result;
 		},
 		{
@@ -69,15 +73,14 @@ export const experienceRouter = new Elysia({
 			body: "experience.vote",
 			detail: {
 				summary: "Vote on a experience",
-				description:
-					"Votes on a experience with the provided details.",
+				description: "Votes on a experience with the provided details.",
 			},
 		},
 	)
 	.get(
 		"/:experienceId",
-		({ params }) => {
-			const result = getExperience({ id: params.experienceId });
+		async ({ params }) => {
+			const result = await getExperience({ id: params.experienceId });
 			return result;
 		},
 		{
@@ -90,8 +93,11 @@ export const experienceRouter = new Elysia({
 	)
 	.put(
 		"/:experienceId",
-		({ params, body }) => {
-			const result = updateExperience({ id: params.experienceId, data: body });
+		async ({ params, body }) => {
+			const result = await updateExperience({
+				id: params.experienceId,
+				data: body,
+			});
 			return result;
 		},
 		{
@@ -106,8 +112,8 @@ export const experienceRouter = new Elysia({
 	)
 	.delete(
 		"/:experienceId",
-		({ params }) => {
-			const result = deleteExperience({ id: params.experienceId });
+		async ({ params }) => {
+			const result = await deleteExperience({ id: params.experienceId });
 			return result;
 		},
 		{

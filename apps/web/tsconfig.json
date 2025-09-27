@@ -21,12 +21,8 @@
 		],
 		"paths": {
 			"@/*": ["./src/*"],
-			"@libs": [
-				"../../packages/libs/src/index.ts"
-			  ],
-			  "@libs/*": [
-				"../../packages/libs/src/*"
-			  ]
+			"@libs": ["../../packages/libs/src/index.ts"],
+			"@libs/*": ["../../packages/libs/src/*"]
 		}
 	},
 	"include": [
@@ -35,7 +31,7 @@
 		"./.next/types/**/*.ts",
 		"./next-env.d.ts",
 		".next/types/**/*.ts",
-		"../../packages/libs/src/api/index.ts",
+		"../../packages/libs/src/api/index.ts"
 	],
 	"exclude": ["./node_modules"],
 	"references": [

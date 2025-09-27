@@ -1,5 +1,7 @@
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { experience, experienceImage } from "@/db/schema";
+import { experience, experienceImage, vote } from "@/db/schema";
+import { decrement, increment } from "@/db/utils";
 import type {
 	ExperienceCreate,
 	ExperienceQuery,
@@ -7,12 +9,16 @@ import type {
 	ExperienceVote,
 } from "./schema";
 
-export const getExperiences = async (options: { query: ExperienceQuery }) => {
-	console.log(options);
-	return options;
+export const getExperiences = async (_options: { query: ExperienceQuery }) => {
+	const retrievedExperiences = await db.query.experience.findMany({
+		with: { experienceImages: true },
+	});
+	return retrievedExperiences;
 };
 
-export const getNearbyExperiences = async (options: { query: ExperienceQuery }) => {
+export const getNearbyExperiences = async (options: {
+	query: ExperienceQuery;
+}) => {
 	console.log(options);
 	return options;
 };
@@ -39,7 +45,7 @@ export const createExperience = async (options: { data: ExperienceCreate }) => {
 			.insert(experienceImage)
 			.values({
 				experienceId: newExperience.id,
-				imageUrl: data.experience_images[0].name,
+				imageUrl: "https://via.placeholder.com/150",
 			})
 			.returning();
 
@@ -61,8 +67,67 @@ export const getExperience = async (options?: { id: string }) => {
 	return getExperience;
 };
 
-export const voteOnExperience = async (options?: { id: string; data: ExperienceVote }) => {
-	return options?.data;
+export const voteOnExperience = async (options: {
+	id: string;
+	userId: string;
+	data: ExperienceVote;
+}) => {
+	const voteAlreadyExists = await db.query.vote.findFirst({
+		where: (vote, { eq }) =>
+			eq(vote.experienceId, options.id) && eq(vote.userId, options.userId),
+	});
+
+	if (voteAlreadyExists && voteAlreadyExists.vote === options.data.vote) {
+		return voteAlreadyExists;
+	}
+
+	// If vote exists and is opposite, remove the vote and decrement the corresponding column
+	if (voteAlreadyExists && voteAlreadyExists.vote !== options.data.vote) {
+		const votedExperience = await db.transaction(async (tx) => {
+			// Remove the vote
+			await tx.delete(vote).where(eq(vote.id, voteAlreadyExists.id));
+
+			// Decrement the corresponding column
+			const [updatedExperience] = await tx
+				.update(experience)
+				.set(
+					voteAlreadyExists.vote
+						? { upvotes: decrement(experience.upvotes) }
+						: { downvotes: decrement(experience.downvotes) },
+				)
+				.where(eq(experience.id, options.id))
+				.returning();
+
+			return updatedExperience;
+		});
+		return votedExperience;
+	}
+
+	// If no vote exists, add the vote and increment the corresponding column
+	const votedExperience = await db.transaction(async (tx) => {
+		const [newVote] = await tx
+			.insert(vote)
+			.values({
+				experienceId: options.id,
+				userId: options.userId,
+				vote: options.data.vote,
+			})
+			.returning();
+
+		const [updatedExperience] = await tx
+			.update(experience)
+			.set(
+				newVote.vote
+					? { upvotes: increment(experience.upvotes) }
+					: { downvotes: increment(experience.downvotes) },
+			)
+			.where(eq(experience.id, options.id))
+			.returning();
+
+		return updatedExperience;
+	});
+
+	return votedExperience;
 };
 
 export const updateExperience = async (options?: {

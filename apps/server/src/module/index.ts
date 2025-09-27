@@ -9,4 +9,3 @@ export const appRouter = new Elysia()
 	.use(experienceRouter)
 	.use(miscRouter)
 	.use(statsRouter);
-
