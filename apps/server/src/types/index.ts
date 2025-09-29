@@ -1,4 +1,7 @@
-import type { ExperiencePriorityEnum, ExperienceStatusEnum } from "@server/db/schema";
+import type {
+	ExperiencePriorityEnum,
+	ExperienceStatusEnum,
+} from "@server/db/schema";
 
 export type ExperienceStatus =
 	(typeof ExperienceStatusEnum)[keyof typeof ExperienceStatusEnum];

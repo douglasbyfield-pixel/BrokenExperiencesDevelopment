@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
@@ -150,7 +150,13 @@ function VerifyContent() {
 
 export default function VerifyPage() {
 	return (
-		<Suspense fallback={<div className="container mx-auto max-w-md px-4 py-10 text-center"><Loader /></div>}>
+		<Suspense
+			fallback={
+				<div className="container mx-auto max-w-md px-4 py-10 text-center">
+					<Loader />
+				</div>
+			}
+		>
 			<VerifyContent />
 		</Suspense>
 	);

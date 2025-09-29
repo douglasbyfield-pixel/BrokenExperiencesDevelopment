@@ -1,18 +1,16 @@
 "use client";
 
 import { Button } from "@web/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@web/components/ui/card";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { useSettings } from "@web/context/SettingsContext";
-import {
-	ArrowLeft,
-	Bell,
-	Eye,
-	Palette,
-	Save,
-	Trash2
-} from "lucide-react";
+import { ArrowLeft, Bell, Eye, Palette, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -111,9 +109,7 @@ export default function SettingsPage() {
 		// Show immediate feedback for certain settings
 		if (section === "display") {
 			if (key === "theme") {
-				toast.success(
-					`Settings Theme changed to ${value}`,
-				);
+				toast.success(`Settings Theme changed to ${value}`);
 			}
 			const setting = key.replace(/([A-Z])/g, " $1").toLowerCase();
 			toast.success(`${setting} ${value ? "enabled" : "disabled"}`);

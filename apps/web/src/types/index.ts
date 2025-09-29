@@ -12,3 +12,7 @@ export type CategoryOption = Exclude<
 	NonNullable<Awaited<ReturnType<typeof eden.category.options.get>>["data"]>,
 	{ status: number; message: string }
 >;
+
+export type Stats = NonNullable<
+	Awaited<ReturnType<typeof eden.stats.get>>["data"]
+>;

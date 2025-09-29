@@ -1,36 +1,37 @@
 "use client";
 
+import { useForm } from "@tanstack/react-form";
+import { createExperienceAction } from "@web/action/experience";
 import { Button } from "@web/components/ui/button";
 import { Card } from "@web/components/ui/card";
 import { Input } from "@web/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@web/components/ui/select";
-import { eden } from "@web/lib/eden";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@web/components/ui/select";
 import type { CategoryOption } from "@web/types";
-import { useForm } from "@tanstack/react-form";
 import { MapPin } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
 import z from "zod";
 
 interface CreateExperienceCardProps {
 	categoryOptions: CategoryOption;
 }
 
-export default function CreateExperienceCard({ categoryOptions }: CreateExperienceCardProps) {
+export default function CreateExperienceCard({
+	categoryOptions,
+}: CreateExperienceCardProps) {
+	const { execute } = useAction(createExperienceAction);
 
 	const form = useForm({
 		defaultValues: {
 			title: "",
 			categoryId: "",
 		},
-		onSubmit: async ({ value }) => await eden.experience.post({
-			categoryId: value.categoryId,
-			title: value.title,
-			description: 'Created via feed',
-			latitude: "0",
-			longitude: "0",
-			address: "123 Main St, Anytown, USA",
-			status: "pending",
-			priority: "medium",
-		}),
+		onSubmit: ({ value }) => execute(value),
 		validators: {
 			onSubmit: z.object({
 				title: z.string().min(1, "Title is required"),
@@ -41,11 +42,14 @@ export default function CreateExperienceCard({ categoryOptions }: CreateExperien
 
 	return (
 		<Card className="border-gray-800 bg-black p-6">
-			<form onSubmit={(e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				form.handleSubmit();
-			}} className="flex space-x-3">
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					form.handleSubmit();
+				}}
+				className="flex space-x-3"
+			>
 				<div className="flex-1 space-y-3">
 					<div>
 						<form.Field name="title">
@@ -62,7 +66,10 @@ export default function CreateExperienceCard({ categoryOptions }: CreateExperien
 										className="border-0 bg-transparent text-lg text-white placeholder:text-gray-500 focus-visible:ring-0"
 									/>
 									{field.state.meta.errors.map((error) => (
-										<p key={error?.message} className="mt-1 text-red-500 text-sm">
+										<p
+											key={error?.message}
+											className="mt-1 text-red-500 text-sm"
+										>
 											{error?.message}
 										</p>
 									))}
@@ -79,7 +86,10 @@ export default function CreateExperienceCard({ categoryOptions }: CreateExperien
 							<form.Field name="categoryId">
 								{(field) => (
 									<div className="space-y-2">
-										<Select value={field.state.value} onValueChange={field.handleChange}>
+										<Select
+											value={field.state.value}
+											onValueChange={field.handleChange}
+										>
 											<SelectTrigger>
 												<SelectValue placeholder="Select a category" />
 											</SelectTrigger>
@@ -92,7 +102,10 @@ export default function CreateExperienceCard({ categoryOptions }: CreateExperien
 											</SelectContent>
 										</Select>
 										{field.state.meta.errors.map((error) => (
-											<p key={error?.message} className="mt-1 text-red-500 text-sm">
+											<p
+												key={error?.message}
+												className="mt-1 text-red-500 text-sm"
+											>
 												{error?.message}
 											</p>
 										))}
@@ -107,7 +120,9 @@ export default function CreateExperienceCard({ categoryOptions }: CreateExperien
 									className="rounded-full px-6"
 									disabled={!state.canSubmit || state.isSubmitting}
 								>
-									{state.isSubmitting ? "Creating experience..." : "Create Experience"}
+									{state.isSubmitting
+										? "Creating experience..."
+										: "Create Experience"}
 								</Button>
 							)}
 						</form.Subscribe>

@@ -1,5 +1,7 @@
 import { Button } from "@web/components/ui/button";
+import { authClient } from "@web/lib/auth-client";
 import { eden } from "@web/lib/eden";
+import { headers } from "next/headers";
 import CreateExperienceCard from "./features/create-experience-card";
 import Feed from "./features/feed";
 import FeedHeader from "./features/feed-header";
@@ -14,7 +16,11 @@ export default async function HomePage() {
 				<FeedHeader />
 				<div className="flex min-h-dvh w-full flex-col transition-all duration-300 lg:flex-row">
 					<div className="mx-auto max-w-3xl space-y-4 p-4">
-						<CreateExperienceCard categoryOptions={Array.isArray(categoryOptions.data) ? categoryOptions.data : []} />
+						<CreateExperienceCard
+							categoryOptions={
+								Array.isArray(categoryOptions.data) ? categoryOptions.data : []
+							}
+						/>
 						<Feed experiences={experiences.data} />
 						<div className="py-8 text-center">
 							<Button variant="outline" className="rounded-full px-8">

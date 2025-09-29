@@ -1,3 +1,4 @@
+import { betterAuthView } from "@server/lib/auth/view";
 import Elysia from "elysia";
 import { experienceModel } from "./schema";
 import {
@@ -14,6 +15,7 @@ export const experienceRouter = new Elysia({
 	prefix: "/experience",
 	tags: ["Experience"],
 })
+	.use(betterAuthView)
 	.use(experienceModel)
 	.get(
 		"/",
@@ -45,14 +47,16 @@ export const experienceRouter = new Elysia({
 	)
 	.post(
 		"/",
-		async ({ body }) => {
+		async ({ body, session }) => {
+			console.log("----->", session.userId);
 			const result = await createExperience({
-				userId: "6a826832-aea4-481e-b3a1-c9639f96bdb2",
+				userId: session.userId,
 				data: body,
 			});
 			return result;
 		},
 		{
+			auth: true,
 			body: "experience.create",
 			detail: {
 				summary: "Add a experience",
@@ -63,15 +67,16 @@ export const experienceRouter = new Elysia({
 	)
 	.post(
 		"/:experienceId/vote",
-		async ({ body, params }) => {
+		async ({ body, params, session }) => {
 			const result = await voteOnExperience({
 				id: params.experienceId,
 				data: body,
-				userId: "6a826832-aea4-481e-b3a1-c9639f96bdb2",
+				userId: session.userId,
 			});
 			return result;
 		},
 		{
+			auth: true,
 			params: "experience.identifier.params",
 			body: "experience.vote",
 			detail: {

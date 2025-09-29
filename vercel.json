@@ -1,26 +1,26 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "apps/web/package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "apps/web/$1"
-    }
-  ],
-  "env": {
-    "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN": "@mapbox_access_token",
-    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
-    "NEXT_PUBLIC_SERVER_URL": "@server_url"
-  },
-  "functions": {
-    "apps/web/**/*.js": {
-      "maxDuration": 30
-    }
-  }
+	"version": 2,
+	"builds": [
+		{
+			"src": "apps/web/package.json",
+			"use": "@vercel/next"
+		}
+	],
+	"routes": [
+		{
+			"src": "/(.*)",
+			"dest": "apps/web/$1"
+		}
+	],
+	"env": {
+		"NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN": "@mapbox_access_token",
+		"NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+		"NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
+		"NEXT_PUBLIC_SERVER_URL": "@server_url"
+	},
+	"functions": {
+		"apps/web/**/*.js": {
+			"maxDuration": 30
+		}
+	}
 }

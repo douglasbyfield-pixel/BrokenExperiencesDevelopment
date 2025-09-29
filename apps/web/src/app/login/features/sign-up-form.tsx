@@ -29,20 +29,20 @@ export default function SignUpForm({
 		onSubmit: async ({ value }) => {
 			await authClient.signUp.email(
 				{
-				  email: value.email,
-				  password: value.password,
-				  name: value.name,
+					email: value.email,
+					password: value.password,
+					name: value.name,
 				},
 				{
-				  onSuccess: () => {
-					router.push("/home");
-					toast.success("Sign up successful");
-				  },
-				  onError: (error) => {
-					toast.error(error.error.message || error.error.statusText);
-				  },
+					onSuccess: () => {
+						router.push("/home");
+						toast.success("Sign up successful");
+					},
+					onError: (error) => {
+						toast.error(error.error.message || error.error.statusText);
+					},
 				},
-			  );
+			);
 		},
 		validators: {
 			onSubmit: z.object({
@@ -240,11 +240,17 @@ export default function SignUpForm({
 			<div className="mt-6">
 				<p className="text-center text-gray-500 text-xs leading-relaxed">
 					By continuing, you agree to Broken Experience{" "}
-					<a href="/terms-of-service" className="text-black underline hover:text-gray-700">
+					<a
+						href="/terms-of-service"
+						className="text-black underline hover:text-gray-700"
+					>
 						Terms of Service
 					</a>{" "}
 					and{" "}
-					<a href="/privacy-policy" className="text-black underline hover:text-gray-700">
+					<a
+						href="/privacy-policy"
+						className="text-black underline hover:text-gray-700"
+					>
 						Privacy Policy
 					</a>
 					.

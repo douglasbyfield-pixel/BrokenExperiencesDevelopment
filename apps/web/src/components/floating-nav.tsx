@@ -1,7 +1,7 @@
 "use client";
+import { Home, MapPin, Plus, Settings, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MapPin, Home, Plus, User, Settings } from "lucide-react";
 import { Button } from "./ui/button";
 
 export default function FloatingNav() {
@@ -16,8 +16,8 @@ export default function FloatingNav() {
 	] as const;
 
 	return (
-		<div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 md:hidden">
-			<div className="bg-white border-2 border-black shadow-lg px-4 py-3 flex items-center space-x-2">
+		<div className="-translate-x-1/2 fixed bottom-6 left-1/2 z-50 transform md:hidden">
+			<div className="flex items-center space-x-2 border-2 border-black bg-white px-4 py-3 shadow-lg">
 				{links.map(({ to, label, icon: Icon }) => {
 					const isActive = pathname === to;
 					return (
@@ -26,8 +26,8 @@ export default function FloatingNav() {
 								variant="outline"
 								size="sm"
 								className={`border-2 border-black ${
-									isActive 
-										? "bg-black text-white" 
+									isActive
+										? "bg-black text-white"
 										: "text-black hover:bg-black hover:text-white"
 								}`}
 								title={label}

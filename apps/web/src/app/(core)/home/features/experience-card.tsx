@@ -1,3 +1,8 @@
+import { Avatar, AvatarFallback, AvatarImage } from "@web/components/ui/avatar";
+import { Badge } from "@web/components/ui/badge";
+import { Button } from "@web/components/ui/button";
+import { Card } from "@web/components/ui/card";
+import type { Experience } from "@web/types";
 import {
 	Heart,
 	MapPin,
@@ -5,11 +10,6 @@ import {
 	MoreHorizontal,
 	Share,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@web/components/ui/avatar";
-import { Badge } from "@web/components/ui/badge";
-import { Button } from "@web/components/ui/button";
-import { Card } from "@web/components/ui/card";
-import type { Experience } from "@web/types";
 
 interface ExperienceCardProps {
 	experience: Experience;
@@ -30,9 +30,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 				<div className="min-w-0 flex-1">
 					{/* User Info */}
 					<div className="mb-2 flex items-center space-x-2">
-						<h3 className="font-semibold text-white">
-							{experience.title}
-						</h3>
+						<h3 className="font-semibold text-white">{experience.title}</h3>
 						{experience.reportedBy.emailVerified && (
 							<Badge variant="secondary" className="px-1.5 py-0.5 text-xs">
 								✓

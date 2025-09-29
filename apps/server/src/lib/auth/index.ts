@@ -1,8 +1,8 @@
-import { type BetterAuthOptions, betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@server/db";
 import * as schema from "@server/db/schema/auth";
 import { env } from "@server/env";
+import { type BetterAuthOptions, betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 export const auth = betterAuth<BetterAuthOptions>({
 	database: drizzleAdapter(db, {
@@ -17,10 +17,6 @@ export const auth = betterAuth<BetterAuthOptions>({
 	},
 	advanced: {
 		database: { generateId: false },
-		defaultCookieAttributes: {
-			sameSite: "lax",
-			secure: false,
-			httpOnly: true,
-		},
+		cookiePrefix: "broken-exp",
 	},
 });

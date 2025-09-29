@@ -1,96 +1,86 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@web/components/ui/avatar";
 import { Button } from "@web/components/ui/button";
-import { cn } from "@web/lib/utils";
+import { cn, getInitials } from "@web/lib/utils";
+import type { Session, User } from "better-auth";
+import Link from "next/link";
 
 interface LeftSidebarProps {
 	className?: string;
+	user: User;
 }
 
-export default function LeftSidebar({ className }: LeftSidebarProps) {
+export default function LeftSidebar({ className, user }: LeftSidebarProps) {
 	return (
 		<div
-			className={cn("sticky z-20 hidden h-dvh max-w-[300px] flex-col gap-4 border-gray-500/20 bg-black py-2 shadow-xl transition-all duration-500 lg:top-0 lg:flex xl:max-w-[350px] 2xl:max-w-[400px] dark:border-r dark:bg-black/30", className)}
+			className={cn(
+				"sticky z-20 hidden h-dvh max-w-[300px] flex-col gap-4 border-gray-500/20 bg-black py-2 shadow-xl transition-all duration-500 lg:top-0 lg:flex xl:max-w-[350px] 2xl:max-w-[400px] dark:border-r dark:bg-black/30",
+				className,
+			)}
 		>
 			<div className="space-y-6 p-2">
 				{/* X Logo */}
 				<div className="mb-6">
-					<div className="flex h-8 w-8 items-center justify-center">
-						<svg
-							viewBox="0 0 24 24"
-							className="h-6 w-6 fill-white"
-							aria-label="X Logo"
-						>
-							<title>X Logo</title>
-							<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-						</svg>
+					<div className="h-8 justify-center font-bold text-2xl text-white">
+						Broken EXP
 					</div>
 				</div>
 
 				{/* Navigation */}
-				<nav className="space-y-1">
-					<Button
-						variant="ghost"
-						className="w-full justify-start font-normal text-xl hover:bg-gray-800"
-					>
-						🏠 Home
+				<nav className="flex flex-col gap-2 space-y-1">
+					<Button asChild>
+						<Link
+							href="/home"
+							className="w-full justify-start font-normal text-lg hover:bg-gray-800"
+						>
+							🏠 Home
+						</Link>
 					</Button>
-					<Button
-						variant="ghost"
-						className="w-full justify-start text-gray-400 hover:bg-gray-800"
-					>
-						🔍 Explore
+					<Button asChild>
+						<Link
+							href="/map"
+							className="w-full justify-start font-normal text-lg hover:bg-gray-800"
+						>
+							🔍 Maps
+						</Link>
 					</Button>
-					<Button
-						variant="ghost"
-						className="w-full justify-start text-gray-400 hover:bg-gray-800"
-					>
-						🔔 Notifications
-						<span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white text-xs">
-							2
-						</span>
+					<Button asChild>
+						<Link
+							href="/report"
+							className="w-full justify-start font-normal text-lg hover:bg-gray-800"
+						>
+							🔔 Reports
+						</Link>
 					</Button>
-					<Button
-						variant="ghost"
-						className="w-full justify-start text-gray-400 hover:bg-gray-800"
-					>
-						✉️ Messages
+					<Button asChild>
+						<Link
+							href="/profile"
+							className="w-full justify-start font-normal text-lg hover:bg-gray-800"
+						>
+							👤 Profile
+						</Link>
 					</Button>
-					<Button
-						variant="ghost"
-						className="w-full justify-start text-gray-400 hover:bg-gray-800"
-					>
-						📋 Bookmarks
+					<Button asChild>
+						<Link
+							href="/dev"
+							className="w-full justify-start font-normal text-lg hover:bg-gray-800"
+						>
+							🔧 Dev
+						</Link>
 					</Button>
-					<Button
-						variant="ghost"
-						className="w-full justify-start text-gray-400 hover:bg-gray-800"
-					>
-						👤 Profile
-					</Button>
-					<Button
-						variant="ghost"
-						className="w-full justify-start text-gray-400 hover:bg-gray-800"
-					>
-						⋯ More
-					</Button>
+					{/* Remove duplicate Profile button */}
+					{/* Remove invalid ghost buttons with '�' */}
 				</nav>
-
-				{/* Post Button */}
-				<Button className="w-full rounded-full bg-blue-500 px-8 py-3 font-bold text-lg hover:bg-blue-600">
-					Post
-				</Button>
-
-				{/* User Profile */}
-				<div className="mt-8">
-					<div className="flex items-center space-x-3 rounded-full p-3 hover:bg-gray-800">
-						<Avatar className="h-10 w-10">
-							<AvatarImage src="/avatars/you.jpg" />
-							<AvatarFallback>YO</AvatarFallback>
-						</Avatar>
-						<div className="min-w-0 flex-1">
-							<p className="font-semibold text-sm text-white">Proximity</p>
-							<p className="text-gray-400 text-sm">@Pixelated404</p>
-						</div>
+			</div>
+			{/* User Profile */}
+			<div className="mt-8">
+				<div className="flex items-center space-x-3 rounded-full p-3 hover:bg-gray-800">
+					<Avatar className="h-10 w-10">
+						<AvatarImage src="/avatars/you.jpg" />
+						<AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+					</Avatar>
+					<div className="min-w-0 flex-1">
+						<p className="font-semibold text-sm text-white">{user.name}</p>
+						<p className="text-gray-400 text-sm">{user.email}</p>
 					</div>
 				</div>
 			</div>

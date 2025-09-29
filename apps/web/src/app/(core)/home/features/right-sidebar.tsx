@@ -3,15 +3,20 @@ import { Button } from "@web/components/ui/button";
 import { Card } from "@web/components/ui/card";
 import { Input } from "@web/components/ui/input";
 import { cn } from "@web/lib/utils";
+import type { Stats } from "@web/types";
 
 interface RightSidebarProps {
 	className?: string;
+	stats: Stats;
 }
 
-export default function RightSidebar({ className }: RightSidebarProps) {
+export default function RightSidebar({ className, stats }: RightSidebarProps) {
 	return (
 		<div
-			className={cn("lg:-ml-2 relative w-full shrink-0 bg-black lg:sticky lg:top-0 lg:max-h-dvh lg:w-[300px] lg:overflow-y-auto lg:overflow-x-hidden lg:pl-2 [@media(min-width:1600px)]:w-[350px]", className)}
+			className={cn(
+				"lg:-ml-2 relative w-full shrink-0 bg-black lg:sticky lg:top-0 lg:max-h-dvh lg:w-[300px] lg:overflow-y-auto lg:overflow-x-hidden lg:pl-2 [@media(min-width:1600px)]:w-[350px]",
+				className,
+			)}
 		>
 			<div className="space-y-6 p-2">
 				{/* Search */}
@@ -24,81 +29,20 @@ export default function RightSidebar({ className }: RightSidebarProps) {
 
 				{/* Trending */}
 				<Card className="border-gray-800 bg-black p-4">
-					<h3 className="font-bold text-lg text-white">What's happening</h3>
+					<h3 className="font-bold text-lg text-white">Statistics</h3>
 					<div className="mt-4 space-y-3">
 						<div className="space-y-1">
-							<p className="text-gray-400 text-sm">Politics · Trending</p>
-							<p className="font-semibold text-white">Vance</p>
-							<p className="text-gray-400 text-sm">138K posts</p>
+							<p className="text-gray-400 text-sm">Total Experiences</p>
+							<p className="font-semibold text-white">{stats.totalExperiences}</p>
 						</div>
 						<div className="space-y-1">
-							<p className="text-gray-400 text-sm">Sports · Trending</p>
-							<p className="font-semibold text-white">Cavs</p>
-							<p className="text-gray-400 text-sm">1,308 posts</p>
+							<p className="text-gray-400 text-sm">Resolved Experiences</p>
+							<p className="font-semibold text-white">{stats.resolvedExperiences}</p>
 						</div>
 						<div className="space-y-1">
-							<p className="text-gray-400 text-sm">Trending in Jamaica</p>
-							<p className="font-semibold text-white">gem missy reid tash</p>
-							<p className="text-gray-400 text-sm">67K posts</p>
+							<p className="text-gray-400 text-sm">Active Users</p>
+							<p className="font-semibold text-white">{stats.activeUsers}</p>
 						</div>
-						<div className="space-y-1">
-							<p className="text-gray-400 text-sm">Politics · Trending</p>
-							<p className="font-semibold text-white">The White House</p>
-							<p className="text-gray-400 text-sm">196K posts</p>
-						</div>
-						<button
-							type="button"
-							className="w-full text-left text-blue-500 hover:underline"
-						>
-							Show more
-						</button>
-					</div>
-				</Card>
-
-				{/* Who to follow */}
-				<Card className="border-gray-800 bg-black p-4">
-					<h3 className="font-bold text-lg text-white">Who to follow</h3>
-					<div className="mt-4 space-y-3">
-						{[
-							{ name: "chronark", username: "@chronark_", verified: false },
-							{
-								name: "colinhacks/zod",
-								username: "@colinhacks",
-								verified: false,
-							},
-							{ name: "Anthony Fu", username: "@antfu7", verified: false },
-						].map((user) => (
-							<div
-								key={user.username}
-								className="flex items-center justify-between"
-							>
-								<div className="flex items-center space-x-3">
-									<Avatar className="h-8 w-8">
-										<AvatarFallback>
-											{user.name
-												.split(" ")
-												.map((n) => n[0])
-												.join("")}
-										</AvatarFallback>
-									</Avatar>
-									<div>
-										<p className="font-semibold text-sm text-white">
-											{user.name}
-										</p>
-										<p className="text-gray-400 text-sm">{user.username}</p>
-									</div>
-								</div>
-								<Button size="sm" className="rounded-full px-4">
-									Follow
-								</Button>
-							</div>
-						))}
-						<button
-							type="button"
-							className="w-full text-left text-blue-500 hover:underline"
-						>
-							Show more
-						</button>
 					</div>
 				</Card>
 
@@ -106,7 +50,7 @@ export default function RightSidebar({ className }: RightSidebarProps) {
 				<div className="text-gray-500 text-xs">
 					<p>
 						Terms of Service | Privacy Policy | Cookie Policy | Accessibility |
-						Ads info | More ... © 2025 X Corp.
+						Ads info | More ... © 2025 Broken EXP Corp.
 					</p>
 				</div>
 			</div>

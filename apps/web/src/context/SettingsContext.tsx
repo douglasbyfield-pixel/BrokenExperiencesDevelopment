@@ -151,7 +151,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 			applyTheme(newSettings.display.theme);
 		}
 
-
 		// Send to API (browser only)
 		if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_SERVER_URL) {
 			try {
@@ -171,7 +170,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 	const applyTheme = (theme: "light" | "dark" | "system") => {
 		// Only apply theme changes in the browser
 		if (typeof window === "undefined") return;
-		
+
 		const root = document.documentElement;
 
 		if (theme === "system") {

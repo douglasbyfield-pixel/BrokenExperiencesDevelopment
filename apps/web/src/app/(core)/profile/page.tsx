@@ -7,7 +7,7 @@ import {
 	Card,
 	CardContent,
 	CardHeader,
-	CardTitle
+	CardTitle,
 } from "@web/components/ui/card";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
@@ -673,10 +673,11 @@ export default function ProfilePage() {
 												<Button
 													key={achievement.title}
 													onClick={() => setCurrentAchievement(index)}
-													className={`h-1.5 w-1.5 rounded-full transition-colors ${index === currentAchievement
-														? "bg-black dark:bg-white"
-														: "bg-gray-300 dark:bg-gray-600"
-														}`}
+													className={`h-1.5 w-1.5 rounded-full transition-colors ${
+														index === currentAchievement
+															? "bg-black dark:bg-white"
+															: "bg-gray-300 dark:bg-gray-600"
+													}`}
 												/>
 											))}
 										</div>

@@ -232,9 +232,9 @@ function ForgotPasswordDialog({
 						disabled={!isValidEmail || sending}
 						onClick={async () => {
 							setSending(true);
-							const { error } = await authClient.requestPasswordReset(
-								{ email },
-							);
+							const { error } = await authClient.requestPasswordReset({
+								email,
+							});
 							setSending(false);
 							if (error) {
 								toast.error(error.message);

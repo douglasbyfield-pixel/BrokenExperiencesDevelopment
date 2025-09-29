@@ -6,7 +6,7 @@ export const miscRouter = new Elysia({
 	tags: ["Misc"],
 })
 	.use(html())
-	.get("/", ({ redirect }) => redirect("localhost:3000/openapi") )
+	.get("/", ({ redirect }) => redirect("localhost:3000/openapi"))
 	.get("/health", () => {
 		return {
 			status: "ok",

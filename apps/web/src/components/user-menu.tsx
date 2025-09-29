@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -9,6 +7,8 @@ import {
 	DropdownMenuTrigger,
 } from "@web/components/ui/dropdown-menu";
 import { authClient } from "@web/lib/auth-client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 

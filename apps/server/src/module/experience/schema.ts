@@ -8,6 +8,16 @@ import {
 
 const baseExperienceInsertSchema = createInsertSchema(experience);
 
+export const latitudeSchema = t.String({
+	pattern: "^-?\\d+(\\.\\d+)?$",
+	description: "Latitude stored as string",
+});
+
+export const longitudeSchema = t.String({
+	pattern: "^-?\\d+(\\.\\d+)?$",
+	description: "Longitude stored as string",
+});
+
 const experienceQuerySchema = t.Optional(
 	t.Object({
 		status: t.Optional(
@@ -20,20 +30,20 @@ const experienceQuerySchema = t.Optional(
 				default: ExperiencePriorityEnum.medium,
 			}),
 		),
-		latitude: t.Optional(t.Number()),
-		longitude: t.Optional(t.Number()),
+		latitude: t.Optional(latitudeSchema),
+		longitude: t.Optional(longitudeSchema),
 		radius: t.Optional(t.Number({ default: 5000 })),
 		limit: t.Optional(t.Number({ default: 10 })),
 	}),
 );
 
 export const experienceCreateSchema = t.Object({
-	title: baseExperienceInsertSchema.properties.title,
-	description: baseExperienceInsertSchema.properties.description,
-	latitude: baseExperienceInsertSchema.properties.latitude,
-	longitude: baseExperienceInsertSchema.properties.longitude,
-	address: baseExperienceInsertSchema.properties.address,
-	categoryId: baseExperienceInsertSchema.properties.categoryId,
+	title: t.String({ minLength: 5, maxLength: 100 }),
+	description: t.String({ minLength: 5, maxLength: 1000 }),
+	latitude: latitudeSchema,
+	longitude: longitudeSchema,
+	address: t.String({ minLength: 5, maxLength: 100 }),
+	categoryId: t.String({ format: "uuid" }),
 	status: t.Enum(ExperienceStatusEnum, {
 		default: ExperienceStatusEnum.pending,
 	}),

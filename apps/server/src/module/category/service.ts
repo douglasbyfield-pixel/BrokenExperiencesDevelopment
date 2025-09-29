@@ -17,7 +17,9 @@ export const getCategories = async (options: { query: CategoryQuery }) => {
 };
 
 export const getCategoryOptions = async () => {
-	const categories = await db.select({id: category.id, name: category.name}).from(category);
+	const categories = await db
+		.select({ id: category.id, name: category.name })
+		.from(category);
 	return categories ?? [];
 };
 
