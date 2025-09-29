@@ -208,7 +208,7 @@ function ForgotPasswordDialog({
 						Email
 					</Label>
 					<Input
-						id="fp-email"
+						id={`fp-email-${Math.random().toString(36).substring(2, 15)}`}
 						type="email"
 						placeholder="you@example.com"
 						value={email}

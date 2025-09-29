@@ -27,7 +27,22 @@ export default function SignUpForm({
 			name: "",
 		},
 		onSubmit: async ({ value }) => {
-			console.log(value);
+			await authClient.signUp.email(
+				{
+				  email: value.email,
+				  password: value.password,
+				  name: value.name,
+				},
+				{
+				  onSuccess: () => {
+					router.push("/home");
+					toast.success("Sign up successful");
+				  },
+				  onError: (error) => {
+					toast.error(error.error.message || error.error.statusText);
+				  },
+				},
+			  );
 		},
 		validators: {
 			onSubmit: z.object({
