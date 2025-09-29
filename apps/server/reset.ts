@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db } from "@server/db";
 
 async function resetDatabase() {
 	await db.execute("DROP SCHEMA public CASCADE;");
