@@ -21,7 +21,7 @@ export default function LeftSidebar({ className, user }: LeftSidebarProps) {
 				{/* X Logo */}
 				<div className="mb-6">
 					<div className="h-8 justify-center font-bold text-2xl text-white">
-						Broken EXP
+						Broken Experiences
 					</div>
 				</div>
 
