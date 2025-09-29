@@ -85,5 +85,4 @@ export default function LeftSidebar({ className, user }: LeftSidebarProps) {
 				</div>
 			</div>
 		</div>
-	);
-}
+)}
