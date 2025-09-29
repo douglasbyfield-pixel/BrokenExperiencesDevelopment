@@ -31,7 +31,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 					{/* User Info */}
 					<div className="mb-2 flex items-center space-x-2">
 						<h3 className="font-semibold text-white">
-							{experience.reportedBy.name}
+							{experience.title}
 						</h3>
 						{experience.reportedBy.emailVerified && (
 							<Badge variant="secondary" className="px-1.5 py-0.5 text-xs">
@@ -39,7 +39,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 							</Badge>
 						)}
 						<span className="text-gray-500 text-sm">
-							{experience.reportedBy.email}
+							{experience.category.name}
 						</span>
 						<span className="text-gray-400">·</span>
 						<span className="text-gray-500 text-sm">
