@@ -43,6 +43,7 @@
       "name": "web",
       "version": "0.1.0",
       "dependencies": {
+        "@better-fetch/fetch": "^1.1.18",
         "@radix-ui/react-avatar": "^1.1.10",
         "@radix-ui/react-select": "^2.2.6",
         "@t3-oss/env-nextjs": "^0.13.8",

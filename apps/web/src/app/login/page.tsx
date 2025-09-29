@@ -1,14 +1,32 @@
 "use client";
 
 import { Button } from "@web/components/ui/button";
+import { authClient } from "@web/lib/auth-client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SignInForm from "./features/sign-in-form";
 import SignUpForm from "./features/sign-up-form";
 
 export default function LoginPage() {
 	const [showSignIn, setShowSignIn] = useState(true);
 	const router = useRouter();
+	const { data: session, isPending } = authClient.useSession();
+
+	// Check for stored authentication on page load
+	useEffect(() => {
+		const storedUser = localStorage.getItem('auth-user');
+		if (storedUser) {
+			console.log("Found stored authentication, redirecting to home");
+			router.push("/home");
+			return;
+		}
+		
+		// Fallback to session hook
+		if (session && !isPending) {
+			console.log("User is already authenticated, redirecting to home");
+			router.push("/home");
+		}
+	}, [session, isPending, router]);
 
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-white">

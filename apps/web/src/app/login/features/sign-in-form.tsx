@@ -6,7 +6,7 @@ import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { authClient } from "@web/lib/auth-client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import z from "zod";
 
@@ -17,6 +17,20 @@ export default function SignInForm({
 }) {
 	const router = useRouter();
 	const [forgotOpen, setForgotOpen] = useState(false);
+	const { data: session, isPending } = authClient.useSession();
+
+	// Debug logging
+	useEffect(() => {
+		console.log("Session state changed:", { session, isPending });
+	}, [session, isPending]);
+
+	// Redirect when session is established
+	useEffect(() => {
+		if (session && !isPending) {
+			console.log("Session detected, redirecting to home", session);
+			router.push("/home");
+		}
+	}, [session, isPending, router]);
 
 	const form = useForm({
 		defaultValues: {
@@ -24,16 +38,26 @@ export default function SignInForm({
 			password: "",
 		},
 		onSubmit: async ({ value }) => {
-			const { error } = await authClient.signIn.email({
+			const result = await authClient.signIn.email({
 				email: value.email,
 				password: value.password,
 			});
-			if (error) {
-				toast.error(error.message);
+			
+			if (result.error) {
+				toast.error(result.error.message);
 				return;
 			}
-			toast.success("Sign in successful");
-			router.push("/home");
+			
+			if (result.data?.user) {
+				// Store user data locally since cross-origin cookies don't work
+				localStorage.setItem('auth-user', JSON.stringify(result.data.user));
+				localStorage.setItem('auth-token', result.data.token || '');
+				
+				toast.success("Sign in successful");
+				
+				// Direct redirect since we have the user data
+				router.push("/home");
+			}
 		},
 		validators: {
 			onSubmit: z.object({
@@ -78,7 +102,7 @@ export default function SignInForm({
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
-									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
+									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 text-black placeholder:text-gray-400 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
 								/>
 								{field.state.meta.errors.map((error) => (
 									<p key={error?.message} className="mt-1 text-red-500 text-sm">
@@ -108,7 +132,7 @@ export default function SignInForm({
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
-									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
+									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 text-black placeholder:text-gray-400 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
 								/>
 								{field.state.meta.errors.map((error) => (
 									<p key={error?.message} className="mt-1 text-red-500 text-sm">
@@ -214,7 +238,7 @@ function ForgotPasswordDialog({
 						value={email}
 						onBlur={() => setTouched(true)}
 						onChange={(e) => setEmail(e.target.value)}
-						className={`h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black ${showError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
+						className={`h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 text-black placeholder:text-gray-400 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black ${showError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
 					/>
 					{showError ? (
 						<p className="text-red-500 text-sm">Enter a valid email address</p>

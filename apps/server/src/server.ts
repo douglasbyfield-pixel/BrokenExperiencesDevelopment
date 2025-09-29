@@ -17,7 +17,7 @@ export const app = new Elysia()
 			credentials: true,
 		}),
 	)
-	.mount(auth.handler)
+	.all("/api/auth/*", ({ request }) => auth.handler(request))
 	.use(appRouter);
 
 export type App = typeof app;

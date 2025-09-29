@@ -35,8 +35,11 @@ export default function SignUpForm({
 				},
 				{
 					onSuccess: () => {
-						router.push("/home");
 						toast.success("Sign up successful");
+						// Small delay to ensure session is set before redirect
+						setTimeout(() => {
+							router.push("/home");
+						}, 100);
 					},
 					onError: (error) => {
 						toast.error(error.error.message || error.error.statusText);
@@ -89,7 +92,7 @@ export default function SignUpForm({
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
-									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
+									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 text-black placeholder:text-gray-400 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
 								/>
 								{field.state.meta.errors.map((error) => (
 									<p key={error?.message} className="mt-1 text-red-500 text-sm">
@@ -122,7 +125,7 @@ export default function SignUpForm({
 										setServerEmailError(null);
 										field.handleChange(e.target.value);
 									}}
-									className={`h-12 w-full rounded-xl border-2 bg-white px-4 transition-all duration-200 focus:ring-2 focus:ring-black ${serverEmailError ? "border-red-500" : "border-gray-300 focus:border-black"}`}
+									className={`h-12 w-full rounded-xl border-2 bg-white px-4 text-black placeholder:text-gray-400 transition-all duration-200 focus:ring-2 focus:ring-black ${serverEmailError ? "border-red-500" : "border-gray-300 focus:border-black"}`}
 								/>
 								{field.state.meta.errors.map((error) => (
 									<p key={error?.message} className="mt-1 text-red-500 text-sm">
@@ -158,7 +161,7 @@ export default function SignUpForm({
 										value={field.state.value}
 										onBlur={field.handleBlur}
 										onChange={(e) => field.handleChange(e.target.value)}
-										className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 pr-12 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
+										className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 pr-12 text-black placeholder:text-gray-400 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
 									/>
 									<button
 										type="button"
