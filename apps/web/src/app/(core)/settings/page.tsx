@@ -1,19 +1,24 @@
 "use client";
 
-import { Button } from "@web/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
-import { Input } from "@web/components/ui/input";
-import { Label } from "@web/components/ui/label";
 import {
 	ArrowLeft,
 	Bell,
+	Check,
 	Eye,
+	Globe,
 	Palette,
 	Save,
-	Trash2
+	Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useSettings } from "@/context/SettingsContext";
 
 interface UserSettings {
 	notifications: {
@@ -35,94 +40,23 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
-	const [settings, setSettings] = useState<UserSettings | null>(null);
-	const [loading, setLoading] = useState(true);
+	const { settings, updateSettings, loading } = useSettings();
+	const { t } = useTranslation();
 	const [saving, setSaving] = useState(false);
 	const [deletePassword, setDeletePassword] = useState("");
 	const [showDeleteSection, setShowDeleteSection] = useState(false);
+	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 	const router = useRouter();
 
-	useEffect(() => {
-		fetchSettings();
-	}, []);
-
-	const fetchSettings = async () => {
-		try {
-			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`,
-			);
-			if (response.ok) {
-				const data = await response.json();
-				setSettings(data);
-			} else {
-				// Set mock data if API fails
-				setSettings({
-					notifications: {
-						email: true,
-						push: true,
-						issueUpdates: true,
-						weeklyReport: false,
-					},
-					privacy: {
-						showProfile: true,
-						showActivity: true,
-						showStats: true,
-					},
-					display: {
-						theme: "system",
-						language: "en",
-						mapStyle: "streets-v12",
-					},
-				});
-			}
-		} catch (error) {
-			console.error("Failed to fetch settings:", error);
-			// Set mock data on error
-			setSettings({
-				notifications: {
-					email: true,
-					push: true,
-					issueUpdates: true,
-					weeklyReport: false,
-				},
-				privacy: {
-					showProfile: true,
-					showActivity: true,
-					showStats: true,
-				},
-				display: {
-					theme: "system",
-					language: "en",
-					mapStyle: "streets-v12",
-				},
-			});
-		} finally {
-			setLoading(false);
-		}
-	};
-
 	const handleSaveSettings = async () => {
-		if (!settings) return;
-
 		setSaving(true);
 		try {
-			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`,
-				{
-					method: "PATCH",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify(settings),
-				},
-			);
-
-			if (response.ok) {
-				// Settings saved successfully
-				console.log("Settings saved successfully");
-			}
+			// Settings are already updated via context
+			toast.success("Settings saved successfully!");
+			setHasUnsavedChanges(false);
 		} catch (error) {
 			console.error("Failed to save settings:", error);
+			toast.error("Failed to save settings");
 		} finally {
 			setSaving(false);
 		}
@@ -162,20 +96,48 @@ export default function SettingsPage() {
 		}
 	};
 
-	const updateSetting = (
+	const updateSetting = async (
 		section: keyof UserSettings,
 		key: string,
 		value: any,
 	) => {
 		if (!settings) return;
 
-		setSettings({
-			...settings,
+		const newSettings = {
 			[section]: {
 				...settings[section],
 				[key]: value,
 			},
-		});
+		};
+
+		await updateSettings(newSettings);
+
+		// Show immediate feedback for certain settings
+		if (section === "display") {
+			if (key === "theme") {
+				toast.success(
+					`${t("settings.theme")} changed to ${t(`theme.${value}`)}`,
+				);
+			} else if (key === "language") {
+				const langName =
+					value === "en"
+						? t("lang.english")
+						: value === "es"
+							? t("lang.spanish")
+							: t("lang.french");
+				toast.success(`${t("settings.language")} changed to ${langName}`);
+			} else if (key === "mapStyle") {
+				toast.success(
+					`${t("settings.mapStyle")} changed to ${value.replace("-", " ")}`,
+				);
+			}
+		} else if (section === "notifications") {
+			const setting = key.replace(/([A-Z])/g, " $1").toLowerCase();
+			toast.success(`${setting} ${value ? "enabled" : "disabled"}`);
+		} else if (section === "privacy") {
+			const setting = key.replace(/([A-Z])/g, " $1").toLowerCase();
+			toast.success(`${setting} ${value ? "enabled" : "disabled"}`);
+		}
 	};
 
 	if (loading) {
@@ -210,7 +172,7 @@ export default function SettingsPage() {
 						<ArrowLeft className="h-4 w-4" />
 					</Button>
 					<h1 className="font-bold text-3xl text-black dark:text-white">
-						Settings
+						{t("settings.title")}
 					</h1>
 				</div>
 
@@ -221,7 +183,7 @@ export default function SettingsPage() {
 							<div className="flex items-center gap-2">
 								<Bell className="h-5 w-5 text-black dark:text-white" />
 								<CardTitle className="text-black dark:text-white">
-									Notifications
+									{t("settings.notifications")}
 								</CardTitle>
 							</div>
 						</CardHeader>
@@ -407,27 +369,6 @@ export default function SettingsPage() {
 									<option value="light">Light</option>
 									<option value="dark">Dark</option>
 									<option value="system">System</option>
-								</select>
-							</div>
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="font-medium text-black dark:text-white">
-										Language
-									</Label>
-									<p className="text-gray-600 text-sm dark:text-gray-400">
-										Select your preferred language
-									</p>
-								</div>
-								<select
-									value={settings.display.language}
-									onChange={(e) =>
-										updateSetting("display", "language", e.target.value)
-									}
-									className="rounded-md border border-gray-300 bg-white px-3 py-2 text-black dark:border-gray-700 dark:bg-black dark:text-white"
-								>
-									<option value="en">English</option>
-									<option value="es">Español</option>
-									<option value="fr">Français</option>
 								</select>
 							</div>
 							<div className="flex items-center justify-between">

@@ -1,13 +1,17 @@
 import { useForm } from "@tanstack/react-form";
-import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 import z from "zod";
-import Loader from "@web/components/loader";
-import { Button } from "@web/components/ui/button";
-import { Input } from "@web/components/ui/input";
-import { Label } from "@web/components/ui/label";
-import { authClient } from "@web/lib/auth-client";
+import { checkEmailExists } from "@/lib/api";
+import { supabase } from "@/lib/supabase-client";
+import { useSupabaseSession } from "@/lib/use-supabase-session";
+import { AppleLogo } from "./icons/apple-logo";
+import { GoogleLogo } from "./icons/google-logo";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
 export default function SignUpForm({
 	onSwitchToSignIn,
@@ -15,7 +19,9 @@ export default function SignUpForm({
 	onSwitchToSignIn: () => void;
 }) {
 	const router = useRouter();
-	const { isPending } = authClient.useSession();
+	const { loading } = useSupabaseSession();
+	const [showPassword, setShowPassword] = useState(false);
+	const [serverEmailError, setServerEmailError] = useState<string | null>(null);
 
 	const form = useForm({
 		defaultValues: {
@@ -24,22 +30,47 @@ export default function SignUpForm({
 			name: "",
 		},
 		onSubmit: async ({ value }) => {
-			await authClient.signUp.email(
-				{
-					email: value.email,
-					password: value.password,
-					name: value.name,
+			// hard pre-check against server to avoid async race UX
+			const exists = await checkEmailExists(value.email);
+			if (exists) {
+				setServerEmailError(
+					"Email already in use. Try logging in or reset password.",
+				);
+				await supabase.auth.resend({ type: "signup", email: value.email });
+				return;
+			}
+			const { data, error } = await supabase.auth.signUp({
+				email: value.email,
+				password: value.password,
+				options: {
+					data: { name: value.name },
+					emailRedirectTo:
+						typeof window !== "undefined"
+							? `${window.location.origin}/auth/callback`
+							: undefined,
 				},
-				{
-					onSuccess: () => {
-						router.push("/home");
-						toast.success("Sign up successful");
-					},
-					onError: (error) => {
-						toast.error(error.error.message || error.error.statusText);
-					},
-				},
-			);
+			});
+			if (error) {
+				const msg = error.message?.toLowerCase() ?? "";
+				const looksLikeExisting =
+					error?.status === 422 || /already|exists|duplicate/.test(msg);
+				if (looksLikeExisting) {
+					// If the email already exists (possibly unconfirmed), resend verification
+					await supabase.auth.resend({ type: "signup", email: value.email });
+					setServerEmailError(
+						"Email already in use. Try logging in or check your inbox for verification.",
+					);
+					toast.success(
+						"If this email wasn’t confirmed, we re‑sent the verification link.",
+					);
+				} else {
+					setServerEmailError(error.message);
+					toast.error(error.message);
+				}
+				return;
+			}
+			toast.success("Sign up successful. Check your email to confirm.");
+			router.push(`/verify?email=${encodeURIComponent(value.email)}`);
 		},
 		validators: {
 			onSubmit: z.object({
@@ -50,15 +81,17 @@ export default function SignUpForm({
 		},
 	});
 
-	if (isPending) {
-		return <Loader />;
-	}
+	// Show form even if loading
 
 	return (
 		<div className="w-full">
 			<div className="mb-8 text-center">
-				<h2 className="mb-2 font-bold text-2xl text-black">Create account</h2>
-				<p className="text-gray-600">Get started with Broken Experiences</p>
+				<h2 className="mb-2 font-bold text-2xl text-black">
+					Welcome to Broken Experience
+				</h2>
+				<p className="text-gray-600">
+					It only takes a minute to start making an impact.
+				</p>
 			</div>
 
 			<form
@@ -115,14 +148,22 @@ export default function SignUpForm({
 									placeholder="Enter your email"
 									value={field.state.value}
 									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
+									onChange={(e) => {
+										setServerEmailError(null);
+										field.handleChange(e.target.value);
+									}}
+									className={`h-12 w-full rounded-xl border-2 bg-white px-4 transition-all duration-200 focus:ring-2 focus:ring-black ${serverEmailError ? "border-red-500" : "border-gray-300 focus:border-black"}`}
 								/>
 								{field.state.meta.errors.map((error) => (
 									<p key={error?.message} className="mt-1 text-red-500 text-sm">
 										{error?.message}
 									</p>
 								))}
+								{serverEmailError ? (
+									<p className="mt-1 text-red-500 text-sm">
+										{serverEmailError}
+									</p>
+								) : null}
 							</div>
 						)}
 					</form.Field>
@@ -138,24 +179,42 @@ export default function SignUpForm({
 								>
 									Password
 								</Label>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="password"
-									placeholder="Create a password"
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
-								/>
+								<div className="relative">
+									<Input
+										id={field.name}
+										name={field.name}
+										type={showPassword ? "text" : "password"}
+										placeholder="Your password"
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 pr-12 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
+									/>
+									<button
+										type="button"
+										aria-label="Toggle password visibility"
+										className="absolute inset-y-0 right-3 flex items-center text-gray-500"
+										onClick={() => setShowPassword((v) => !v)}
+									>
+										{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+									</button>
+								</div>
 								{field.state.meta.errors.map((error) => (
 									<p key={error?.message} className="mt-1 text-red-500 text-sm">
 										{error?.message}
 									</p>
 								))}
-								<p className="mt-1 text-gray-500 text-xs">
-									Must be at least 8 characters long
-								</p>
+								<div className="mt-2 grid grid-cols-2 gap-x-6 text-left text-gray-500 text-xs">
+									<ul className="list-inside list-disc space-y-1">
+										<li>minimum 8 characters</li>
+										<li>one special character</li>
+										<li>one number</li>
+									</ul>
+									<ul className="list-inside list-disc space-y-1">
+										<li>one uppercase character</li>
+										<li>one lowercase character</li>
+									</ul>
+								</div>
 							</div>
 						)}
 					</form.Field>
@@ -168,36 +227,64 @@ export default function SignUpForm({
 							className="h-12 w-full rounded-xl bg-black font-medium text-white shadow-lg transition-all duration-200 hover:bg-gray-800 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
 							disabled={!state.canSubmit || state.isSubmitting}
 						>
-							{state.isSubmitting ? "Creating account..." : "Create Account"}
+							{state.isSubmitting ? "Creating account..." : "Create an account"}
 						</Button>
 					)}
 				</form.Subscribe>
 			</form>
 
-			<div className="mt-6">
-				<p className="text-center text-gray-500 text-xs leading-relaxed">
-					By creating an account, you agree to our{" "}
-					<Link href="#" className="text-black underline hover:text-gray-700">
-						Terms of Service
-					</Link>{" "}
-					and{" "}
-					<Link href="#" className="text-black underline hover:text-gray-700">
-						Privacy Policy
-					</Link>
-				</p>
+			<div className="mt-3 text-center text-sm">
+				<span className="text-gray-600">I already have an account. </span>
+				<button
+					onClick={onSwitchToSignIn}
+					className="font-medium text-black underline"
+				>
+					Log in
+				</button>
 			</div>
 
-			<div className="mt-8 border-gray-200 border-t pt-6">
-				<div className="text-center">
-					<span className="text-gray-600">Already have an account? </span>
-					<button
-						type="button"
-						onClick={onSwitchToSignIn}
-						className="font-medium text-black underline transition-colors duration-200 hover:text-gray-700"
-					>
-						Sign in
-					</button>
+			<div className="relative my-5">
+				<div className="absolute inset-0 flex items-center" aria-hidden="true">
+					<div className="w-full border-t" />
 				</div>
+				<div className="relative flex justify-center text-xs">
+					<span className="bg-white px-2 text-gray-500">OR</span>
+				</div>
+			</div>
+
+			<div className="w-full">
+				<Button
+					variant="outline"
+					className="h-12 w-full justify-center border-gray-300 text-black hover:bg-gray-50 hover:text-black"
+					onClick={async () => {
+						const { error } = await supabase.auth.signInWithOAuth({
+							provider: "google",
+							options: {
+								redirectTo:
+									typeof window !== "undefined"
+										? `${window.location.origin}/auth/callback`
+										: undefined,
+							},
+						});
+						if (error) toast.error(error.message);
+					}}
+				>
+					<GoogleLogo className="mr-2" /> Sign Up with Google
+				</Button>
+			</div>
+
+			<div className="mt-6">
+				<p className="text-center text-gray-500 text-xs leading-relaxed">
+					By continuing, you agree to Broken Experience{" "}
+					<a href="#" className="text-black underline hover:text-gray-700">
+						Terms of Service
+					</a>{" "}
+					and{" "}
+					<a href="#" className="text-black underline hover:text-gray-700">
+						Privacy Policy
+					</a>
+					.
+				</p>
 			</div>
 		</div>
 	);

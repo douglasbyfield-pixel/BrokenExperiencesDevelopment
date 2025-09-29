@@ -18,18 +18,20 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@web/components/ui/avatar";
-import { Badge } from "@web/components/ui/badge";
-import { Button } from "@web/components/ui/button";
+import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@web/components/ui/card";
-import { Input } from "@web/components/ui/input";
-import { Label } from "@web/components/ui/label";
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useSettings } from "@/context/SettingsContext";
 
 interface UserProfile {
 	id: string;
@@ -49,6 +51,8 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
+	const { settings } = useSettings();
+	const { t } = useTranslation();
 	const [profile, setProfile] = useState<UserProfile | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [isEditing, setIsEditing] = useState(false);
@@ -406,14 +410,14 @@ export default function ProfilePage() {
 													onClick={handleCancelEdit}
 												>
 													<X className="mr-2 h-4 w-4" />
-													Cancel
+													{t("profile.cancel")}
 												</Button>
 												<Button
 													className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
 													onClick={handleEditProfile}
 												>
 													<Save className="mr-2 h-4 w-4" />
-													Save Changes
+													{t("profile.saveChanges")}
 												</Button>
 											</>
 										) : (
@@ -424,14 +428,14 @@ export default function ProfilePage() {
 													onClick={handleSettings}
 												>
 													<Settings className="mr-2 h-4 w-4" />
-													Settings
+													{t("nav.settings")}
 												</Button>
 												<Button
 													className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
 													onClick={handleEditProfile}
 												>
 													<Edit className="mr-2 h-4 w-4" />
-													Edit Profile
+													{t("profile.editProfile")}
 												</Button>
 											</>
 										)}
@@ -443,208 +447,214 @@ export default function ProfilePage() {
 				</Card>
 
 				{/* Statistics */}
-				<div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-					<Card className="border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-black">
-						<CardContent className="p-6">
-							<div className="mb-4 flex items-center justify-between">
-								<div className="flex h-14 w-14 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/50">
-									<MapPin className="h-7 w-7 text-black dark:text-white" />
-								</div>
-								<div className="rounded-full bg-gray-100 px-2 py-1 text-gray-500 text-xs dark:bg-gray-800 dark:text-gray-400">
-									+{Math.floor(Math.random() * 20 + 10)}%
-								</div>
-							</div>
-							<div className="text-left">
-								<p className="mb-1 font-bold text-3xl text-black dark:text-white">
-									{profile.stats.issuesReported}
-								</p>
-								<p className="font-medium text-gray-600 text-sm dark:text-gray-400">
-									Issues Reported
-								</p>
-							</div>
-						</CardContent>
-					</Card>
-
-					<Card className="border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-black">
-						<CardContent className="p-6">
-							<div className="mb-4 flex items-center justify-between">
-								<div className="flex h-14 w-14 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/50">
-									<Wrench className="h-7 w-7 text-black dark:text-white" />
-								</div>
-								<div className="rounded-full bg-gray-100 px-2 py-1 text-gray-500 text-xs dark:bg-gray-800 dark:text-gray-400">
-									+{Math.floor(Math.random() * 15 + 5)}%
-								</div>
-							</div>
-							<div className="text-left">
-								<p className="mb-1 font-bold text-3xl text-black dark:text-white">
-									{profile.stats.issuesFixed}
-								</p>
-								<p className="font-medium text-gray-600 text-sm dark:text-gray-400">
-									Issues Resolved
-								</p>
-							</div>
-						</CardContent>
-					</Card>
-
-					<Card className="border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-black">
-						<CardContent className="p-6">
-							<div className="mb-4 flex items-center justify-between">
-								<div className="flex h-14 w-14 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/50">
-									<DollarSign className="h-7 w-7 text-black dark:text-white" />
-								</div>
-								<div className="rounded-full bg-gray-100 px-2 py-1 text-gray-500 text-xs dark:bg-gray-800 dark:text-gray-400">
-									+{Math.floor(Math.random() * 25 + 15)}%
-								</div>
-							</div>
-							<div className="text-left">
-								<p className="mb-1 font-bold text-3xl text-black dark:text-white">
-									${profile.stats.totalSponsored}
-								</p>
-								<p className="font-medium text-gray-600 text-sm dark:text-gray-400">
-									Total Sponsored
-								</p>
-							</div>
-						</CardContent>
-					</Card>
-
-					<Card className="border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-black">
-						<CardContent className="p-6">
-							<div className="mb-4 flex items-center justify-between">
-								<div className="flex h-14 w-14 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/50">
-									<Award className="h-7 w-7 text-black dark:text-white" />
-								</div>
-								<div className="rounded-full bg-gray-100 px-2 py-1 font-medium text-black text-xs dark:bg-gray-800 dark:text-white">
-									Excellent
-								</div>
-							</div>
-							<div className="text-left">
-								<p className="mb-1 font-bold text-3xl text-black dark:text-white">
-									{profile.stats.impactScore}
-								</p>
-								<p className="font-medium text-gray-600 text-sm dark:text-gray-400">
-									Impact Score
-								</p>
-							</div>
-						</CardContent>
-					</Card>
-				</div>
-
-				{/* Activity and Actions */}
-				<div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
-					{/* Activity Feed */}
-					<div className="lg:col-span-2">
-						<Card className="h-[600px] border border-gray-200 bg-white dark:border-gray-800 dark:bg-black">
-							<CardHeader className="border-gray-200 border-b dark:border-gray-800">
-								<div className="flex items-center justify-between">
-									<CardTitle className="font-bold text-black text-xl dark:text-white">
-										Activity Timeline
-									</CardTitle>
-									<Button
-										variant="outline"
-										size="sm"
-										className="border-gray-300 dark:border-gray-700"
-										onClick={() => router.push("/activities")}
-									>
-										View All
-									</Button>
-								</div>
-							</CardHeader>
-							<CardContent className="h-full overflow-y-auto p-0">
-								<div className="divide-y divide-gray-200 dark:divide-gray-800">
-									{/* Activity Item */}
-									<div className="p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/20">
-										<div className="flex gap-4">
-											<div className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white dark:border-gray-700 dark:bg-black">
-												<MapPin className="h-5 w-5 text-black dark:text-white" />
-											</div>
-											<div className="flex-1">
-												<div className="flex items-start justify-between">
-													<div>
-														<p className="font-semibold text-black dark:text-white">
-															Reported an issue
-														</p>
-														<p className="mt-1 text-gray-600 dark:text-gray-400">
-															Broken streetlight on Hope Road causing safety
-															concerns
-														</p>
-														<div className="mt-3 flex items-center gap-4">
-															<span className="text-gray-500 text-sm dark:text-gray-400">
-																2 days ago
-															</span>
-															<Badge
-																variant="outline"
-																className="border-gray-300 text-xs dark:border-gray-700"
-															>
-																Under Review
-															</Badge>
-														</div>
-													</div>
-												</div>
-											</div>
-										</div>
+				{settings?.privacy?.showStats !== false && (
+					<div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+						<Card className="border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-black">
+							<CardContent className="p-6">
+								<div className="mb-4 flex items-center justify-between">
+									<div className="flex h-14 w-14 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/50">
+										<MapPin className="h-7 w-7 text-black dark:text-white" />
 									</div>
-
-									{/* Activity Item */}
-									<div className="p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/20">
-										<div className="flex gap-4">
-											<div className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white dark:border-gray-700 dark:bg-black">
-												<Wrench className="h-5 w-5 text-black dark:text-white" />
-											</div>
-											<div className="flex-1">
-												<div className="flex items-start justify-between">
-													<div>
-														<p className="font-semibold text-black dark:text-white">
-															Resolved an issue
-														</p>
-														<p className="mt-1 text-gray-600 dark:text-gray-400">
-															Repaired potholes on Spanish Town Road
-														</p>
-														<div className="mt-3 flex items-center gap-4">
-															<span className="text-gray-500 text-sm dark:text-gray-400">
-																1 week ago
-															</span>
-															<Badge className="border-0 bg-black text-white text-xs dark:bg-white dark:text-black">
-																Completed
-															</Badge>
-														</div>
-													</div>
-												</div>
-											</div>
-										</div>
+									<div className="rounded-full bg-gray-100 px-2 py-1 text-gray-500 text-xs dark:bg-gray-800 dark:text-gray-400">
+										+{Math.floor(Math.random() * 20 + 10)}%
 									</div>
+								</div>
+								<div className="text-left">
+									<p className="mb-1 font-bold text-3xl text-black dark:text-white">
+										{profile.stats.issuesReported}
+									</p>
+									<p className="font-medium text-gray-600 text-sm dark:text-gray-400">
+										Issues Reported
+									</p>
+								</div>
+							</CardContent>
+						</Card>
 
-									{/* Activity Item */}
-									<div className="p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/20">
-										<div className="flex gap-4">
-											<div className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white dark:border-gray-700 dark:bg-black">
-												<DollarSign className="h-5 w-5 text-black dark:text-white" />
-											</div>
-											<div className="flex-1">
-												<div className="flex items-start justify-between">
-													<div>
-														<p className="font-semibold text-black dark:text-white">
-															Sponsored repair
-														</p>
-														<p className="mt-1 text-gray-600 dark:text-gray-400">
-															Contributed $50 to water main repair project
-														</p>
-														<div className="mt-3 flex items-center gap-4">
-															<span className="text-gray-500 text-sm dark:text-gray-400">
-																2 weeks ago
-															</span>
-															<span className="font-medium text-black text-sm dark:text-white">
-																Community Impact
-															</span>
-														</div>
-													</div>
-												</div>
-											</div>
-										</div>
+						<Card className="border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-black">
+							<CardContent className="p-6">
+								<div className="mb-4 flex items-center justify-between">
+									<div className="flex h-14 w-14 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/50">
+										<Wrench className="h-7 w-7 text-black dark:text-white" />
 									</div>
+									<div className="rounded-full bg-gray-100 px-2 py-1 text-gray-500 text-xs dark:bg-gray-800 dark:text-gray-400">
+										+{Math.floor(Math.random() * 15 + 5)}%
+									</div>
+								</div>
+								<div className="text-left">
+									<p className="mb-1 font-bold text-3xl text-black dark:text-white">
+										{profile.stats.issuesFixed}
+									</p>
+									<p className="font-medium text-gray-600 text-sm dark:text-gray-400">
+										Issues Resolved
+									</p>
+								</div>
+							</CardContent>
+						</Card>
+
+						<Card className="border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-black">
+							<CardContent className="p-6">
+								<div className="mb-4 flex items-center justify-between">
+									<div className="flex h-14 w-14 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/50">
+										<DollarSign className="h-7 w-7 text-black dark:text-white" />
+									</div>
+									<div className="rounded-full bg-gray-100 px-2 py-1 text-gray-500 text-xs dark:bg-gray-800 dark:text-gray-400">
+										+{Math.floor(Math.random() * 25 + 15)}%
+									</div>
+								</div>
+								<div className="text-left">
+									<p className="mb-1 font-bold text-3xl text-black dark:text-white">
+										${profile.stats.totalSponsored}
+									</p>
+									<p className="font-medium text-gray-600 text-sm dark:text-gray-400">
+										Total Sponsored
+									</p>
+								</div>
+							</CardContent>
+						</Card>
+
+						<Card className="border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-black">
+							<CardContent className="p-6">
+								<div className="mb-4 flex items-center justify-between">
+									<div className="flex h-14 w-14 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/50">
+										<Award className="h-7 w-7 text-black dark:text-white" />
+									</div>
+									<div className="rounded-full bg-gray-100 px-2 py-1 font-medium text-black text-xs dark:bg-gray-800 dark:text-white">
+										Excellent
+									</div>
+								</div>
+								<div className="text-left">
+									<p className="mb-1 font-bold text-3xl text-black dark:text-white">
+										{profile.stats.impactScore}
+									</p>
+									<p className="font-medium text-gray-600 text-sm dark:text-gray-400">
+										Impact Score
+									</p>
 								</div>
 							</CardContent>
 						</Card>
 					</div>
+				)}
+
+				{/* Activity and Actions */}
+				<div
+					className={`grid grid-cols-1 items-start gap-8 ${settings?.privacy?.showActivity !== false ? "lg:grid-cols-3" : "mx-auto max-w-md lg:grid-cols-1"}`}
+				>
+					{/* Activity Feed */}
+					{settings?.privacy?.showActivity !== false && (
+						<div className="lg:col-span-2">
+							<Card className="h-[600px] border border-gray-200 bg-white dark:border-gray-800 dark:bg-black">
+								<CardHeader className="border-gray-200 border-b dark:border-gray-800">
+									<div className="flex items-center justify-between">
+										<CardTitle className="font-bold text-black text-xl dark:text-white">
+											Activity Timeline
+										</CardTitle>
+										<Button
+											variant="outline"
+											size="sm"
+											className="border-gray-300 dark:border-gray-700"
+											onClick={() => router.push("/home")}
+										>
+											View All
+										</Button>
+									</div>
+								</CardHeader>
+								<CardContent className="h-full overflow-y-auto p-0">
+									<div className="divide-y divide-gray-200 dark:divide-gray-800">
+										{/* Activity Item */}
+										<div className="p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/20">
+											<div className="flex gap-4">
+												<div className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white dark:border-gray-700 dark:bg-black">
+													<MapPin className="h-5 w-5 text-black dark:text-white" />
+												</div>
+												<div className="flex-1">
+													<div className="flex items-start justify-between">
+														<div>
+															<p className="font-semibold text-black dark:text-white">
+																Reported an issue
+															</p>
+															<p className="mt-1 text-gray-600 dark:text-gray-400">
+																Broken streetlight on Hope Road causing safety
+																concerns
+															</p>
+															<div className="mt-3 flex items-center gap-4">
+																<span className="text-gray-500 text-sm dark:text-gray-400">
+																	2 days ago
+																</span>
+																<Badge
+																	variant="outline"
+																	className="border-gray-300 text-xs dark:border-gray-700"
+																>
+																	Under Review
+																</Badge>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+										{/* Activity Item */}
+										<div className="p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/20">
+											<div className="flex gap-4">
+												<div className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white dark:border-gray-700 dark:bg-black">
+													<Wrench className="h-5 w-5 text-black dark:text-white" />
+												</div>
+												<div className="flex-1">
+													<div className="flex items-start justify-between">
+														<div>
+															<p className="font-semibold text-black dark:text-white">
+																Resolved an issue
+															</p>
+															<p className="mt-1 text-gray-600 dark:text-gray-400">
+																Repaired potholes on Spanish Town Road
+															</p>
+															<div className="mt-3 flex items-center gap-4">
+																<span className="text-gray-500 text-sm dark:text-gray-400">
+																	1 week ago
+																</span>
+																<Badge className="border-0 bg-black text-white text-xs dark:bg-white dark:text-black">
+																	Completed
+																</Badge>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+										{/* Activity Item */}
+										<div className="p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/20">
+											<div className="flex gap-4">
+												<div className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white dark:border-gray-700 dark:bg-black">
+													<DollarSign className="h-5 w-5 text-black dark:text-white" />
+												</div>
+												<div className="flex-1">
+													<div className="flex items-start justify-between">
+														<div>
+															<p className="font-semibold text-black dark:text-white">
+																Sponsored repair
+															</p>
+															<p className="mt-1 text-gray-600 dark:text-gray-400">
+																Contributed $50 to water main repair project
+															</p>
+															<div className="mt-3 flex items-center gap-4">
+																<span className="text-gray-500 text-sm dark:text-gray-400">
+																	2 weeks ago
+																</span>
+																<span className="font-medium text-black text-sm dark:text-white">
+																	Community Impact
+																</span>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+						</div>
+					)}
 
 					{/* Quick Actions */}
 					<div>
