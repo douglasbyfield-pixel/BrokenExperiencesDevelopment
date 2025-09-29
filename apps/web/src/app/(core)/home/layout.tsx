@@ -1,4 +1,3 @@
-import Footer from "./features/footer";
 import LeftSidebar from "./features/left-sidebar";
 import RightSidebar from "./features/right-sidebar";
 
