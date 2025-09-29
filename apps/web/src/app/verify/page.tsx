@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { toast } from "sonner";
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase-client";
 
-export default function VerifyPage() {
+function VerifyContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const emailFromQuery = searchParams.get("email") ?? "";
@@ -145,5 +145,13 @@ export default function VerifyPage() {
 				</div>
 			</div>
 		</div>
+	);
+}
+
+export default function VerifyPage() {
+	return (
+		<Suspense fallback={<div className="container mx-auto max-w-md px-4 py-10 text-center"><Loader /></div>}>
+			<VerifyContent />
+		</Suspense>
 	);
 }

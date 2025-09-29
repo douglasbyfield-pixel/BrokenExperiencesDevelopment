@@ -1,0 +1,1724 @@
+"use client";
+
+import {
+	AlertCircle,
+	Building,
+	Car,
+	CheckCircle,
+	ChevronDown,
+	ChevronUp,
+	Clock,
+	Construction,
+	Droplets,
+	Filter,
+	Lightbulb,
+	MapPin,
+	Search,
+	Shield,
+	ThumbsUp,
+	Trash2,
+	TreePine,
+	X,
+	Zap,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+
+// Using Elysia API backend (which connects to Supabase underneath)
+
+interface Issue {
+	id: string;
+	title: string;
+	description: string;
+	latitude: number;
+	longitude: number;
+	address?: string;
+	status: "reported" | "pending" | "resolved";
+	severity: "low" | "medium" | "high" | "critical";
+	reporterId: string;
+	categoryId?: string;
+	imageUrls?: string[];
+	createdAt: Date;
+	updatedAt: Date;
+	resolvedAt?: Date;
+	upvotes: number;
+	downvotes: number;
+}
+
+const statusConfig = {
+	reported: {
+		icon: AlertCircle,
+		color: "#ef4444",
+		label: "Reported",
+		bgColor: "bg-red-100 dark:bg-red-900/20",
+		textColor: "text-red-700 dark:text-red-400",
+	},
+	pending: {
+		icon: Clock,
+		color: "#f59e0b",
+		label: "In Progress",
+		bgColor: "bg-amber-100 dark:bg-amber-900/20",
+		textColor: "text-amber-700 dark:text-amber-400",
+	},
+	resolved: {
+		icon: CheckCircle,
+		color: "#10b981",
+		label: "Resolved",
+		bgColor: "bg-emerald-100 dark:bg-emerald-900/20",
+		textColor: "text-emerald-700 dark:text-emerald-400",
+	},
+};
+
+const severityConfig = {
+	low: {
+		scale: 0.8,
+		zIndex: 1,
+		color: "#10b981",
+		bgColor: "bg-emerald-500",
+		textColor: "text-white",
+	},
+	medium: {
+		scale: 1.0,
+		zIndex: 2,
+		color: "#f59e0b",
+		bgColor: "bg-amber-500",
+		textColor: "text-white",
+	},
+	high: {
+		scale: 1.2,
+		zIndex: 3,
+		color: "#ef4444",
+		bgColor: "bg-red-500",
+		textColor: "text-white",
+	},
+	critical: {
+		scale: 1.4,
+		zIndex: 4,
+		color: "#dc2626",
+		bgColor: "bg-red-600",
+		textColor: "text-white",
+	},
+};
+
+const categoryConfig = {
+	infrastructure: {
+		icon: Construction,
+		color: "#8b5cf6",
+		label: "Infrastructure",
+	},
+	roads: { icon: Car, color: "#3b82f6", label: "Roads" },
+	lighting: { icon: Lightbulb, color: "#f59e0b", label: "Lighting" },
+	environment: { icon: TreePine, color: "#10b981", label: "Environment" },
+	sanitation: { icon: Trash2, color: "#6b7280", label: "Sanitation" },
+	utilities: { icon: Zap, color: "#ef4444", label: "Utilities" },
+	water: { icon: Droplets, color: "#06b6d4", label: "Water" },
+	safety: { icon: Shield, color: "#f97316", label: "Safety" },
+	building: { icon: Building, color: "#84cc16", label: "Building" },
+	traffic: { icon: Car, color: "#ec4899", label: "Traffic" },
+	vandalism: { icon: AlertCircle, color: "#64748b", label: "Vandalism" },
+	other: { icon: MapPin, color: "#6366f1", label: "Other" },
+};
+
+// Helper function to get icon SVG paths based on category
+const getIconPath = (categoryId: string) => {
+	// Use exact Lucide React icon paths to match the legend
+	const iconPaths: { [key: string]: string } = {
+		// Construction icon (simple hammer and wrench)
+		infrastructure:
+			"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z",
+		// Car icon (matches legend)
+		roads:
+			"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10c-.1-.1-.4-.6-.7-1.3L16.1 6.4C15.8 5.6 15 5 14.1 5H9.9c-.9 0-1.7.6-2 1.4L6.7 8.7c-.3.7-.6 1.2-.7 1.3l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2 M9 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z M15 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
+		// Lightbulb icon (matches legend)
+		lighting:
+			"M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5 M9 18h6 M10 22h4",
+		// TreePine icon (matches legend)
+		environment:
+			"m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2a1 1 0 0 1-.8-1.7L12 2l4 5.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7H17z M12 22v-3",
+		// Trash2 icon (matches legend)
+		sanitation:
+			"M3 6h18 M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6 M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2 M10 11v6 M14 11v6",
+		// Zap icon (matches legend)
+		utilities: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
+		// Droplets icon (matches legend)
+		water:
+			"M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.14 3 12.25c0 2.22 1.8 4.05 4 4.05z M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2.26 4.89 4.56 6.96a7.93 7.93 0 0 1 2.78 3.52c.22.58.33 1.21.33 1.84C21.67 17.9 20.14 20 18 20c-2.08 0-3.8-1.88-3.8-4.13 0-1.48.73-2.96 1.87-3.96l.49-.69z",
+		// Shield icon (matches legend)
+		safety: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+		// Building icon (matches legend)
+		building:
+			"M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18z M6 12h12 M6 16h12 M10 6h4 M10 10h4",
+		// Car icon for traffic (same as roads)
+		traffic:
+			"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10c-.1-.1-.4-.6-.7-1.3L16.1 6.4C15.8 5.6 15 5 14.1 5H9.9c-.9 0-1.7.6-2 1.4L6.7 8.7c-.3.7-.6 1.2-.7 1.3l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2 M9 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z M15 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
+		// AlertCircle for vandalism
+		vandalism:
+			"M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 8v4 M12 16h.01",
+		// MapPin for other/default
+		other:
+			"M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+	};
+	return iconPaths[categoryId] || iconPaths.other;
+};
+
+// Helper function to get darker color for gradient
+const getDarkerColor = (color: string) => {
+	const colorMap: { [key: string]: string } = {
+		"#ef4444": "#dc2626", // red-500 to red-600
+		"#f59e0b": "#d97706", // amber-500 to amber-600
+		"#10b981": "#059669", // emerald-500 to emerald-600
+	};
+	return colorMap[color] || color;
+};
+
+export default function MapPage() {
+	const mapRef = useRef<any>(null);
+	const mapContainerRef = useRef<HTMLDivElement>(null);
+	const [map, setMap] = useState<any>(null);
+	const [mapLoaded, setMapLoaded] = useState(false);
+	const [issues, setIssues] = useState<Issue[]>([]);
+	const [filteredIssues, setFilteredIssues] = useState<Issue[]>([]);
+	const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+	const [userLocation, setUserLocation] = useState<{
+		lat: number;
+		lng: number;
+	} | null>(null);
+	const [activeFilters, setActiveFilters] = useState<{
+		status: string[];
+		severity: string[];
+		category: string[];
+	}>({
+		status: [],
+		severity: [],
+		category: [],
+	});
+	const [searchQuery, setSearchQuery] = useState("");
+	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+	const [showFilters, setShowFilters] = useState(false);
+	const [showLegend, setShowLegend] = useState(false);
+	const [isLoading, setIsLoading] = useState(true);
+	const [mapError, setMapError] = useState<string | null>(null);
+	const [showSearchPanel, setShowSearchPanel] = useState(false);
+	const [isLiveTracking, setIsLiveTracking] = useState(false);
+	const [watchId, setWatchId] = useState<number | null>(null);
+	const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+	const [showQuickActions, setShowQuickActions] = useState(false);
+	const [currentRoute, setCurrentRoute] = useState<any>(null);
+	const [isNavigating, setIsNavigating] = useState(false);
+	const [navPanelMinimized, setNavPanelMinimized] = useState(false);
+
+	// Function to calculate distance between two coordinates
+	const calculateDistance = (
+		lat1: number,
+		lng1: number,
+		lat2: number,
+		lng2: number,
+	): number => {
+		const R = 6371; // Radius of the Earth in kilometers
+		const dLat = ((lat2 - lat1) * Math.PI) / 180;
+		const dLng = ((lng2 - lng1) * Math.PI) / 180;
+		const a =
+			Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+			Math.cos((lat1 * Math.PI) / 180) *
+				Math.cos((lat2 * Math.PI) / 180) *
+				Math.sin(dLng / 2) *
+				Math.sin(dLng / 2);
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+		const distance = R * c; // Distance in kilometers
+		return distance;
+	};
+
+	// Get user's current location
+	useEffect(() => {
+		if (navigator.geolocation) {
+			navigator.geolocation.getCurrentPosition(
+				(position) => {
+					setUserLocation({
+						lat: position.coords.latitude,
+						lng: position.coords.longitude,
+					});
+				},
+				(error) => {
+					console.log("Location access denied or unavailable");
+				},
+			);
+		}
+
+		const options = {
+			enableHighAccuracy: true,
+			timeout: 15000,
+			maximumAge: 60000
+		};
+
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				const location = {
+					lat: position.coords.latitude,
+					lng: position.coords.longitude
+				};
+				setUserLocation(location);
+				setLocationAccuracy(position.coords.accuracy);
+				setIsLoading(false);
+				console.log("✅ User location acquired:", location, `Accuracy: ${position.coords.accuracy}m`);
+			},
+			(error) => {
+				console.error("❌ Location error:", error);
+				// Set a default location (Jamaica) if geolocation fails
+				const defaultLocation = { lat: 18.1096, lng: -77.2975 };
+				setUserLocation(defaultLocation);
+				setIsLoading(false);
+				setMapError(`Location access denied. Please refresh the page and allow location access, or we'll use a default location. ${error.message}`);
+			},
+			options
+		);
+	}, []);
+
+	useEffect(() => {
+		// requestLocation(); // TODO: Implement geolocation request
+	}, []);
+
+	// Fetch issues on mount - use Elysia API (which connects to Supabase)
+	useEffect(() => {
+		const initializeData = async () => {
+			try {
+				// Dynamic import to avoid SSR issues
+				const mapboxgl = await import("mapbox-gl");
+
+				// Make mapboxgl available globally for marker creation
+				(window as any).mapboxgl = mapboxgl.default;
+
+				mapboxgl.default.accessToken =
+					process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
+
+				map.current = new mapboxgl.default.Map({
+					container: mapContainerRef.current!,
+					style: "mapbox://styles/mapbox/streets-v12",
+					center: [-77.2975, 18.1096], // Jamaica center
+					zoom: 9, // Better zoom for Jamaica
+					maxBounds: [
+						[-78.5, 17.5], // Southwest coordinates of Jamaica
+						[-76.0, 18.8], // Northeast coordinates of Jamaica
+					],
+				});
+
+				map.current.addControl(new mapboxgl.default.NavigationControl());
+				map.current.addControl(
+					new mapboxgl.default.GeolocateControl({
+						positionOptions: {
+							enableHighAccuracy: true,
+						},
+						trackUserLocation: true,
+					}),
+				);
+
+				map.current.on("load", () => {
+					console.log("Map loaded successfully");
+					// Fit map to Jamaica bounds
+					map.current.fitBounds(
+						[
+							[-78.5, 17.5], // Southwest coordinates of Jamaica
+							[-76.0, 18.8], // Northeast coordinates of Jamaica
+						],
+						{
+							padding: 20,
+						},
+					);
+
+					// Create and load custom SVG icons as images
+					const createSVGIcon = (iconPath: string, color = "#000000") => {
+						const svg = `
+							<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+								<circle cx="12" cy="12" r="10" fill="white" opacity="0.9"/>
+								<path d="${iconPath}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+							</svg>
+						`;
+						const blob = new Blob([svg], { type: "image/svg+xml" });
+						return URL.createObjectURL(blob);
+					};
+
+					// Load category icons
+					const categoryIcons = {
+						lighting: getIconPath("lighting"),
+						roads: getIconPath("roads"),
+						water: getIconPath("water"),
+						traffic: getIconPath("traffic"),
+						sanitation: getIconPath("sanitation"),
+						environment: getIconPath("environment"),
+						utilities: getIconPath("utilities"),
+						infrastructure: getIconPath("infrastructure"),
+						safety: getIconPath("safety"),
+						other: getIconPath("other"),
+					};
+
+					// Load each icon into Mapbox
+					Object.entries(categoryIcons).forEach(([category, iconPath]) => {
+						const img = new Image();
+						img.onload = () => {
+							if (!map.current.hasImage(`icon-${category}`)) {
+								map.current.addImage(`icon-${category}`, img);
+							}
+						};
+						img.src = createSVGIcon(iconPath);
+					});
+
+					setMapLoaded(true);
+				});
+			} catch (error) {
+				console.error("Failed to load Mapbox:", error);
+				setMapLoaded(true); // Still show the interface
+			}
+		};
+
+		initializeData();
+
+		return () => {
+			// Cleanup markers and layers
+			markersRef.current.forEach((marker) => marker.remove());
+			markersRef.current = [];
+
+			if (map.current) {
+				// Remove layers if they exist
+				try {
+					if (map.current.getLayer("issues-labels")) {
+						map.current.removeLayer("issues-labels");
+					}
+					if (map.current.getLayer("issues-layer")) {
+						map.current.removeLayer("issues-layer");
+					}
+					if (map.current.getSource("issues")) {
+						map.current.removeSource("issues");
+					}
+				} catch (e) {
+					console.log("Cleanup layers error:", e);
+				}
+				map.current.remove();
+			}
+		};
+	}, []);
+
+	// Store markers for cleanup
+	const markersRef = useRef<any[]>([]);
+
+	// Native Mapbox layers with zoom-responsive markers
+	useEffect(() => {
+		if (!map.current || !mapLoaded || filteredIssues.length === 0) return;
+
+		console.log(
+			"Creating zoom-responsive markers for",
+			filteredIssues.length,
+			"Jamaica issues",
+		);
+
+		// Clear existing markers and layers
+		markersRef.current.forEach((marker) => marker.remove());
+		markersRef.current = [];
+
+		// Remove existing layers
+		try {
+			if (map.current.getLayer("issues-icons")) {
+				map.current.removeLayer("issues-icons");
+			}
+			if (map.current.getLayer("issues-layer")) {
+				map.current.removeLayer("issues-layer");
+			}
+			if (map.current.getSource("issues")) {
+				map.current.removeSource("issues");
+			}
+		} catch (e) {
+			console.log("No existing layers to remove");
+		}
+
+		// Create GeoJSON features from issues
+		const geojsonData = {
+			type: "FeatureCollection",
+			features: filteredIssues.map((issue) => ({
+				type: "Feature",
+				properties: {
+					id: issue.id,
+					title: issue.title,
+					description: issue.description,
+					status: issue.status,
+					severity: issue.severity,
+					categoryId: issue.categoryId,
+					address: issue.address,
+					upvotes: issue.upvotes,
+					downvotes: issue.downvotes,
+					color: statusConfig[issue.status].color,
+				},
+				geometry: {
+					type: "Point",
+					coordinates: [issue.longitude, issue.latitude],
+				},
+			})),
+		};
+
+		console.log(
+			"Adding GeoJSON source with",
+			geojsonData.features.length,
+			"features",
+		);
+
+		// Add source
+		map.current.addSource("issues", {
+			type: "geojson",
+			data: geojsonData,
+		});
+
+		// Add circle layer for markers with zoom-based sizing
+		map.current.addLayer({
+			id: "issues-layer",
+			type: "circle",
+			source: "issues",
+			paint: {
+				"circle-radius": [
+					"interpolate",
+					["linear"],
+					["zoom"],
+					8, // At zoom 8
+					[
+						"case",
+						["==", ["get", "severity"], "critical"],
+						8,
+						["==", ["get", "severity"], "high"],
+						6,
+						["==", ["get", "severity"], "medium"],
+						5,
+						4, // low
+					],
+					12, // At zoom 12
+					[
+						"case",
+						["==", ["get", "severity"], "critical"],
+						20,
+						["==", ["get", "severity"], "high"],
+						16,
+						["==", ["get", "severity"], "medium"],
+						14,
+						12, // low
+					],
+				],
+				"circle-color": ["get", "color"],
+				"circle-stroke-width": [
+					"interpolate",
+					["linear"],
+					["zoom"],
+					8,
+					2,
+					12,
+					3,
+				],
+				"circle-stroke-color": "#ffffff",
+				"circle-opacity": 0.9,
+				"circle-stroke-opacity": 1,
+			},
+		});
+
+		// Add custom SVG icon symbols with zoom-based sizing
+		map.current.addLayer({
+			id: "issues-icons",
+			type: "symbol",
+			source: "issues",
+			layout: {
+				"icon-image": [
+					"case",
+					["==", ["get", "categoryId"], "lighting"],
+					"icon-lighting",
+					["==", ["get", "categoryId"], "roads"],
+					"icon-roads",
+					["==", ["get", "categoryId"], "water"],
+					"icon-water",
+					["==", ["get", "categoryId"], "traffic"],
+					"icon-traffic",
+					["==", ["get", "categoryId"], "sanitation"],
+					"icon-sanitation",
+					["==", ["get", "categoryId"], "environment"],
+					"icon-environment",
+					["==", ["get", "categoryId"], "utilities"],
+					"icon-utilities",
+					["==", ["get", "categoryId"], "infrastructure"],
+					"icon-infrastructure",
+					["==", ["get", "categoryId"], "safety"],
+					"icon-safety",
+					"icon-other", // default
+				],
+				"icon-size": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 12, 1.2],
+				"icon-allow-overlap": true,
+				"icon-ignore-placement": true,
+			},
+		});
+
+		// Add click handler for markers
+		map.current.on("click", "issues-layer", (e: any) => {
+			if (e.features && e.features.length > 0) {
+				const feature = e.features[0];
+				const issue = filteredIssues.find(
+					(i) => i.id === feature.properties.id,
+				);
+				if (issue) {
+					console.log("Native marker clicked:", issue.title);
+					setSelectedIssue(issue);
+				}
+			}
+		});
+
+		// Add hover effects
+		map.current.on("mouseenter", "issues-layer", () => {
+			map.current.getCanvas().style.cursor = "pointer";
+		});
+
+		map.current.on("mouseleave", "issues-layer", () => {
+			map.current.getCanvas().style.cursor = "";
+		});
+
+		console.log("✅ Zoom-responsive markers created successfully");
+	}, [filteredIssues, mapLoaded]);
+
+	const setMockData = () => {
+		// Clear existing issues and set new Jamaica-specific issues (matching server data)
+		const mockIssues: Issue[] = [
+			{
+				id: "issue-1",
+				title: "Broken Streetlight on Hope Road",
+				description: "The streetlight near UWI campus has been out for 2 weeks",
+				latitude: 18.0179,
+				longitude: -76.7426,
+				address: "Hope Road, Kingston 6, Jamaica",
+				status: "reported",
+				severity: "high",
+				reporterId: "demo-user",
+				categoryId: "lighting",
+				createdAt: new Date("2024-01-15"),
+				updatedAt: new Date("2024-01-15"),
+				upvotes: 12,
+				downvotes: 1,
+			},
+			{
+				id: "issue-2",
+				title: "Pothole on Spanish Town Road",
+				description:
+					"Large pothole causing damage to vehicles near Coronation Market",
+				latitude: 17.9692,
+				longitude: -76.8103,
+				address: "Spanish Town Road, Kingston, Jamaica",
+				status: "pending",
+				severity: "critical",
+				reporterId: "demo-user",
+				categoryId: "roads",
+				createdAt: new Date("2024-01-20"),
+				updatedAt: new Date("2024-01-22"),
+				upvotes: 25,
+				downvotes: 0,
+			},
+			{
+				id: "issue-3",
+				title: "Water Main Break in Half Way Tree",
+				description:
+					"Water main burst causing flooding on Constant Spring Road",
+				latitude: 18.0175,
+				longitude: -76.7966,
+				address: "Constant Spring Road, Kingston 10, Jamaica",
+				status: "pending",
+				severity: "critical",
+				reporterId: "demo-user",
+				categoryId: "water",
+				createdAt: new Date("2024-01-10"),
+				updatedAt: new Date("2024-01-18"),
+				upvotes: 35,
+				downvotes: 0,
+			},
+			{
+				id: "issue-4",
+				title: "Broken Traffic Light in New Kingston",
+				description: "Traffic light not working properly at major intersection",
+				latitude: 18.0051,
+				longitude: -76.7837,
+				address: "Knutsford Boulevard & Trafalgar Road, Kingston 5, Jamaica",
+				status: "pending",
+				severity: "critical",
+				reporterId: "demo-user",
+				categoryId: "traffic",
+				createdAt: new Date("2024-01-25"),
+				updatedAt: new Date("2024-01-25"),
+				upvotes: 30,
+				downvotes: 0,
+			},
+			{
+				id: "issue-5",
+				title: "Overflowing Garbage Collection Point",
+				description:
+					"Garbage collection point hasn't been emptied in days, attracting pests",
+				latitude: 18.0199,
+				longitude: -76.8018,
+				address: "Cross Roads, Kingston, Jamaica",
+				status: "reported",
+				severity: "medium",
+				reporterId: "demo-user",
+				categoryId: "sanitation",
+				createdAt: new Date("2024-01-28"),
+				updatedAt: new Date("2024-01-28"),
+				upvotes: 18,
+				downvotes: 1,
+			},
+			{
+				id: "issue-6",
+				title: "Fallen Tree Blocking Road",
+				description:
+					"Large tree fell across road after storm, blocking traffic",
+				latitude: 18.0456,
+				longitude: -76.73,
+				address: "Blue Mountain Road, Kingston, Jamaica",
+				status: "resolved",
+				severity: "high",
+				reporterId: "demo-user",
+				categoryId: "environment",
+				createdAt: new Date("2024-01-20"),
+				updatedAt: new Date("2024-01-21"),
+				resolvedAt: new Date("2024-01-21"),
+				upvotes: 22,
+				downvotes: 0,
+			},
+			{
+				id: "issue-7",
+				title: "Power Line Down in Downtown Kingston",
+				description: "Electrical power line down after storm, area unsafe",
+				latitude: 17.9712,
+				longitude: -76.7655,
+				address: "Orange Street, Kingston, Jamaica",
+				status: "pending",
+				severity: "critical",
+				reporterId: "demo-user",
+				categoryId: "utilities",
+				createdAt: new Date("2024-01-26"),
+				updatedAt: new Date("2024-01-26"),
+				upvotes: 45,
+				downvotes: 0,
+			},
+			{
+				id: "issue-8",
+				title: "Bridge Damage in Montego Bay",
+				description: "Bridge structure showing cracks and needs urgent repair",
+				latitude: 18.4762,
+				longitude: -77.8939,
+				address: "Hip Strip, Montego Bay, St. James, Jamaica",
+				status: "reported",
+				severity: "high",
+				reporterId: "demo-user",
+				categoryId: "infrastructure",
+				createdAt: new Date("2024-01-22"),
+				updatedAt: new Date("2024-01-22"),
+				upvotes: 28,
+				downvotes: 2,
+			},
+			{
+				id: "issue-9",
+				title: "Sewer Overflow in Spanish Town",
+				description: "Sewer system overflowing causing unsanitary conditions",
+				latitude: 17.9909,
+				longitude: -76.9552,
+				address: "Spanish Town Square, St. Catherine, Jamaica",
+				status: "pending",
+				severity: "critical",
+				reporterId: "demo-user",
+				categoryId: "sanitation",
+				createdAt: new Date("2024-01-24"),
+				updatedAt: new Date("2024-01-25"),
+				upvotes: 38,
+				downvotes: 1,
+			},
+			{
+				id: "issue-10",
+				title: "Road Closure in Ocho Rios",
+				description: "Landslide blocking main road to tourist attractions",
+				latitude: 18.4078,
+				longitude: -77.103,
+				address: "Main Street, Ocho Rios, St. Ann, Jamaica",
+				status: "pending",
+				severity: "high",
+				reporterId: "demo-user",
+				categoryId: "roads",
+				createdAt: new Date("2024-01-27"),
+				updatedAt: new Date("2024-01-27"),
+				upvotes: 42,
+				downvotes: 0,
+			},
+			{
+				id: "issue-11",
+				title: "Port Security Concerns",
+				description: "Inadequate lighting at port area creating safety issues",
+				latitude: 18.4692,
+				longitude: -77.9197,
+				address: "Port of Montego Bay, Jamaica",
+				status: "reported",
+				severity: "medium",
+				reporterId: "demo-user",
+				categoryId: "safety",
+				createdAt: new Date("2024-01-29"),
+				updatedAt: new Date("2024-01-29"),
+				upvotes: 15,
+				downvotes: 3,
+			},
+		];
+		console.log("Setting Jamaica mock data with", mockIssues.length, "issues");
+		setIssues(mockIssues);
+	};
+
+	// Memoized filtering function for better performance
+	const filteredIssuesMemo = useMemo(() => {
+		let filtered = [...issues];
+
+		// Apply status filters
+		if (activeFilters.status.length > 0) {
+			filtered = filtered.filter((issue) =>
+				activeFilters.status.includes(issue.status),
+			);
+		}
+
+		// Apply severity filters
+		if (activeFilters.severity.length > 0) {
+			filtered = filtered.filter((issue) =>
+				activeFilters.severity.includes(issue.severity),
+			);
+		}
+
+		// Apply search query
+		if (searchQuery) {
+			filtered = filtered.filter(
+				(issue) =>
+					issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					issue.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					issue.address?.toLowerCase().includes(searchQuery.toLowerCase()),
+			);
+		}
+
+		setFilteredIssues(filtered);
+	}, [issues, activeFilters, searchQuery]);
+
+	const fetchIssues = async () => {
+		try {
+			const response = await fetch(
+				`${process.env.NEXT_PUBLIC_SERVER_URL}/issue`,
+			);
+			if (response.ok) {
+				const data = await response.json();
+				setIssues(data);
+			}
+		} catch (error) {
+			console.error("Failed to fetch issues:", error);
+		}
+
+	const toggleFilter = (type: "status" | "severity", value: string) => {
+		setActiveFilters((prev) => {
+			const current = prev[type];
+			if (current.includes(value)) {
+				return {
+					...prev,
+					[type]: current.filter((v) => v !== value),
+				};
+			}
+			return {
+				...prev,
+				[type]: [...current, value],
+			};
+		});
+	};
+
+	const handleVote = async (issueId: string, type: "upvote" | "downvote" = "upvote") => {
+		try {
+			const response = await fetch(
+				`${process.env.NEXT_PUBLIC_SERVER_URL}/issue/${issueId}/vote`,
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ type }),
+				},
+			);
+
+			if (response.ok) {
+				const updatedIssue = await response.json();
+				setIssues((prev) =>
+					prev.map((issue) => (issue.id === issueId ? updatedIssue : issue)),
+				);
+				if (selectedIssue?.id === issueId) {
+					setSelectedIssue(updatedIssue);
+				}
+			}
+		} catch (error) {
+			console.error("Failed to vote:", error);
+		}
+	};
+
+	const showRoute = async (startLocation: {lat: number, lng: number}, endLocation: {lat: number, lng: number}) => {
+		if (!map) return;
+
+		// const route = await getDirections(startLocation.lng, startLocation.lat, endLocation.lng, endLocation.lat);
+		
+		// if (route) {
+		//	setCurrentRoute(route);
+		//	setIsNavigating(true);
+		//	setNavPanelMinimized(false);
+
+		//	if (map.getSource('route')) {
+		//		map.removeLayer('route');
+		//		map.removeSource('route');
+		//	}
+
+		//	map.addSource('route', {
+		//		type: 'geojson',
+		//		data: {
+		//			type: 'Feature',
+		//			properties: {},
+		//			geometry: route.geometry
+		//		}
+		//	});
+
+		//	map.addLayer({
+		//		id: 'route',
+		//		type: 'line',
+		//		source: 'route',
+		//		layout: {
+		//			'line-join': 'round',
+		//			'line-cap': 'round'
+		//		},
+		//		paint: {
+		//			'line-color': '#3b82f6',
+		//			'line-width': 5,
+		//			'line-opacity': 0.8
+		//		}
+		//	});
+
+		//	const coordinates = route.geometry.coordinates;
+		//	const bounds = new (window as any).mapboxgl.LngLatBounds();
+		//	coordinates.forEach((coord: any) => bounds.extend(coord));
+		//	
+		//	map.fitBounds(bounds, {
+		//		padding: 50,
+		//		pitch: 68,
+		//		duration: 1500
+		//	});
+
+		//	// Auto-minimize after 5 seconds for better UX
+		//	setTimeout(() => {
+		//		setNavPanelMinimized(true);
+		//	}, 5000);
+		// }
+	};
+
+	const clearRoute = () => {
+		if (map && map.getSource('route')) {
+			map.removeLayer('route');
+			map.removeSource('route');
+		}
+		setCurrentRoute(null);
+		setIsNavigating(false);
+		setNavPanelMinimized(false);
+	};
+
+	// Initialize Mapbox when component mounts and user location is available
+	useEffect(() => {
+		if (!userLocation || !mapContainerRef.current) return;
+
+		// Prevent multiple initializations
+		if (map) return;
+
+		const initializeMap = async () => {
+			try {
+				// Dynamically import mapboxgl to avoid SSR issues
+				const mapboxgl = (await import('mapbox-gl')).default;
+
+				// Telemetry blocking - comprehensive approach
+				if (typeof window !== 'undefined') {
+					// Block telemetry requests using transformRequest
+					const originalFetch = window.fetch;
+					window.fetch = ((input: any, init: any) => {
+						const url = typeof input === 'string' ? input : input.url;
+						if (url && (url.includes('events.mapbox.com') || url.includes('api.mapbox.com/events'))) {
+							console.log('🚫 Blocked telemetry request:', url);
+							return Promise.resolve(new Response());
+						}
+						return originalFetch(input, init);
+					}) as typeof fetch;
+
+					// Block XMLHttpRequest telemetry
+					const OriginalXHR = window.XMLHttpRequest;
+					window.XMLHttpRequest = function() {
+						const xhr = new OriginalXHR();
+						const originalOpen = xhr.open;
+						xhr.open = function(method: string, url: string | URL, ...args: any[]) {
+							if (typeof url === 'string' && (url.includes('events.mapbox.com') || url.includes('api.mapbox.com/events'))) {
+								console.log('🚫 Blocked XHR telemetry request:', url);
+								return;
+							}
+							return originalOpen.call(this, method, url, args[0], args[1], args[2]);
+						};
+						return xhr;
+					} as any;
+				}
+
+				// Mapbox access token - using correct env var name
+				mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoidXNlciIsImEiOiJhYmMxMjMifQ.fake-token-replace-with-real';
+
+				const mapInstance = new mapboxgl.Map({
+					container: mapContainerRef.current!,
+					style: 'mapbox://styles/mapbox/dark-v11',
+					center: [userLocation.lng, userLocation.lat],
+					zoom: 14,
+					pitch: 68,
+					bearing: 0,
+					transformRequest: (url) => {
+						// Block all telemetry and analytics requests
+						if (url.includes('events.mapbox.com') || 
+							url.includes('api.mapbox.com/events') ||
+							url.includes('/events/')) {
+							console.log('🚫 Blocked telemetry:', url);
+							return { url: '' };
+						}
+						return { url };
+					}
+				});
+
+				mapInstance.on('load', () => {
+					console.log("✅ Map loaded successfully");
+					
+					const layers = mapInstance.getStyle().layers;
+					const labelLayerId = layers.find(
+						(layer) => layer.type === 'symbol' && layer.layout && layer.layout['text-field']
+					)?.id;
+					mapInstance.addLayer({
+						'id': 'add-3d-buildings',
+						'source': 'composite',
+						'source-layer': 'building',
+						'filter': ['==', 'extrude', 'true'],
+						'type': 'fill-extrusion',
+						'minzoom': 15,
+						'paint': {
+							'fill-extrusion-color': '#aaa',
+							'fill-extrusion-height': [
+								'interpolate',
+								['linear'],
+								['zoom'],
+								15,
+								0,
+								15.05,
+								['get', 'height']
+							],
+							'fill-extrusion-base': [
+								'interpolate',
+								['linear'],
+								['zoom'],
+								15,
+								0,
+								15.05,
+								['get', 'min_height']
+							],
+							'fill-extrusion-opacity': 0.6
+						}
+					}, labelLayerId);
+
+					setTimeout(() => {
+						mapInstance.flyTo({
+							center: [userLocation.lng, userLocation.lat],
+							zoom: 16.5,
+							pitch: 68,
+							bearing: 0,
+							duration: 2500,
+							essential: true
+						});
+					}, 500);
+
+					setMapLoaded(true);
+				});
+
+				const nav = new mapboxgl.NavigationControl({
+					visualizePitch: true,
+					showZoom: false,
+					showCompass: true
+				});
+				mapInstance.addControl(nav, 'top-right');
+
+				// Add geolocate control with custom options and 3D view preserved
+				const geolocate = new mapboxgl.GeolocateControl({
+					positionOptions: {
+						enableHighAccuracy: true,
+						timeout: 10000,
+						maximumAge: 0
+					},
+					trackUserLocation: true,
+					showUserHeading: true,
+					showAccuracyCircle: true,
+					fitBoundsOptions: {
+						maxZoom: 15,
+						pitch: 68,
+						bearing: 0
+					}
+				});
+				mapInstance.addControl(geolocate, 'top-right');
+				
+				setTimeout(() => {
+					geolocate.trigger();
+				}, 1000);
+
+				// Add popup for location features with enhanced quick actions
+				geolocate.on('geolocate', (e: any) => {
+					console.log("📍 Geolocate triggered:", e);
+					
+					if (e.coords) {
+						const newLocation = {
+							lat: e.coords.latitude,
+							lng: e.coords.longitude
+						};
+						
+						setUserLocation(newLocation);
+						setLocationAccuracy(e.coords?.accuracy || null);
+
+						mapInstance.flyTo({
+							center: [newLocation.lng, newLocation.lat],
+							zoom: 16,
+							pitch: 68,
+							bearing: 0,
+							duration: 1500
+						});
+
+						const popup = new mapboxgl.Popup({
+							offset: 25,
+							closeOnClick: false,
+							className: 'location-popup'
+						})
+						.setLngLat([newLocation.lng, newLocation.lat])
+						.setHTML(`
+						<div class="p-4 min-w-[220px] bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+							<div class="flex items-center gap-2 mb-3">
+								<div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+								<h3 class="font-semibold text-sm">Your Location</h3>
+							</div>
+							<div class="space-y-2">
+								<button onclick="reportIssueHere()" class="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-md text-sm flex items-center gap-2 transition-colors">
+									<span class="text-lg">📍</span>
+									Report Issue Here
+								</button>
+								<button onclick="findNearbyIssues()" class="w-full text-left px-3 py-2 hover:bg-green-50 dark:hover:bg-gray-700 rounded-md text-sm flex items-center gap-2 transition-colors">
+									<span class="text-lg">🔍</span>
+									Find Issues Near Me
+								</button>
+								<button onclick="showClosestIssue()" class="w-full text-left px-3 py-2 hover:bg-purple-50 dark:hover:bg-gray-700 rounded-md text-sm flex items-center gap-2 transition-colors">
+									<span class="text-lg">🎯</span>
+									Show Closest Issue
+								</button>
+								<button onclick="shareLocation()" class="w-full text-left px-3 py-2 hover:bg-orange-50 dark:hover:bg-gray-700 rounded-md text-sm flex items-center gap-2 transition-colors">
+									<span class="text-lg">📤</span>
+									Share My Location
+								</button>
+							</div>
+							<div class="text-xs text-gray-500 mt-2 pt-2 border-t">
+								Accuracy: ±${Math.round(e.coords.accuracy || 0)}m
+							</div>
+						</div>
+						`)
+						.addTo(mapInstance);
+
+						(window as any).reportIssueHere = () => {
+							console.log("📍 Report issue at:", newLocation);
+							alert(`Report issue at: ${newLocation.lat.toFixed(6)}, ${newLocation.lng.toFixed(6)}`);
+							popup.remove();
+						};
+
+						(window as any).findNearbyIssues = () => {
+							console.log("🔍 Finding nearby issues...");
+							const nearby = filteredIssues.filter(issue => {
+								const distance = getDistance(newLocation.lat, newLocation.lng, issue.latitude, issue.longitude);
+								return distance <= 2;
+							});
+							
+							console.log(`Found ${nearby.length} nearby issues`);
+							
+							if (nearby.length > 0) {
+								const bounds = new mapboxgl.LngLatBounds();
+								nearby.forEach(issue => {
+									bounds.extend([issue.longitude, issue.latitude]);
+								});
+								bounds.extend([newLocation.lng, newLocation.lat]);
+								
+								mapInstance.fitBounds(bounds, {
+									padding: 50,
+									pitch: 68,
+									duration: 1500
+								});
+								
+								alert(`Found ${nearby.length} issues within 2km of your location!`);
+							} else {
+								alert("No issues found within 2km of your location.");
+							}
+							popup.remove();
+						};
+
+						(window as any).showClosestIssue = () => {
+							console.log("🎯 Finding closest issue...");
+						
+						if (filteredIssues.length === 0) {
+							alert("No issues available to show.");
+							popup.remove();
+							return;
+						}
+						
+						// Find the closest issue
+						let closestIssue = filteredIssues[0];
+						let closestDistance = getDistance(newLocation.lat, newLocation.lng, closestIssue.latitude, closestIssue.longitude);
+						
+						filteredIssues.forEach(issue => {
+							const distance = getDistance(newLocation.lat, newLocation.lng, issue.latitude, issue.longitude);
+							if (distance < closestDistance) {
+								closestDistance = distance;
+								closestIssue = issue;
+							}
+						});
+						
+						// Fly to closest issue and select it
+						mapInstance.flyTo({
+							center: [closestIssue.longitude, closestIssue.latitude],
+							zoom: 17,
+							pitch: 68,
+							duration: 2000
+						});
+						
+						setSelectedIssue(closestIssue);
+						console.log(`Closest issue: ${closestIssue.title} (${closestDistance.toFixed(2)}km away)`);
+						popup.remove();
+					};
+
+					(window as any).shareLocation = () => {
+						const locationText = `My location: ${newLocation.lat.toFixed(6)}, ${newLocation.lng.toFixed(6)}`;
+						navigator.clipboard.writeText(locationText);
+						console.log("📤 Location copied to clipboard");
+						alert("Location copied to clipboard!");
+						popup.remove();
+					};
+
+						setTimeout(() => {
+							if (popup.isOpen()) popup.remove();
+						}, 15000);
+					}
+				});
+
+				setMap(mapInstance);
+				mapRef.current = mapInstance;
+
+			} catch (error) {
+				console.error("❌ Map initialization failed:", error);
+				setMapError(`Failed to initialize map: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			}
+		};
+
+		initializeData();
+
+		// Cleanup function
+		return () => {
+			if (map) {
+				map.remove();
+				setMap(null);
+				setMapLoaded(false);
+			}
+		};
+	}, [userLocation]); // Only depend on userLocation
+
+	// Helper function to calculate distance between two points
+	const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+		const R = 6371; // Radius of the Earth in km
+		const dLat = (lat2 - lat1) * Math.PI / 180;
+		const dLon = (lon2 - lon1) * Math.PI / 180;
+		const a = 
+			Math.sin(dLat/2) * Math.sin(dLat/2) +
+			Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+			Math.sin(dLon/2) * Math.sin(dLon/2);
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+		return R * c; // Distance in km
+	};
+
+	// Create markers when map loads and we have issues
+	useEffect(() => {
+		if (!map || !mapLoaded || !filteredIssues.length) return;
+
+		console.log("🎯 Creating markers for", filteredIssues.length, "filtered issues");
+
+		// Remove existing markers
+		const existingMarkers = document.querySelectorAll('.custom-marker');
+		existingMarkers.forEach(marker => marker.remove());
+
+		// Dynamically import mapboxgl for markers
+		import('mapbox-gl').then(({ default: mapboxgl }) => {
+			// Create markers for each issue
+			filteredIssues.forEach((issue) => {
+				const severity = severityConfig[issue.severity];
+				const category = categoryConfig[issue.categoryId as keyof typeof categoryConfig] || categoryConfig.other;
+				
+				const getIconSVG = (categoryId: string) => {
+					const iconSVGs: Record<string, string> = {
+						infrastructure: '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
+						traffic: '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18.7 8.3c-.2-.5-.8-.8-1.3-.8h-10.8c-.5 0-1.1.3-1.3.8L3.5 11.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+						lighting: '<path d="M15 14c.2-1 1.2-1 2.5-1s2.3 0 2.5 1c-.2 1-1.2 1-2.5 1s-2.3 0-2.5-1z"/><path d="M9 21c0 .6.4 1 1 1h4c.6 0 1-.4 1-1v-1H9v1z"/><path d="M12 2C8.1 2 5 5.1 5 9c0 2.4 1.2 4.5 3 5.7V17c0 .6.4 1 1 1h6c.6 0 1-.4 1-1v-2.3c1.8-1.2 3-3.3 3-5.7 0-3.9-3.1-7-7-7z"/>',
+						environment: '<path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 2l4 5.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7H17z"/>',
+						sanitation: '<path d="M3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6H3z"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-6 5v6m4-6v6"/>',
+						utilities: '<polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>',
+						water: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+						roads: '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
+						safety: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 .9-.99l7-1a1 1 0 0 1 .2 0l7 1A1 1 0 0 1 20 6Z"/><path d="m9 12 2 2 4-4"/>',
+						other: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>'
+					};
+					return iconSVGs[categoryId] || iconSVGs.other;
+				};
+
+				const markerEl = document.createElement('div');
+				markerEl.className = 'custom-marker';
+				markerEl.innerHTML = `
+					<div class="relative drop-shadow-lg">
+						<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
+							 style="background-color: ${category.color}; z-index: ${severity.zIndex};">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+								${getIconSVG(issue.categoryId || 'other')}
+							</svg>
+						</div>
+						<div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow-lg" 
+							 style="background-color: ${severity.color};"></div>
+						<div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-6 h-6 rounded-full border-2 opacity-50"
+							 style="border-color: ${severity.color}; animation: pulse 2s infinite;"></div>
+					</div>
+				`;
+
+				markerEl.addEventListener('click', (e) => {
+					e.stopPropagation();
+					setSelectedIssue(issue);
+					console.log("📍 Issue selected:", issue.title);
+				});
+				new mapboxgl.Marker(markerEl)
+					.setLngLat([issue.longitude, issue.latitude])
+					.addTo(map);
+			});
+
+			console.log("✅ Zoom-responsive markers created successfully");
+		});
+	}, [map, mapLoaded, filteredIssues]);
+
+	// Real-time location tracking with high accuracy
+	const startLiveTracking = useCallback(() => {
+		if (!navigator.geolocation) {
+			alert('Geolocation is not supported by this browser');
+			return;
+		}
+
+		const options = {
+			enableHighAccuracy: true,
+			timeout: 5000,
+			maximumAge: 1000
+		};
+
+		const id = navigator.geolocation.watchPosition(
+			(position) => {
+				const newLocation = {
+					lat: position.coords.latitude,
+					lng: position.coords.longitude
+				};
+				setUserLocation(newLocation);
+				setLocationAccuracy(position.coords.accuracy);
+				
+				if (map) {
+					map.flyTo({
+						center: [newLocation.lng, newLocation.lat],
+						zoom: 15,
+						duration: 1000
+					});
+				}
+				console.log("📍 Live location updated:", newLocation, `Accuracy: ${position.coords.accuracy}m`);
+			},
+			(error) => {
+				console.error("❌ Live tracking error:", error);
+				setIsLiveTracking(false);
+			},
+			options
+		);
+
+		setWatchId(id);
+	}, [map]);
+
+	const stopLiveTracking = useCallback(() => {
+		if (watchId !== null) {
+			navigator.geolocation.clearWatch(watchId);
+			setWatchId(null);
+		}
+	}, [watchId]);
+
+	// Toggle live tracking
+	useEffect(() => {
+		if (isLiveTracking) {
+			startLiveTracking();
+		} else {
+			stopLiveTracking();
+		}
+	}, [isLiveTracking, startLiveTracking, stopLiveTracking]);
+
+	if (isLoading) {
+		return (
+			<div className="fixed inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+					<p className="text-gray-600 dark:text-gray-400">Loading map...</p>
+				</div>
+			</div>
+		);
+	}
+
+	if (mapError) {
+		return (
+			<div className="fixed inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+				<Card className="max-w-md w-full">
+					<CardHeader>
+						<CardTitle className="text-red-600 flex items-center gap-2">
+							<AlertCircle className="h-5 w-5" />
+							Map Error
+						</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<p className="text-gray-600 dark:text-gray-400 mb-4">{mapError}</p>
+						<Button onClick={() => window.location.reload()} className="w-full">
+							Retry
+						</Button>
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+
+	return (
+		<div className={`mobile-map-page md:fixed md:inset-0 w-full h-screen ${showSearchPanel ? 'search-visible' : ''}`}>
+			{/* Loading Overlay */}
+			{!mapLoaded && (
+				<div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+					<div className="bg-white rounded-lg p-6 flex items-center gap-3">
+						<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+						<span>Loading map...</span>
+					</div>
+				</div>
+			)}
+
+			{/* Map Container */}
+			<div ref={mapContainerRef} className="w-full h-full" />
+
+			{/* Search & Quick Actions Buttons */}
+			{!showSearchPanel && !showQuickActions && (
+				<div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+					<Button
+						size="icon"
+						variant="default"
+						className="shadow-lg"
+						onClick={() => setShowSearchPanel(true)}
+						className="border border-gray-200 bg-white text-black shadow-lg hover:bg-gray-50"
+					>
+						<Search className="mr-2 h-4 w-4" />
+						<span>Show Search</span>
+					</Button>
+				</div>
+			)}
+
+			{/* Search Bar */}
+			{showSearchPanel && (
+				<div className="absolute top-2 right-2 left-2 z-10 w-auto sm:top-4 sm:right-4 sm:left-4 sm:max-w-md">
+					<Card className="border border-gray-200 bg-white shadow-lg">
+						<CardContent className="p-2 sm:p-3">
+							<div className="space-y-2">
+								{/* Search and Hide Button Row */}
+								<div className="flex gap-2">
+									<div className="relative flex-1">
+										<Search className="-translate-y-1/2 absolute top-1/2 left-2.5 h-4 w-4 transform text-gray-400 sm:left-3" />
+										<Input
+											placeholder="Search issues..."
+											value={searchQuery}
+											onChange={(e) => setSearchQuery(e.target.value)}
+											className="h-9 border-gray-300 bg-white pl-8 text-black text-sm focus:border-gray-500 focus:ring-0 sm:h-10 sm:pl-10 sm:text-base"
+										/>
+									</div>
+									<Button
+										variant="default"
+										size="icon"
+										onClick={() => setShowSearchPanel(false)}
+										className="h-9 w-9 shrink-0 bg-gray-800 text-white hover:bg-gray-700 sm:h-10 sm:w-10"
+										title="Hide Search"
+									>
+										<ChevronUp className="h-4 w-4" />
+									</Button>
+								</div>
+								{/* Filter and Legend Buttons */}
+								<div className="flex gap-2">
+									<Button
+										variant="outline"
+										size="icon"
+										onClick={() => setShowFilters(!showFilters)}
+										className="relative h-9 w-9 shrink-0 border-gray-400 hover:border-gray-600 sm:h-10 sm:w-10"
+									>
+										<Filter className="h-4 w-4 text-black" />
+										{activeFilters.status.length +
+											activeFilters.severity.length >
+											0 && (
+											<div className="-top-0.5 -right-0.5 absolute h-2.5 w-2.5 rounded-full bg-primary sm:h-3 sm:w-3" />
+										)}
+									</Button>
+									<Button
+										variant="outline"
+										size="icon"
+										onClick={() => setShowLegend(!showLegend)}
+										className="h-9 w-9 shrink-0 border-gray-400 hover:border-gray-600 sm:h-10 sm:w-10"
+										title="Show Legend"
+									>
+										<MapPin className="h-4 w-4 text-black" />
+									</Button>
+								</div>
+							</div>
+							{/* Status Legend in Search Area */}
+							<div className="mt-2 space-y-2">
+								<span className="block font-medium text-black text-xs">
+									Showing {filteredIssues.length} of {issues.length} issues
+								</span>
+								<div className="flex flex-wrap items-center gap-2 sm:gap-3">
+									<div className="flex items-center gap-1">
+										<div className="h-2.5 w-2.5 rounded-full bg-red-500" />
+										<span className="text-[11px] text-black sm:text-xs">
+											Reported
+										</span>
+									</div>
+									<div className="flex items-center gap-1">
+										<div className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+										<span className="text-[11px] text-black sm:text-xs">
+											In Progress
+										</span>
+									</div>
+									<div className="flex items-center gap-1">
+										<div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+										<span className="text-[11px] text-black sm:text-xs">
+											Resolved
+										</span>
+									</div>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			)}
+
+			{/* Filters Panel */}
+			{showFilters && (
+				<div className="absolute top-[120px] right-2 left-2 z-10 max-h-[calc(100vh-140px)] w-auto overflow-y-auto sm:top-24 sm:right-4 sm:left-auto sm:max-h-[calc(100vh-120px)] sm:w-80">
+					<Card className="border border-gray-300 bg-gray-50 shadow-lg">
+						<CardHeader className="pb-2 sm:pb-3">
+							<div className="flex items-center justify-between">
+								<CardTitle className="text-base text-black sm:text-lg">
+									Filters
+								</CardTitle>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => setShowFilters(false)}
+								>
+									<X className="h-4 w-4" />
+								</Button>
+							</div>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<div>
+								<h4 className="mb-3 font-medium text-black">Status</h4>
+								<div className="space-y-2">
+									{Object.entries(statusConfig).map(([status, config]) => (
+										<label
+											key={status}
+											className="flex cursor-pointer items-center gap-3"
+										>
+											<input
+												type="checkbox"
+												checked={activeFilters.status.includes(status)}
+												onChange={() => toggleFilter("status", status)}
+												className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+											/>
+											<div className="flex items-center gap-2 text-black">
+												<config.icon className="h-4 w-4" />
+												<span className="text-black">{config.label}</span>
+											</div>
+										</label>
+									))}
+								</div>
+							</div>
+
+							<div>
+								<h4 className="mb-3 font-medium text-black">Severity</h4>
+								<div className="space-y-2">
+									{Object.keys(severityConfig).map((severity) => (
+										<label
+											key={severity}
+											className="flex cursor-pointer items-center gap-3"
+										>
+											<input
+												type="checkbox"
+												checked={activeFilters.severity.includes(severity)}
+												onChange={() => toggleFilter("severity", severity)}
+												className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+											/>
+											<span className="text-black capitalize">{severity}</span>
+										</label>
+									))}
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			)}
+
+			{/* Legend Panel */}
+			{showLegend && (
+				<div className="absolute top-[120px] right-2 left-2 z-10 max-h-[calc(100vh-140px)] w-auto overflow-y-auto sm:top-24 sm:right-auto sm:left-4 sm:max-h-[calc(100vh-120px)] sm:w-72">
+					<Card className="border border-gray-300 bg-gray-50 shadow-lg">
+						<CardHeader className="pb-2 sm:pb-3">
+							<div className="flex items-center justify-between">
+								<CardTitle className="text-base text-black sm:text-lg">
+									Map Legend
+								</CardTitle>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => setShowLegend(false)}
+								>
+									<X className="h-4 w-4" />
+								</Button>
+							</div>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							{/* Status Legend */}
+							<div>
+								<h4 className="mb-3 font-medium text-black">Issue Status</h4>
+								<div className="space-y-2">
+									{Object.entries(statusConfig).map(([status, config]) => (
+										<div key={status} className="flex items-center gap-3">
+											<div
+												className="h-4 w-4 rounded-full border-2 border-white shadow-sm"
+												style={{ backgroundColor: config.color }}
+											/>
+											<span className="font-medium text-black text-sm">
+												{config.label}
+											</span>
+										</div>
+									))}
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			)}
+
+			{/* Issue Details Panel */}
+			{selectedIssue && (
+				<div className="sm:-translate-x-1/2 sm:-translate-y-1/2 pointer-events-none fixed right-0 bottom-0 left-0 z-10 p-2 sm:absolute sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:transform sm:p-0">
+					<Card className="pointer-events-auto max-h-[50vh] w-full overflow-y-auto border border-gray-200 bg-white shadow-xl sm:max-h-none sm:w-auto sm:min-w-[320px] sm:max-w-[400px]">
+						<CardContent className="p-3 sm:p-4">
+							<div className="mb-3 flex items-start justify-between">
+								<h3 className="pr-2 font-semibold text-base text-black sm:text-lg">
+									{selectedIssue.title}
+								</h3>
+								<div className="flex items-center gap-2">
+									<Badge
+										className={`${statusConfig[selectedIssue.status].bgColor} ${statusConfig[selectedIssue.status].textColor} shrink-0 transition-none hover:bg-current`}
+									>
+										{statusConfig[selectedIssue.status].label}
+									</Badge>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => setSelectedIssue(null)}
+										className="shrink-0 border-gray-300 hover:border-gray-500 hover:bg-gray-50"
+										title="Close"
+									>
+										<X className="h-4 w-4 text-gray-600" />
+									</Button>
+								</div>
+							</div>
+
+							<p className="mb-3 text-gray-700 text-sm leading-relaxed">
+								{selectedIssue.description}
+							</p>
+
+							{selectedIssue.address && (
+								<p className="mb-3 flex items-center text-gray-600 text-xs">
+									<MapPin className="mr-1 inline h-3 w-3" />
+									{selectedIssue.address}
+								</p>
+							)}
+
+							{/* Distance from user */}
+							{userLocation && (
+								<p className="mb-3 flex items-center text-gray-600 text-xs">
+									<span className="mr-1 inline">📍</span>
+									{calculateDistance(
+										userLocation.lat,
+										userLocation.lng,
+										selectedIssue.latitude,
+										selectedIssue.longitude,
+									).toFixed(1)}{" "}
+									km away
+								</p>
+							)}
+
+							{/* Additional details */}
+							<div className="mb-3 rounded-lg bg-gray-50 p-2">
+								<div className="grid grid-cols-2 gap-2 text-xs">
+									<div>
+										<span className="text-gray-500">Category:</span>
+										<span className="ml-1 font-medium text-black capitalize">
+											{selectedIssue.categoryId}
+										</span>
+									</div>
+									<div>
+										<span className="text-gray-500">Reported:</span>
+										<span className="ml-1 font-medium text-black">
+											{new Date(selectedIssue.createdAt).toLocaleDateString()}
+										</span>
+									</div>
+									<div>
+										<span className="text-gray-500">Reporter:</span>
+										<span className="ml-1 font-medium text-black">
+											{selectedIssue.reporterId}
+										</span>
+									</div>
+									<div>
+										<span className="text-gray-500">Updated:</span>
+										<span className="ml-1 font-medium text-black">
+											{new Date(selectedIssue.updatedAt).toLocaleDateString()}
+										</span>
+									</div>
+								</div>
+							</div>
+
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-3">
+									<Button
+										size="sm"
+										variant="ghost"
+										className="flex items-center gap-1 text-gray-700 hover:text-green-600"
+										onClick={(e) => {
+											e.stopPropagation();
+											handleVote(selectedIssue.id, "upvote");
+										}}
+									>
+										<ThumbsUp className="h-4 w-4" />
+										<span>{selectedIssue.upvotes}</span>
+									</Button>
+								</div>
+								<Badge
+									className={`${severityConfig[selectedIssue.severity as keyof typeof severityConfig].bgColor} ${severityConfig[selectedIssue.severity as keyof typeof severityConfig].textColor} px-3 py-1 font-medium capitalize`}
+								>
+									{selectedIssue.severity}
+								</Badge>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			)}
+		</div>
+	);
+}

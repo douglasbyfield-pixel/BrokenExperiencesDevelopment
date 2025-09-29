@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 	description: "broken-experiences",
 };
 
-export default function RootLayout(props: LayoutProps<"/">) {
+export default function RootLayout(props: { children: React.ReactNode }) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body
