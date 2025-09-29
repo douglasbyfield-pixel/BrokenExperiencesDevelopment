@@ -1,7 +1,8 @@
 "use client";
+
+import { authClient } from "@web/lib/auth-client";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { useSupabaseSession } from "@/lib/use-supabase-session";
 import Header from "./header";
 
 const HIDE_HEADER_ROUTES = [
@@ -9,7 +10,7 @@ const HIDE_HEADER_ROUTES = [
 	"/forgot-password",
 	"/reset-password",
 	"/verify",
-	"/map", // Hide navbar on map page for full-screen experience
+	"/map",
 ];
 
 interface ConditionalHeaderProps {
@@ -20,7 +21,7 @@ export default function ConditionalHeader({
 	children,
 }: ConditionalHeaderProps) {
 	const pathname = usePathname();
-	const { user, loading } = useSupabaseSession();
+	const { data: session, isPending } = authClient.useSession();
 
 	const shouldHideHeader = HIDE_HEADER_ROUTES.includes(pathname);
 
@@ -30,7 +31,7 @@ export default function ConditionalHeader({
 	}
 
 	// Don't show header if user is not logged in (except on auth routes which are already handled above)
-	if (!loading && !user) {
+	if (!isPending && !session) {
 		return <div className="h-svh">{children}</div>;
 	}
 

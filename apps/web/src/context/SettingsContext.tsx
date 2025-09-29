@@ -7,7 +7,6 @@ import {
 	useEffect,
 	useState,
 } from "react";
-import i18n from "@/lib/i18n";
 
 interface UserSettings {
 	notifications: {
@@ -72,10 +71,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 		if (settings?.display.theme) {
 			applyTheme(settings.display.theme);
 		}
-		if (settings?.display.language) {
-			i18n.changeLanguage(settings.display.language);
-		}
-	}, [settings?.display.theme, settings?.display.language]);
+	}, [settings?.display.theme]);
 
 	const loadSettings = async () => {
 		try {
@@ -155,10 +151,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 			applyTheme(newSettings.display.theme);
 		}
 
-		// Apply language if it changed
-		if (newSettings.display?.language) {
-			i18n.changeLanguage(newSettings.display.language);
-		}
 
 		// Send to API (browser only)
 		if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_SERVER_URL) {

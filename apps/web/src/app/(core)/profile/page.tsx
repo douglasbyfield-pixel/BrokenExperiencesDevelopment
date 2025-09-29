@@ -1,5 +1,17 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@web/components/ui/avatar";
+import { Badge } from "@web/components/ui/badge";
+import { Button } from "@web/components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle
+} from "@web/components/ui/card";
+import { Input } from "@web/components/ui/input";
+import { Label } from "@web/components/ui/label";
+import { useSettings } from "@web/context/SettingsContext";
 import {
 	Award,
 	Calendar,
@@ -18,20 +30,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useSettings } from "@/context/SettingsContext";
 
 interface UserProfile {
 	id: string;
@@ -52,7 +50,6 @@ interface UserProfile {
 
 export default function ProfilePage() {
 	const { settings } = useSettings();
-	const { t } = useTranslation();
 	const [profile, setProfile] = useState<UserProfile | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [isEditing, setIsEditing] = useState(false);
@@ -410,14 +407,14 @@ export default function ProfilePage() {
 													onClick={handleCancelEdit}
 												>
 													<X className="mr-2 h-4 w-4" />
-													{t("profile.cancel")}
+													Profile Cancel
 												</Button>
 												<Button
 													className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
 													onClick={handleEditProfile}
 												>
 													<Save className="mr-2 h-4 w-4" />
-													{t("profile.saveChanges")}
+													Profile Save Changes
 												</Button>
 											</>
 										) : (
@@ -428,14 +425,14 @@ export default function ProfilePage() {
 													onClick={handleSettings}
 												>
 													<Settings className="mr-2 h-4 w-4" />
-													{t("nav.settings")}
+													Profile Settings
 												</Button>
 												<Button
 													className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
 													onClick={handleEditProfile}
 												>
 													<Edit className="mr-2 h-4 w-4" />
-													{t("profile.editProfile")}
+													Profile Edit Profile
 												</Button>
 											</>
 										)}
@@ -672,15 +669,14 @@ export default function ProfilePage() {
 											Achievements
 										</h3>
 										<div className="flex gap-1">
-											{achievements.map((_, index) => (
-												<button
-													key={index}
+											{achievements.map((achievement, index) => (
+												<Button
+													key={achievement.title}
 													onClick={() => setCurrentAchievement(index)}
-													className={`h-1.5 w-1.5 rounded-full transition-colors ${
-														index === currentAchievement
-															? "bg-black dark:bg-white"
-															: "bg-gray-300 dark:bg-gray-600"
-													}`}
+													className={`h-1.5 w-1.5 rounded-full transition-colors ${index === currentAchievement
+														? "bg-black dark:bg-white"
+														: "bg-gray-300 dark:bg-gray-600"
+														}`}
 												/>
 											))}
 										</div>

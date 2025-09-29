@@ -35,7 +35,7 @@
         "@types/pg": "^8.11.11",
         "drizzle-kit": "^0.31.2",
         "tsdown": "^0.15.1",
-        "typescript": "^5",
+        "typescript": "^5.8.2",
       },
     },
     "apps/web": {

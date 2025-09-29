@@ -1,5 +1,7 @@
 'use client'
 
+import { Button } from "@web/components/ui/button"
+
 export default function GlobalError({
 	error,
 	reset,
@@ -8,17 +10,17 @@ export default function GlobalError({
 	reset: () => void
 }) {
 	return (
-		<html>
+		<html lang="en">
 			<body>
 				<div className="flex min-h-screen items-center justify-center">
 					<div className="text-center">
 						<h1 className="text-4xl font-bold text-gray-900">Something went wrong!</h1>
-						<button 
+						<Button
 							onClick={() => reset()}
 							className="mt-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
 						>
 							Try again
-						</button>
+						</Button>
 					</div>
 				</div>
 			</body>

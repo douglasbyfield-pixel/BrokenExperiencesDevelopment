@@ -1,16 +1,14 @@
 import { useForm } from "@tanstack/react-form";
+import GoogleLogo from "@web/components/icons/google-logo";
+import { Button } from "@web/components/ui/button";
+import { Dialog } from "@web/components/ui/dialog";
+import { Input } from "@web/components/ui/input";
+import { Label } from "@web/components/ui/label";
+import { authClient } from "@web/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import z from "zod";
-import { supabase } from "@/lib/supabase-client";
-import { useSupabaseSession } from "@/lib/use-supabase-session";
-import { AppleLogo } from "./icons/apple-logo";
-import { GoogleLogo } from "./icons/google-logo";
-import { Button } from "./ui/button";
-import { Dialog } from "./ui/dialog";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 
 export default function SignInForm({
 	onSwitchToSignUp,
@@ -18,10 +16,7 @@ export default function SignInForm({
 	onSwitchToSignUp: () => void;
 }) {
 	const router = useRouter();
-	const { loading } = useSupabaseSession();
 	const [forgotOpen, setForgotOpen] = useState(false);
-	const [forgotEmail, setForgotEmail] = useState("");
-	const [sending, setSending] = useState(false);
 
 	const form = useForm({
 		defaultValues: {
@@ -29,7 +24,7 @@ export default function SignInForm({
 			password: "",
 		},
 		onSubmit: async ({ value }) => {
-			const { error } = await supabase.auth.signInWithPassword({
+			const { error } = await authClient.signIn.email({
 				email: value.email,
 				password: value.password,
 			});
@@ -126,13 +121,13 @@ export default function SignInForm({
 				</div>
 
 				<div className="flex items-center justify-end">
-					<button
+					<Button
 						type="button"
 						onClick={() => setForgotOpen(true)}
 						className="font-medium text-black text-sm underline hover:text-gray-700"
 					>
 						Forgot password?
-					</button>
+					</Button>
 				</div>
 
 				<form.Subscribe>
@@ -163,14 +158,8 @@ export default function SignInForm({
 					variant="outline"
 					className="h-12 w-full justify-center border-gray-300 text-black hover:bg-gray-50 hover:text-black"
 					onClick={async () => {
-						const { error } = await supabase.auth.signInWithOAuth({
+						const { error } = await authClient.signIn.social({
 							provider: "google",
-							options: {
-								redirectTo:
-									typeof window !== "undefined"
-										? `${window.location.origin}/auth/callback`
-										: undefined,
-							},
 						});
 						if (error) toast.error(error.message);
 					}}
@@ -182,12 +171,12 @@ export default function SignInForm({
 			<div className="mt-8 border-gray-200 border-t pt-6">
 				<div className="text-center">
 					<span className="text-gray-600">Don't have an account? </span>
-					<button
+					<Button
 						onClick={onSwitchToSignUp}
 						className="font-medium text-black underline transition-colors duration-200 hover:text-gray-700"
 					>
 						Sign up
-					</button>
+					</Button>
 				</div>
 			</div>
 
@@ -243,14 +232,8 @@ function ForgotPasswordDialog({
 						disabled={!isValidEmail || sending}
 						onClick={async () => {
 							setSending(true);
-							const { error } = await supabase.auth.resetPasswordForEmail(
-								email,
-								{
-									redirectTo:
-										typeof window !== "undefined"
-											? `${window.location.origin}/reset-password`
-											: undefined,
-								},
+							const { error } = await authClient.requestPasswordReset(
+								{ email },
 							);
 							setSending(false);
 							if (error) {

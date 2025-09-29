@@ -1,24 +1,21 @@
 "use client";
 
+import { Button } from "@web/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
+import { Input } from "@web/components/ui/input";
+import { Label } from "@web/components/ui/label";
+import { useSettings } from "@web/context/SettingsContext";
 import {
 	ArrowLeft,
 	Bell,
-	Check,
 	Eye,
-	Globe,
 	Palette,
 	Save,
-	Trash2,
+	Trash2
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useSettings } from "@/context/SettingsContext";
 
 interface UserSettings {
 	notifications: {
@@ -41,7 +38,6 @@ interface UserSettings {
 
 export default function SettingsPage() {
 	const { settings, updateSettings, loading } = useSettings();
-	const { t } = useTranslation();
 	const [saving, setSaving] = useState(false);
 	const [deletePassword, setDeletePassword] = useState("");
 	const [showDeleteSection, setShowDeleteSection] = useState(false);
@@ -116,25 +112,12 @@ export default function SettingsPage() {
 		if (section === "display") {
 			if (key === "theme") {
 				toast.success(
-					`${t("settings.theme")} changed to ${t(`theme.${value}`)}`,
-				);
-			} else if (key === "language") {
-				const langName =
-					value === "en"
-						? t("lang.english")
-						: value === "es"
-							? t("lang.spanish")
-							: t("lang.french");
-				toast.success(`${t("settings.language")} changed to ${langName}`);
-			} else if (key === "mapStyle") {
-				toast.success(
-					`${t("settings.mapStyle")} changed to ${value.replace("-", " ")}`,
+					`Settings Theme changed to ${value}`,
 				);
 			}
-		} else if (section === "notifications") {
 			const setting = key.replace(/([A-Z])/g, " $1").toLowerCase();
 			toast.success(`${setting} ${value ? "enabled" : "disabled"}`);
-		} else if (section === "privacy") {
+		} else {
 			const setting = key.replace(/([A-Z])/g, " $1").toLowerCase();
 			toast.success(`${setting} ${value ? "enabled" : "disabled"}`);
 		}
@@ -172,7 +155,7 @@ export default function SettingsPage() {
 						<ArrowLeft className="h-4 w-4" />
 					</Button>
 					<h1 className="font-bold text-3xl text-black dark:text-white">
-						{t("settings.title")}
+						Settings Title
 					</h1>
 				</div>
 
@@ -183,7 +166,7 @@ export default function SettingsPage() {
 							<div className="flex items-center gap-2">
 								<Bell className="h-5 w-5 text-black dark:text-white" />
 								<CardTitle className="text-black dark:text-white">
-									{t("settings.notifications")}
+									Settings Notifications
 								</CardTitle>
 							</div>
 						</CardHeader>

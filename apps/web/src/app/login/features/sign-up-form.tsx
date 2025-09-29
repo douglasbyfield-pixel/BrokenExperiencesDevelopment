@@ -1,17 +1,14 @@
 import { useForm } from "@tanstack/react-form";
+import GoogleLogo from "@web/components/icons/google-logo";
+import { Button } from "@web/components/ui/button";
+import { Input } from "@web/components/ui/input";
+import { Label } from "@web/components/ui/label";
+import { authClient } from "@web/lib/auth-client";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import z from "zod";
-import { checkEmailExists } from "@/lib/api";
-import { supabase } from "@/lib/supabase-client";
-import { useSupabaseSession } from "@/lib/use-supabase-session";
-import { AppleLogo } from "./icons/apple-logo";
-import { GoogleLogo } from "./icons/google-logo";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 
 export default function SignUpForm({
 	onSwitchToSignIn,
@@ -19,7 +16,7 @@ export default function SignUpForm({
 	onSwitchToSignIn: () => void;
 }) {
 	const router = useRouter();
-	const { loading } = useSupabaseSession();
+	const { data: session, isPending } = authClient.useSession();
 	const [showPassword, setShowPassword] = useState(false);
 	const [serverEmailError, setServerEmailError] = useState<string | null>(null);
 
@@ -30,47 +27,7 @@ export default function SignUpForm({
 			name: "",
 		},
 		onSubmit: async ({ value }) => {
-			// hard pre-check against server to avoid async race UX
-			const exists = await checkEmailExists(value.email);
-			if (exists) {
-				setServerEmailError(
-					"Email already in use. Try logging in or reset password.",
-				);
-				await supabase.auth.resend({ type: "signup", email: value.email });
-				return;
-			}
-			const { data, error } = await supabase.auth.signUp({
-				email: value.email,
-				password: value.password,
-				options: {
-					data: { name: value.name },
-					emailRedirectTo:
-						typeof window !== "undefined"
-							? `${window.location.origin}/auth/callback`
-							: undefined,
-				},
-			});
-			if (error) {
-				const msg = error.message?.toLowerCase() ?? "";
-				const looksLikeExisting =
-					error?.status === 422 || /already|exists|duplicate/.test(msg);
-				if (looksLikeExisting) {
-					// If the email already exists (possibly unconfirmed), resend verification
-					await supabase.auth.resend({ type: "signup", email: value.email });
-					setServerEmailError(
-						"Email already in use. Try logging in or check your inbox for verification.",
-					);
-					toast.success(
-						"If this email wasn’t confirmed, we re‑sent the verification link.",
-					);
-				} else {
-					setServerEmailError(error.message);
-					toast.error(error.message);
-				}
-				return;
-			}
-			toast.success("Sign up successful. Check your email to confirm.");
-			router.push(`/verify?email=${encodeURIComponent(value.email)}`);
+			console.log(value);
 		},
 		validators: {
 			onSubmit: z.object({
@@ -80,8 +37,6 @@ export default function SignUpForm({
 			}),
 		},
 	});
-
-	// Show form even if loading
 
 	return (
 		<div className="w-full">
@@ -235,12 +190,12 @@ export default function SignUpForm({
 
 			<div className="mt-3 text-center text-sm">
 				<span className="text-gray-600">I already have an account. </span>
-				<button
+				<Button
 					onClick={onSwitchToSignIn}
 					className="font-medium text-black underline"
 				>
 					Log in
-				</button>
+				</Button>
 			</div>
 
 			<div className="relative my-5">
@@ -257,14 +212,8 @@ export default function SignUpForm({
 					variant="outline"
 					className="h-12 w-full justify-center border-gray-300 text-black hover:bg-gray-50 hover:text-black"
 					onClick={async () => {
-						const { error } = await supabase.auth.signInWithOAuth({
+						const { error } = await authClient.signIn.social({
 							provider: "google",
-							options: {
-								redirectTo:
-									typeof window !== "undefined"
-										? `${window.location.origin}/auth/callback`
-										: undefined,
-							},
 						});
 						if (error) toast.error(error.message);
 					}}
@@ -276,11 +225,11 @@ export default function SignUpForm({
 			<div className="mt-6">
 				<p className="text-center text-gray-500 text-xs leading-relaxed">
 					By continuing, you agree to Broken Experience{" "}
-					<a href="#" className="text-black underline hover:text-gray-700">
+					<a href="/terms-of-service" className="text-black underline hover:text-gray-700">
 						Terms of Service
 					</a>{" "}
 					and{" "}
-					<a href="#" className="text-black underline hover:text-gray-700">
+					<a href="/privacy-policy" className="text-black underline hover:text-gray-700">
 						Privacy Policy
 					</a>
 					.

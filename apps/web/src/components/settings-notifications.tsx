@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSettings } from "@/context/SettingsContext";
+import { useSettings } from "@web/context/SettingsContext";
 
 export function SettingsNotifications() {
 	const { settings } = useSettings();

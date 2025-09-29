@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import SignInForm from "@/components/sign-in-form";
-import SignUpForm from "@/components/sign-up-form";
-import { Button } from "@/components/ui/button";
+import { Button } from "@web/components/ui/button";
+import SignInForm from "./features/sign-in-form";
+import SignUpForm from "./features/sign-up-form";
 
 export default function LoginPage() {
 	const [showSignIn, setShowSignIn] = useState(true);
