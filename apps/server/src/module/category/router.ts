@@ -5,6 +5,7 @@ import {
 	deleteCategory,
 	getCategories,
 	getCategory,
+	getCategoryOptions,
 	updateCategory,
 } from "./service";
 
@@ -29,6 +30,27 @@ export const categoryRouter = new Elysia({
 		},
 		{
 			query: "category.query",
+			detail: {
+				summary: "Get all categories",
+				description: "Returns a list of all categories in the database.",
+			},
+		},
+	)
+	.get(
+		"/options",
+		async () => {
+			try {
+				const results = await getCategoryOptions();
+				return results;
+			} catch (error) {
+				console.log(error);
+				return {
+					status: 500,
+					message: "Internal server error",
+				};
+			}
+		},
+		{
 			detail: {
 				summary: "Get all categories",
 				description: "Returns a list of all categories in the database.",

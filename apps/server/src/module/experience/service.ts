@@ -11,7 +11,8 @@ import type {
 
 export const getExperiences = async (_options: { query: ExperienceQuery }) => {
 	const retrievedExperiences = await db.query.experience.findMany({
-		with: { experienceImages: true },
+		with: { experienceImages: true, reportedBy: true, category: true },
+		orderBy: (experience, { desc }) => [desc(experience.createdAt)],
 	});
 	return retrievedExperiences;
 };
@@ -23,7 +24,10 @@ export const getNearbyExperiences = async (options: {
 	return options;
 };
 
-export const createExperience = async (options: { data: ExperienceCreate }) => {
+export const createExperience = async (options: {
+	userId: string;
+	data: ExperienceCreate;
+}) => {
 	const { data } = options;
 
 	const createdExperience = await db.transaction(async (tx) => {
@@ -31,6 +35,7 @@ export const createExperience = async (options: { data: ExperienceCreate }) => {
 			.insert(experience)
 			.values({
 				title: data.title,
+				reportedBy: options.userId,
 				description: data.description,
 				latitude: data.latitude,
 				longitude: data.longitude,

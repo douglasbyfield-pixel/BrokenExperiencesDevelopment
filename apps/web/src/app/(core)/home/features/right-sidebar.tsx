@@ -11,9 +11,9 @@ interface RightSidebarProps {
 export default function RightSidebar({ className }: RightSidebarProps) {
 	return (
 		<div
-			className={cn("w-80 border-gray-800 border-l bg-black p-4", className)}
+			className={cn("lg:-ml-2 relative w-full shrink-0 bg-black lg:sticky lg:top-0 lg:max-h-dvh lg:w-[300px] lg:overflow-y-auto lg:overflow-x-hidden lg:pl-2 [@media(min-width:1600px)]:w-[350px]", className)}
 		>
-			<div className="space-y-6">
+			<div className="space-y-6 p-2">
 				{/* Search */}
 				<div>
 					<Input

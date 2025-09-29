@@ -6,9 +6,28 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { eden } from "@/lib/eden";
+import type { CategoryOption } from "@/types";
 
-export default function CreatePostCard() {
+interface CreateExperienceCardProps {
+	categoryOptions: CategoryOption;
+}
+
+export default function CreateExperienceCard({ categoryOptions }: CreateExperienceCardProps) {
 	const [post, setPost] = useState("");
+	const [categoryId, setCategoryId] = useState("");
+
+	const handleCreateExperience = async () => await eden.experience.post({
+			categoryId: categoryId,
+			title: post,
+			description: post,
+			latitude: "0",
+			longitude: "0",
+			address: "123 Main St, Anytown, USA",
+			status: "pending",
+			priority: "medium",
+		});
 
 	return (
 		<Card className="border-gray-800 bg-black p-6">
@@ -18,6 +37,18 @@ export default function CreatePostCard() {
 					<AvatarFallback>YO</AvatarFallback>
 				</Avatar>
 				<div className="flex-1 space-y-3">
+					<Select value={categoryId} onValueChange={setCategoryId}>
+						<SelectTrigger>
+							<SelectValue placeholder="Select a category" />
+						</SelectTrigger>
+						<SelectContent>
+							{categoryOptions.map((category) => (
+								<SelectItem key={category.id} value={category.id}>
+									{category.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 					<Input
 						placeholder="What's happening?"
 						value={post}
@@ -35,7 +66,7 @@ export default function CreatePostCard() {
 								<span>Schedule</span>
 							</div>
 						</div>
-						<Button className="rounded-full px-6">Post</Button>
+						<Button onClick={handleCreateExperience} className="rounded-full px-6">Post</Button>
 					</div>
 				</div>
 			</div>

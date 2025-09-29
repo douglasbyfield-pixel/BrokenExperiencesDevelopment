@@ -16,6 +16,11 @@ export const getCategories = async (options: { query: CategoryQuery }) => {
 	return categories ?? [];
 };
 
+export const getCategoryOptions = async () => {
+	const categories = await db.select({id: category.id, name: category.name}).from(category);
+	return categories ?? [];
+};
+
 export const createCategory = async (options: { data: CategoryCreate }) => {
 	const { data } = options;
 	const createdCategory = await db.insert(category).values(data).returning();

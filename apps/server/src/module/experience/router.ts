@@ -46,7 +46,10 @@ export const experienceRouter = new Elysia({
 	.post(
 		"/",
 		async ({ body }) => {
-			const result = await createExperience({ data: body });
+			const result = await createExperience({
+				userId: "6a826832-aea4-481e-b3a1-c9639f96bdb2",
+				data: body,
+			});
 			return result;
 		},
 		{

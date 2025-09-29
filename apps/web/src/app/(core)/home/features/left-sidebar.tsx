@@ -9,9 +9,9 @@ interface LeftSidebarProps {
 export default function LeftSidebar({ className }: LeftSidebarProps) {
 	return (
 		<div
-			className={cn("w-64 border-gray-800 border-r bg-black p-4", className)}
+			className={cn("sticky z-20 hidden h-dvh max-w-[300px] flex-col gap-4 border-gray-500/20 bg-black py-2 shadow-xl transition-all duration-500 lg:top-0 lg:flex xl:max-w-[350px] 2xl:max-w-[400px] dark:border-r dark:bg-black/30", className)}
 		>
-			<div className="space-y-6">
+			<div className="space-y-6 p-2">
 				{/* X Logo */}
 				<div className="mb-6">
 					<div className="flex h-8 w-8 items-center justify-center">
