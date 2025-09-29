@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { ExperienceStatusEnum } from "@/db/schema";
+import { db } from "@server/db";
+import { ExperienceStatusEnum } from "@server/db/schema";
 
 export const getStats = async () => {
 	const totalExperiences = await db.query.experience.findMany();

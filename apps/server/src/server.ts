@@ -19,3 +19,6 @@ export const app = new Elysia()
 	)
 	.mount(auth.handler)
 	.use(appRouter);
+
+
+export type App = typeof app;

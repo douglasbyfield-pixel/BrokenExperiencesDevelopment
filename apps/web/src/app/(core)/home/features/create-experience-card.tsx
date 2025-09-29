@@ -1,11 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { eden } from "@/lib/eden";
-import type { CategoryOption } from "@/types";
+import { Button } from "@web/components/ui/button";
+import { Card } from "@web/components/ui/card";
+import { Input } from "@web/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@web/components/ui/select";
+import { eden } from "@web/lib/eden";
+import type { CategoryOption } from "@web/types";
 import { useForm } from "@tanstack/react-form";
 import { MapPin } from "lucide-react";
 import z from "zod";

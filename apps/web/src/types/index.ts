@@ -1,4 +1,4 @@
-import type { eden } from "@/lib/eden";
+import type { eden } from "@web/lib/eden";
 
 export type Experience = NonNullable<
 	Awaited<ReturnType<typeof eden.experience.get>>["data"]

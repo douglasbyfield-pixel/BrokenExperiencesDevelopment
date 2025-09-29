@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
-import { eden } from "@/lib/eden";
+import { Button } from "@web/components/ui/button";
+import { eden } from "@web/lib/eden";
 import CreateExperienceCard from "./features/create-experience-card";
 import Feed from "./features/feed";
 import FeedHeader from "./features/feed-header";

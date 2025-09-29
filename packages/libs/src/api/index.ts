@@ -1,5 +1,5 @@
 import { treaty } from "@elysiajs/eden";
-import type { App } from "@server/index";
+import type { App } from "@server/server";
 
 export function createEdenApi(baseUrl?: string) {
 	const urlToUse = baseUrl ?? process.env.NEXT_PUBLIC_SERVER_URL;

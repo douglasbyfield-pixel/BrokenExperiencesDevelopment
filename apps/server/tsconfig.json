@@ -9,7 +9,8 @@
 		"skipLibCheck": true,
 		"baseUrl": "./",
 		"paths": {
-			"@/*": ["./src/*"]
+			"@server/*": ["./src/*"],
+			"@web/*": ["../web/src/*"]
 		},
 		"outDir": "./dist",
 		"types": ["bun"],

@@ -22,10 +22,10 @@ import {
 	Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@web/components/ui/badge";
+import { Button } from "@web/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
+import { Input } from "@web/components/ui/input";
 
 interface Issue {
 	id: string;

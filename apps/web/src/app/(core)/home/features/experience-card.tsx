@@ -5,11 +5,11 @@ import {
 	MoreHorizontal,
 	Share,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import type { Experience } from "@/types";
+import { Avatar, AvatarFallback, AvatarImage } from "@web/components/ui/avatar";
+import { Badge } from "@web/components/ui/badge";
+import { Button } from "@web/components/ui/button";
+import { Card } from "@web/components/ui/card";
+import type { Experience } from "@web/types";
 
 interface ExperienceCardProps {
 	experience: Experience;

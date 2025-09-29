@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { experience, experienceImage, vote } from "@/db/schema";
-import { decrement, increment } from "@/db/utils";
+import { db } from "@server/db";
+import { experience, experienceImage, vote } from "@server/db/schema";
+import { decrement, increment } from "@server/db/utils";
 import type {
 	ExperienceCreate,
 	ExperienceQuery,

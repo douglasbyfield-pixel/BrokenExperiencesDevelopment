@@ -1,4 +1,4 @@
-import type { Experience } from "@/types";
+import type { Experience } from "@web/types";
 import ExperienceCard from "./experience-card";
 
 interface FeedProps {

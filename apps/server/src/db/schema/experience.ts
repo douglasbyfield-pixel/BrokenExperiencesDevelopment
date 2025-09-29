@@ -1,6 +1,6 @@
 import { relations } from "drizzle-orm";
 import * as p from "drizzle-orm/pg-core";
-import type { ExperiencePriority, ExperienceStatus } from "@/types";
+import type { ExperiencePriority, ExperienceStatus } from "../../types";
 import { user } from "./auth";
 import { category } from "./category";
 import { experienceImage } from "./experience-image";

@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { category } from "@/db/schema";
+import { db } from "@server/db";
+import { category } from "@server/db/schema";
 import type { CategoryCreate, CategoryQuery, CategoryUpdate } from "./schema";
 
 export const getCategories = async (options: { query: CategoryQuery }) => {

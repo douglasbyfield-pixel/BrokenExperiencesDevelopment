@@ -1,8 +1,8 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@web/components/ui/avatar";
+import { Button } from "@web/components/ui/button";
+import { Card } from "@web/components/ui/card";
+import { Input } from "@web/components/ui/input";
+import { cn } from "@web/lib/utils";
 
 interface RightSidebarProps {
 	className?: string;

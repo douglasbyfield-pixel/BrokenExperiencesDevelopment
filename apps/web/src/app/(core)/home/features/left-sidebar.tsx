@@ -1,6 +1,6 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@web/components/ui/avatar";
+import { Button } from "@web/components/ui/button";
+import { cn } from "@web/lib/utils";
 
 interface LeftSidebarProps {
 	className?: string;

@@ -1,6 +1,6 @@
+import { category } from "@server/db/schema";
 import { createInsertSchema } from "drizzle-typebox";
 import Elysia, { type Static, t } from "elysia";
-import { category } from "../../db/schema/category";
 
 const baseCategoryInsertSchema = createInsertSchema(category);
 

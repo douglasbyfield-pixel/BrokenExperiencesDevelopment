@@ -19,8 +19,10 @@
 				"name": "next"
 			}
 		],
+		"baseUrl": "./",
 		"paths": {
-			"@/*": ["./src/*"],
+			"@web/*": ["./src/*"],
+			"@server/*": ["../server/src/*"],
 			"@libs": ["../../packages/libs/src/index.ts"],
 			"@libs/*": ["../../packages/libs/src/*"]
 		}

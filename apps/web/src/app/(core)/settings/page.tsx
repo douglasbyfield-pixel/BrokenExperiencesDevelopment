@@ -1,21 +1,19 @@
 "use client";
 
+import { Button } from "@web/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
+import { Input } from "@web/components/ui/input";
+import { Label } from "@web/components/ui/label";
 import {
 	ArrowLeft,
 	Bell,
 	Eye,
-	Globe,
 	Palette,
 	Save,
-	Trash2,
+	Trash2
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 interface UserSettings {
 	notifications: {

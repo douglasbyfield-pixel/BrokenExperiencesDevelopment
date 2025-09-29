@@ -1,4 +1,4 @@
-import { eden } from "@/lib/eden";
+import { eden } from "@web/lib/eden";
 import Response from "./feature/response";
 
 export default async function DevPage() {
