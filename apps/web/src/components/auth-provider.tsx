@@ -15,16 +15,7 @@ export function AuthProvider({ children, requireAuth = false }: AuthProviderProp
 	const router = useRouter();
 
 	useEffect(() => {
-		// Check localStorage first (for our token-based auth)
-		const storedUser = localStorage.getItem('auth-user');
-		
-		if (storedUser) {
-			setIsAuthenticated(true);
-			setIsLoading(false);
-			return;
-		}
-
-		// Fallback to session check
+		// Check session
 		const checkAuth = async () => {
 			const { data: session } = authClient.useSession();
 			

@@ -24,13 +24,7 @@ export default function SignInForm({
 		console.log("Session state changed:", { session, isPending });
 	}, [session, isPending]);
 
-	// Redirect when session is established
-	useEffect(() => {
-		if (session && !isPending) {
-			console.log("Session detected, redirecting to home", session);
-			router.push("/home");
-		}
-	}, [session, isPending, router]);
+	// Don't auto-redirect - let manual redirect handle it
 
 	const form = useForm({
 		defaultValues: {
@@ -49,13 +43,9 @@ export default function SignInForm({
 			}
 			
 			if (result.data?.user) {
-				// Store user data locally since cross-origin cookies don't work
-				localStorage.setItem('auth-user', JSON.stringify(result.data.user));
-				localStorage.setItem('auth-token', result.data.token || '');
-				
 				toast.success("Sign in successful");
 				
-				// Direct redirect since we have the user data
+				// Manual redirect after successful sign-in
 				router.push("/home");
 			}
 		},
