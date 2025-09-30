@@ -19,9 +19,9 @@ export default function LoginPage() {
 			<div className="mx-auto w-full max-w-md px-6">
 				{/* Logo */}
 				<div className="mb-8 text-center">
-					<div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-black bg-white p-3">
+					<div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-black bg-white p-3">
 						<img
-							src="/favicon/be-logoimage.png"
+							src="/images/logo.png"
 							alt="Broken Experiences"
 							className="h-full w-full object-contain"
 						/>
@@ -44,7 +44,7 @@ export default function LoginPage() {
 					<Button
 						variant="outline"
 						className="w-full"
-						onClick={() => router.push("/home")}
+						onClick={() => window.location.href = "/home"}
 					>
 						Continue as Demo User (No Sign In)
 					</Button>

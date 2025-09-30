@@ -1,3 +1,5 @@
+"use client";
+
 import type { Experience } from "@web/types";
 import ExperienceCard from "./experience-card";
 
@@ -7,14 +9,16 @@ interface FeedProps {
 
 export default function Feed({ experiences }: FeedProps) {
 	return (
-		<main className="relative mb-8 flex min-h-0 w-full min-w-0 max-w-full flex-col">
-			<div className="mx-auto flex min-h-[88dvh] w-[1208px] min-w-0 max-w-full justify-center lg:min-h-0">
-				<div className="flex w-full flex-col space-y-4 overflow-auto p-4 pr-0! lg:p-6">
-					{experiences?.map((experience) => (
-						<ExperienceCard key={experience.id} experience={experience} />
-					))}
+		<div className="min-h-screen">
+			{experiences && experiences.length > 0 ? (
+				experiences.map((experience) => (
+					<ExperienceCard key={experience.id} experience={experience} />
+				))
+			) : (
+				<div className="p-8 text-center">
+					<p className="text-gray-600">No experiences yet. Be the first to share!</p>
 				</div>
-			</div>
-		</main>
+			)}
+		</div>
 	);
 }

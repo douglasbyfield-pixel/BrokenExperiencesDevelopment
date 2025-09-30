@@ -1,88 +1,123 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@web/components/ui/avatar";
 import { Button } from "@web/components/ui/button";
 import { cn, getInitials } from "@web/lib/utils";
-import type { Session, User } from "better-auth";
+import { authClient } from "@web/lib/auth-client";
+import type { User } from "better-auth";
 import Link from "next/link";
+import { LogOut } from "lucide-react";
 
 interface LeftSidebarProps {
 	className?: string;
-	user: User;
+	user?: User | null;
 }
 
 export default function LeftSidebar({ className, user }: LeftSidebarProps) {
+	console.log("LeftSidebar user:", user);
+	
 	return (
-		<div
+		<aside
 			className={cn(
-				"sticky z-20 hidden h-dvh max-w-[300px] flex-col gap-4 border-gray-500/20 bg-black py-2 shadow-xl transition-all duration-500 lg:top-0 lg:flex xl:max-w-[350px] 2xl:max-w-[400px] dark:border-r dark:bg-black/30",
+				"sticky top-0 hidden h-screen w-60 lg:w-64 xl:w-72 flex-col bg-white py-4 px-3 lg:px-4 lg:flex",
 				className,
 			)}
 		>
-			<div className="space-y-6 p-2">
-				{/* X Logo */}
-				<div className="mb-6">
-					<div className="h-8 justify-center font-bold text-2xl text-white">
-						Broken Experiences
+			<div className="space-y-4">
+				{/* Logo */}
+				<div className="mb-6 lg:mb-8 flex items-center space-x-3">
+					<div className="flex h-10 w-10 lg:h-12 lg:w-12 items-center justify-center rounded-xl border-2 border-black bg-white p-1.5">
+						<img
+							src="/images/logo.png"
+							alt="Broken Experiences"
+							className="h-full w-full object-contain"
+						/>
 					</div>
+					<h1 className="font-bold text-lg lg:text-xl text-black">
+						Broken
+						<span className="block text-gray-600 text-sm lg:text-base">Experiences</span>
+					</h1>
 				</div>
 
 				{/* Navigation */}
-				<nav className="flex flex-col gap-2 space-y-1">
-					<Button asChild>
-						<Link
-							href="/home"
-							className="w-full justify-start font-normal text-lg hover:bg-gray-800"
-						>
-							🏠 Home
-						</Link>
-					</Button>
-					<Button asChild>
-						<Link
-							href="/map"
-							className="w-full justify-start font-normal text-lg hover:bg-gray-800"
-						>
-							🔍 Maps
-						</Link>
-					</Button>
-					<Button asChild>
-						<Link
-							href="/report"
-							className="w-full justify-start font-normal text-lg hover:bg-gray-800"
-						>
-							🔔 Reports
-						</Link>
-					</Button>
-					<Button asChild>
-						<Link
-							href="/profile"
-							className="w-full justify-start font-normal text-lg hover:bg-gray-800"
-						>
-							👤 Profile
-						</Link>
-					</Button>
-					<Button asChild>
-						<Link
-							href="/dev"
-							className="w-full justify-start font-normal text-lg hover:bg-gray-800"
-						>
-							🔧 Dev
-						</Link>
-					</Button>
-					{/* Remove duplicate Profile button */}
-					{/* Remove invalid ghost buttons with '�' */}
+				<nav className="flex flex-col gap-1">
+					<Link
+						href="/home"
+						className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
+					>
+						<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+						</svg>
+						<span className="font-medium">Home</span>
+					</Link>
+					<Link
+						href="/map"
+						className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
+					>
+						<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+						</svg>
+						<span className="font-medium">Map</span>
+					</Link>
+					<Link
+						href="/report"
+						className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
+					>
+						<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+						</svg>
+						<span className="font-medium">Reports</span>
+					</Link>
+					<Link
+						href="/profile"
+						className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
+					>
+						<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+						</svg>
+						<span className="font-medium">Profile</span>
+					</Link>
+					<Link
+						href="/settings"
+						className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
+					>
+						<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+						</svg>
+						<span className="font-medium">Settings</span>
+					</Link>
 				</nav>
+
 			</div>
+			
 			{/* User Profile */}
-			<div className="mt-8">
-				<div className="flex items-center space-x-3 rounded-full p-3 hover:bg-gray-800">
-					<Avatar className="h-10 w-10">
-						<AvatarImage src="/avatars/you.jpg" />
-						<AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-					</Avatar>
-					<div className="min-w-0 flex-1">
-						<p className="font-semibold text-sm text-white">{user.name}</p>
-						<p className="text-gray-400 text-sm">{user.email}</p>
+			{user && (
+				<div className="mt-auto pt-4 border-t border-gray-200">
+					<div className="flex items-center space-x-3 rounded-lg p-2 hover:bg-gray-100">
+						<Avatar className="h-10 w-10">
+							<AvatarImage src={user.image || undefined} />
+							<AvatarFallback className="bg-gray-200 text-gray-700">
+								{getInitials(user.name)}
+							</AvatarFallback>
+						</Avatar>
+						<div className="min-w-0 flex-1">
+							<p className="font-medium text-sm text-black">{user.name}</p>
+							<p className="text-gray-500 text-xs truncate">{user.email}</p>
+						</div>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={async () => {
+								await authClient.signOut();
+								window.location.href = "/login";
+							}}
+							className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50"
+							title="Sign out"
+						>
+							<LogOut className="h-4 w-4" />
+						</Button>
 					</div>
 				</div>
-			</div>
-		</div>
-)}
+			)}
+		</aside>
+	);
+}

@@ -4,27 +4,49 @@ import LeftSidebar from "./features/left-sidebar";
 import RightSidebar from "./features/right-sidebar";
 import { redirect } from "next/navigation";
 import { eden } from "@web/lib/eden";
+import { session } from "@server/db/schema";
 
 export default async function HomeLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
-	const {data} = await authClient.getSession({
+	const session = await authClient.getSession({
 		fetchOptions: { headers: await headers() },
 	});
-	const stats = await eden.stats.get();
+	const [stats, trendingCategories] = await Promise.all([
+		eden.stats.get(),
+		eden.stats.trending.get()
+	]);
+	
+	// Fetch user stats if user is logged in
+	let userStats = null;
+	if (session && "user" in session) {
+		try {
+			const headersList = await headers();
+			userStats = await eden.stats.user.get({
+				$query: {},
+				$headers: Object.fromEntries(headersList.entries())
+			});
+		} catch (error) {
+			console.error("Failed to fetch user stats:", error);
+		}
+	}
 
-	if (!data?.user) redirect("/login");
+	console.log(session);
 
 	return (
-		<div className="flex min-h-dvh w-full min-w-0 flex-col transition-all duration-300 lg:flex-row">
-			<div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
-				<div className="flex min-h-dvh w-full flex-col transition-all duration-300 lg:flex-row">
-					<LeftSidebar user={data.user} />
+		<div className="min-h-screen bg-white">
+			<div className="mx-auto flex max-w-screen-xl">
+				<LeftSidebar user={session && "user" in session ? session.user as any : null} />
+				<main className="flex-1 min-w-0 lg:border-x lg:border-gray-200">
 					{children}
-					<RightSidebar stats={stats.data } />
-				</div>
+				</main>
+				<RightSidebar 
+					stats={stats?.data} 
+					userStats={userStats?.data} 
+					trendingCategories={trendingCategories?.data}
+				/>
 			</div>
 		</div>
 	);

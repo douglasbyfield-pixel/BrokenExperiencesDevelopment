@@ -7,6 +7,7 @@ import {
 	getExperience,
 	getExperiences,
 	getNearbyExperiences,
+	searchExperiences,
 	updateExperience,
 	voteOnExperience,
 } from "./service";
@@ -28,6 +29,23 @@ export const experienceRouter = new Elysia({
 			detail: {
 				summary: "Get all experiences",
 				description: "Returns all experiences from the database.",
+			},
+		},
+	)
+	.get(
+		"/search",
+		async ({ query }) => {
+			const searchTerm = query.q as string;
+			if (!searchTerm || searchTerm.trim().length === 0) {
+				return [];
+			}
+			const result = await searchExperiences(searchTerm);
+			return result;
+		},
+		{
+			detail: {
+				summary: "Search experiences",
+				description: "Search experiences by title, description, or location.",
 			},
 		},
 	)

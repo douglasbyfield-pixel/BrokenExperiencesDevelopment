@@ -8,6 +8,7 @@ import { authClient } from "@web/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 import z from "zod";
 
 export default function SignInForm({
@@ -17,14 +18,14 @@ export default function SignInForm({
 }) {
 	const router = useRouter();
 	const [forgotOpen, setForgotOpen] = useState(false);
-	const { data: session, isPending } = authClient.useSession();
+	const [showPassword, setShowPassword] = useState(false);
+	// const { data: session, isPending } = authClient.useSession();
 
 	// Debug logging
-	useEffect(() => {
-		console.log("Session state changed:", { session, isPending });
-	}, [session, isPending]);
+	// useEffect(() => {
+	// 	console.log("Session state changed:", { session, isPending });
+	// }, [session, isPending]);
 
-	// Don't auto-redirect - let manual redirect handle it
 
 	const form = useForm({
 		defaultValues: {
@@ -32,23 +33,17 @@ export default function SignInForm({
 			password: "",
 		},
 		onSubmit: async ({ value }) => {
-			const result = await authClient.signIn.email({
-				email: value.email,
-				password: value.password,
-			});
-			
-			if (result.error) {
-				toast.error(result.error.message);
-				return;
-			}
-			
-			if (result.data?.user) {
-				toast.success("Sign in successful");
-				
-				// Manual redirect after successful sign-in
-				router.push("/home");
-			}
-		},
+            const { error } = await authClient.signIn.email({
+                email: value.email,
+                password: value.password,
+            });
+            if (error) {
+                toast.error(error.message);
+                return;
+            }
+            toast.success("Sign in successful");
+            router.push("/home");
+        },
 		validators: {
 			onSubmit: z.object({
 				email: z.email("Invalid email address"),
@@ -57,7 +52,6 @@ export default function SignInForm({
 		},
 	});
 
-	// Show form even if loading; Supabase session loads lazily
 
 	return (
 		<div className="w-full">
@@ -114,16 +108,31 @@ export default function SignInForm({
 								>
 									Password
 								</Label>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="password"
-									placeholder="Enter your password"
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 text-black placeholder:text-gray-400 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
-								/>
+								<div className="relative">
+									<Input
+										id={field.name}
+										name={field.name}
+										type={showPassword ? "text" : "password"}
+										placeholder="Enter your password"
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 pr-12 text-black placeholder:text-gray-400 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
+									/>
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="absolute right-0 top-0 h-12 w-12 px-3 py-2 hover:bg-transparent"
+										onClick={() => setShowPassword(!showPassword)}
+									>
+										{showPassword ? (
+											<EyeOff className="h-4 w-4 text-gray-400" />
+										) : (
+											<Eye className="h-4 w-4 text-gray-400" />
+										)}
+									</Button>
+								</div>
 								{field.state.meta.errors.map((error) => (
 									<p key={error?.message} className="mt-1 text-red-500 text-sm">
 										{error?.message}

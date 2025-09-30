@@ -1,7 +1,7 @@
 import { db } from "@server/db";
 import { experience, experienceImage, vote } from "@server/db/schema";
 import { decrement, increment } from "@server/db/utils";
-import { eq } from "drizzle-orm";
+import { eq, ilike, or } from "drizzle-orm";
 import type {
 	ExperienceCreate,
 	ExperienceQuery,
@@ -15,6 +15,21 @@ export const getExperiences = async (_options: { query: ExperienceQuery }) => {
 		orderBy: (experience, { desc }) => [desc(experience.createdAt)],
 	});
 	return retrievedExperiences;
+};
+
+export const searchExperiences = async (searchTerm: string) => {
+	const searchPattern = `%${searchTerm}%`;
+	const searchResults = await db.query.experience.findMany({
+		where: or(
+			ilike(experience.title, searchPattern),
+			ilike(experience.description, searchPattern),
+			ilike(experience.address, searchPattern)
+		),
+		with: { experienceImages: true, reportedBy: true, category: true },
+		orderBy: (experience, { desc }) => [desc(experience.createdAt)],
+		limit: 20,
+	});
+	return searchResults;
 };
 
 export const getNearbyExperiences = async (options: {

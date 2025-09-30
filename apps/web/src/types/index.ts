@@ -16,3 +16,16 @@ export type CategoryOption = Exclude<
 export type Stats = NonNullable<
 	Awaited<ReturnType<typeof eden.stats.get>>["data"]
 >;
+
+export type UserStats = {
+	totalReports: number;
+	resolvedReports: number;
+	inProgressReports: number;
+	impactScore: number;
+};
+
+export type TrendingCategory = {
+	id: string;
+	name: string;
+	count: number;
+};
