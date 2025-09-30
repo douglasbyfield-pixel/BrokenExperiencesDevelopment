@@ -8,7 +8,7 @@ export function createEdenApi(baseUrl?: string) {
 		fetch: {
 			credentials: "include",
 			mode: "cors",
-		}
+		},
 	});
 }
 

@@ -1,6 +1,6 @@
-import { db } from "@/db";
+import { db } from "@server/db";
+import { category } from "@server/db/schema";
 import type { CategoryCreate, CategoryQuery, CategoryUpdate } from "./schema";
-import { category } from "@/db/schema";
 
 export const getCategories = async (options: { query: CategoryQuery }) => {
 	const page = options.query.page ?? 1;
@@ -13,6 +13,13 @@ export const getCategories = async (options: { query: CategoryQuery }) => {
 		.limit(limit)
 		.offset(offset);
 
+	return categories ?? [];
+};
+
+export const getCategoryOptions = async () => {
+	const categories = await db
+		.select({ id: category.id, name: category.name })
+		.from(category);
 	return categories ?? [];
 };
 
@@ -31,7 +38,10 @@ export const getCategory = async (options: { id: string }) => {
 	return getCategory;
 };
 
-export const updateCategory = async (options?: { id: string, data: CategoryUpdate }) => {
+export const updateCategory = async (options?: {
+	id: string;
+	data: CategoryUpdate;
+}) => {
 	return options?.id;
 };
 

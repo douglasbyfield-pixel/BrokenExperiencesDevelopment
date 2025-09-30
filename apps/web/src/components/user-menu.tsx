@@ -5,12 +5,12 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { authClient } from "@/lib/auth-client";
+} from "@web/components/ui/dropdown-menu";
+import { authClient } from "@web/lib/auth-client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 export default function UserMenu() {
 	const router = useRouter();
@@ -22,7 +22,11 @@ export default function UserMenu() {
 
 	if (!session) {
 		return (
-			<Button variant="outline" asChild className="text-black border-black hover:bg-gray-100">
+			<Button
+				variant="outline"
+				asChild
+				className="border-black text-black hover:bg-gray-100"
+			>
 				<Link href="/login">Sign In</Link>
 			</Button>
 		);
@@ -31,7 +35,12 @@ export default function UserMenu() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="outline" className="text-black border-black hover:bg-gray-100">{session.user.name}</Button>
+				<Button
+					variant="outline"
+					className="border-black text-black hover:bg-gray-100"
+				>
+					{session.user.name}
+				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="bg-card">
 				<DropdownMenuLabel>My Account</DropdownMenuLabel>

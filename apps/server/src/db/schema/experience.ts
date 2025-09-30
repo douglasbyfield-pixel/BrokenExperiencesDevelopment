@@ -1,9 +1,8 @@
+import { relations } from "drizzle-orm";
 import * as p from "drizzle-orm/pg-core";
+import type { ExperiencePriority, ExperienceStatus } from "../../types";
 import { user } from "./auth";
 import { category } from "./category";
-import type { ExperienceStatus } from "@/types";
-import type { ExperiencePriority } from "@/types";
-import { relations } from "drizzle-orm";
 import { experienceImage } from "./experience-image";
 
 export const ExperienceStatusEnum = {
@@ -21,8 +20,14 @@ export const ExperiencePriorityEnum = {
 
 export const experience = p.pgTable("experience", {
 	id: p.uuid().primaryKey().defaultRandom(),
-	reportedBy: p.uuid().references(() => user.id, { onDelete: "cascade" }),
-	categoryId: p.uuid().references(() => category.id, { onDelete: "cascade" }),
+	reportedBy: p
+		.uuid()
+		.references(() => user.id, { onDelete: "cascade" })
+		.notNull(),
+	categoryId: p
+		.uuid()
+		.references(() => category.id, { onDelete: "cascade" })
+		.notNull(),
 	title: p.text().notNull(),
 	description: p.text().notNull(),
 	latitude: p.decimal().notNull(),
@@ -45,7 +50,7 @@ export const experience = p.pgTable("experience", {
 	downvotes: p.integer().notNull().default(0),
 });
 
-export const experienceRelations = relations(experience, ({ one ,many}) => ({
+export const experienceRelations = relations(experience, ({ one, many }) => ({
 	reportedBy: one(user, {
 		fields: [experience.reportedBy],
 		references: [user.id],

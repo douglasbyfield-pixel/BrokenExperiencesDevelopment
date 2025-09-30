@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Trash2, Bell, Eye, Palette, Globe } from "lucide-react";
+import { Button } from "@web/components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@web/components/ui/card";
+import { Input } from "@web/components/ui/input";
+import { Label } from "@web/components/ui/label";
+import { useSettings } from "@web/context/SettingsContext";
+import { ArrowLeft, Bell, Eye, Palette, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface UserSettings {
 	notifications: {
@@ -29,89 +35,22 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
-	const [settings, setSettings] = useState<UserSettings | null>(null);
-	const [loading, setLoading] = useState(true);
+	const { settings, updateSettings, loading } = useSettings();
 	const [saving, setSaving] = useState(false);
 	const [deletePassword, setDeletePassword] = useState("");
 	const [showDeleteSection, setShowDeleteSection] = useState(false);
+	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 	const router = useRouter();
 
-	useEffect(() => {
-		fetchSettings();
-	}, []);
-
-	const fetchSettings = async () => {
-		try {
-			const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`);
-			if (response.ok) {
-				const data = await response.json();
-				setSettings(data);
-			} else {
-				// Set mock data if API fails
-				setSettings({
-					notifications: {
-						email: true,
-						push: true,
-						issueUpdates: true,
-						weeklyReport: false
-					},
-					privacy: {
-						showProfile: true,
-						showActivity: true,
-						showStats: true
-					},
-					display: {
-						theme: "system",
-						language: "en",
-						mapStyle: "streets-v12"
-					}
-				});
-			}
-		} catch (error) {
-			console.error("Failed to fetch settings:", error);
-			// Set mock data on error
-			setSettings({
-				notifications: {
-					email: true,
-					push: true,
-					issueUpdates: true,
-					weeklyReport: false
-				},
-				privacy: {
-					showProfile: true,
-					showActivity: true,
-					showStats: true
-				},
-				display: {
-					theme: "system",
-					language: "en",
-					mapStyle: "streets-v12"
-				}
-			});
-		} finally {
-			setLoading(false);
-		}
-	};
-
 	const handleSaveSettings = async () => {
-		if (!settings) return;
-		
 		setSaving(true);
 		try {
-			const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`, {
-				method: 'PATCH',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(settings),
-			});
-
-			if (response.ok) {
-				// Settings saved successfully
-				console.log("Settings saved successfully");
-			}
+			// Settings are already updated via context
+			toast.success("Settings saved successfully!");
+			setHasUnsavedChanges(false);
 		} catch (error) {
 			console.error("Failed to save settings:", error);
+			toast.error("Failed to save settings");
 		} finally {
 			setSaving(false);
 		}
@@ -128,17 +67,20 @@ export default function SettingsPage() {
 		}
 
 		try {
-			const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/settings/account`, {
-				method: 'DELETE',
-				headers: {
-					'Content-Type': 'application/json',
+			const response = await fetch(
+				`${process.env.NEXT_PUBLIC_SERVER_URL}/settings/account`,
+				{
+					method: "DELETE",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ confirmPassword: deletePassword }),
 				},
-				body: JSON.stringify({ confirmPassword: deletePassword }),
-			});
+			);
 
 			if (response.ok) {
 				alert("Account deleted successfully");
-				router.push('/login');
+				router.push("/login");
 			} else {
 				alert("Failed to delete account. Please check your password.");
 			}
@@ -148,21 +90,38 @@ export default function SettingsPage() {
 		}
 	};
 
-	const updateSetting = (section: keyof UserSettings, key: string, value: any) => {
+	const updateSetting = async (
+		section: keyof UserSettings,
+		key: string,
+		value: any,
+	) => {
 		if (!settings) return;
-		
-		setSettings({
-			...settings,
+
+		const newSettings = {
 			[section]: {
 				...settings[section],
-				[key]: value
+				[key]: value,
+			},
+		};
+
+		await updateSettings(newSettings);
+
+		// Show immediate feedback for certain settings
+		if (section === "display") {
+			if (key === "theme") {
+				toast.success(`Settings Theme changed to ${value}`);
 			}
-		});
+			const setting = key.replace(/([A-Z])/g, " $1").toLowerCase();
+			toast.success(`${setting} ${value ? "enabled" : "disabled"}`);
+		} else {
+			const setting = key.replace(/([A-Z])/g, " $1").toLowerCase();
+			toast.success(`${setting} ${value ? "enabled" : "disabled"}`);
+		}
 	};
 
 	if (loading) {
 		return (
-			<div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
+			<div className="flex min-h-screen items-center justify-center bg-white dark:bg-black">
 				<div className="text-black dark:text-white">Loading settings...</div>
 			</div>
 		);
@@ -170,83 +129,121 @@ export default function SettingsPage() {
 
 	if (!settings) {
 		return (
-			<div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
-				<div className="text-black dark:text-white">Failed to load settings</div>
+			<div className="flex min-h-screen items-center justify-center bg-white dark:bg-black">
+				<div className="text-black dark:text-white">
+					Failed to load settings
+				</div>
 			</div>
 		);
 	}
 
 	return (
 		<div className="min-h-screen bg-white dark:bg-black">
-			<div className="container mx-auto px-4 py-8 max-w-4xl">
+			<div className="container mx-auto max-w-4xl px-4 py-8">
 				{/* Header */}
-				<div className="flex items-center gap-4 mb-8">
-					<Button 
-						variant="outline" 
+				<div className="mb-8 flex items-center gap-4">
+					<Button
+						variant="outline"
 						size="icon"
-						onClick={() => router.push('/profile')}
+						onClick={() => router.push("/profile")}
 						className="border-gray-300 dark:border-gray-700"
 					>
 						<ArrowLeft className="h-4 w-4" />
 					</Button>
-					<h1 className="text-3xl font-bold text-black dark:text-white">Settings</h1>
+					<h1 className="font-bold text-3xl text-black dark:text-white">
+						Settings Title
+					</h1>
 				</div>
 
 				<div className="space-y-6">
 					{/* Notifications */}
-					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-sm">
+					<Card className="border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-black">
 						<CardHeader>
 							<div className="flex items-center gap-2">
 								<Bell className="h-5 w-5 text-black dark:text-white" />
-								<CardTitle className="text-black dark:text-white">Notifications</CardTitle>
+								<CardTitle className="text-black dark:text-white">
+									Settings Notifications
+								</CardTitle>
 							</div>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="text-black dark:text-white font-medium">Email Notifications</Label>
-									<p className="text-sm text-gray-600 dark:text-gray-400">Receive notifications via email</p>
+									<Label className="font-medium text-black dark:text-white">
+										Email Notifications
+									</Label>
+									<p className="text-gray-600 text-sm dark:text-gray-400">
+										Receive notifications via email
+									</p>
 								</div>
 								<input
 									type="checkbox"
 									checked={settings.notifications.email}
-									onChange={(e) => updateSetting('notifications', 'email', e.target.checked)}
+									onChange={(e) =>
+										updateSetting("notifications", "email", e.target.checked)
+									}
 									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="text-black dark:text-white font-medium">Push Notifications</Label>
-									<p className="text-sm text-gray-600 dark:text-gray-400">Receive push notifications in browser</p>
+									<Label className="font-medium text-black dark:text-white">
+										Push Notifications
+									</Label>
+									<p className="text-gray-600 text-sm dark:text-gray-400">
+										Receive push notifications in browser
+									</p>
 								</div>
 								<input
 									type="checkbox"
 									checked={settings.notifications.push}
-									onChange={(e) => updateSetting('notifications', 'push', e.target.checked)}
+									onChange={(e) =>
+										updateSetting("notifications", "push", e.target.checked)
+									}
 									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="text-black dark:text-white font-medium">Issue Updates</Label>
-									<p className="text-sm text-gray-600 dark:text-gray-400">Get notified about updates to your reported issues</p>
+									<Label className="font-medium text-black dark:text-white">
+										Issue Updates
+									</Label>
+									<p className="text-gray-600 text-sm dark:text-gray-400">
+										Get notified about updates to your reported issues
+									</p>
 								</div>
 								<input
 									type="checkbox"
 									checked={settings.notifications.issueUpdates}
-									onChange={(e) => updateSetting('notifications', 'issueUpdates', e.target.checked)}
+									onChange={(e) =>
+										updateSetting(
+											"notifications",
+											"issueUpdates",
+											e.target.checked,
+										)
+									}
 									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="text-black dark:text-white font-medium">Weekly Report</Label>
-									<p className="text-sm text-gray-600 dark:text-gray-400">Receive weekly summary of community activity</p>
+									<Label className="font-medium text-black dark:text-white">
+										Weekly Report
+									</Label>
+									<p className="text-gray-600 text-sm dark:text-gray-400">
+										Receive weekly summary of community activity
+									</p>
 								</div>
 								<input
 									type="checkbox"
 									checked={settings.notifications.weeklyReport}
-									onChange={(e) => updateSetting('notifications', 'weeklyReport', e.target.checked)}
+									onChange={(e) =>
+										updateSetting(
+											"notifications",
+											"weeklyReport",
+											e.target.checked,
+										)
+									}
 									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
 							</div>
@@ -254,47 +251,67 @@ export default function SettingsPage() {
 					</Card>
 
 					{/* Privacy */}
-					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-sm">
+					<Card className="border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-black">
 						<CardHeader>
 							<div className="flex items-center gap-2">
 								<Eye className="h-5 w-5 text-black dark:text-white" />
-								<CardTitle className="text-black dark:text-white">Privacy</CardTitle>
+								<CardTitle className="text-black dark:text-white">
+									Privacy
+								</CardTitle>
 							</div>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="text-black dark:text-white font-medium">Show Profile</Label>
-									<p className="text-sm text-gray-600 dark:text-gray-400">Make your profile visible to other users</p>
+									<Label className="font-medium text-black dark:text-white">
+										Show Profile
+									</Label>
+									<p className="text-gray-600 text-sm dark:text-gray-400">
+										Make your profile visible to other users
+									</p>
 								</div>
 								<input
 									type="checkbox"
 									checked={settings.privacy.showProfile}
-									onChange={(e) => updateSetting('privacy', 'showProfile', e.target.checked)}
+									onChange={(e) =>
+										updateSetting("privacy", "showProfile", e.target.checked)
+									}
 									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="text-black dark:text-white font-medium">Show Activity</Label>
-									<p className="text-sm text-gray-600 dark:text-gray-400">Display your activity timeline publicly</p>
+									<Label className="font-medium text-black dark:text-white">
+										Show Activity
+									</Label>
+									<p className="text-gray-600 text-sm dark:text-gray-400">
+										Display your activity timeline publicly
+									</p>
 								</div>
 								<input
 									type="checkbox"
 									checked={settings.privacy.showActivity}
-									onChange={(e) => updateSetting('privacy', 'showActivity', e.target.checked)}
+									onChange={(e) =>
+										updateSetting("privacy", "showActivity", e.target.checked)
+									}
 									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="text-black dark:text-white font-medium">Show Statistics</Label>
-									<p className="text-sm text-gray-600 dark:text-gray-400">Display your contribution statistics</p>
+									<Label className="font-medium text-black dark:text-white">
+										Show Statistics
+									</Label>
+									<p className="text-gray-600 text-sm dark:text-gray-400">
+										Display your contribution statistics
+									</p>
 								</div>
 								<input
 									type="checkbox"
 									checked={settings.privacy.showStats}
-									onChange={(e) => updateSetting('privacy', 'showStats', e.target.checked)}
+									onChange={(e) =>
+										updateSetting("privacy", "showStats", e.target.checked)
+									}
 									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
 							</div>
@@ -302,23 +319,31 @@ export default function SettingsPage() {
 					</Card>
 
 					{/* Display */}
-					<Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-sm">
+					<Card className="border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-black">
 						<CardHeader>
 							<div className="flex items-center gap-2">
 								<Palette className="h-5 w-5 text-black dark:text-white" />
-								<CardTitle className="text-black dark:text-white">Display</CardTitle>
+								<CardTitle className="text-black dark:text-white">
+									Display
+								</CardTitle>
 							</div>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="text-black dark:text-white font-medium">Theme</Label>
-									<p className="text-sm text-gray-600 dark:text-gray-400">Choose your preferred theme</p>
+									<Label className="font-medium text-black dark:text-white">
+										Theme
+									</Label>
+									<p className="text-gray-600 text-sm dark:text-gray-400">
+										Choose your preferred theme
+									</p>
 								</div>
 								<select
 									value={settings.display.theme}
-									onChange={(e) => updateSetting('display', 'theme', e.target.value)}
-									className="border border-gray-300 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-black text-black dark:text-white"
+									onChange={(e) =>
+										updateSetting("display", "theme", e.target.value)
+									}
+									className="rounded-md border border-gray-300 bg-white px-3 py-2 text-black dark:border-gray-700 dark:bg-black dark:text-white"
 								>
 									<option value="light">Light</option>
 									<option value="dark">Dark</option>
@@ -327,28 +352,19 @@ export default function SettingsPage() {
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="text-black dark:text-white font-medium">Language</Label>
-									<p className="text-sm text-gray-600 dark:text-gray-400">Select your preferred language</p>
-								</div>
-								<select
-									value={settings.display.language}
-									onChange={(e) => updateSetting('display', 'language', e.target.value)}
-									className="border border-gray-300 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-black text-black dark:text-white"
-								>
-									<option value="en">English</option>
-									<option value="es">Español</option>
-									<option value="fr">Français</option>
-								</select>
-							</div>
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="text-black dark:text-white font-medium">Map Style</Label>
-									<p className="text-sm text-gray-600 dark:text-gray-400">Choose map appearance</p>
+									<Label className="font-medium text-black dark:text-white">
+										Map Style
+									</Label>
+									<p className="text-gray-600 text-sm dark:text-gray-400">
+										Choose map appearance
+									</p>
 								</div>
 								<select
 									value={settings.display.mapStyle}
-									onChange={(e) => updateSetting('display', 'mapStyle', e.target.value)}
-									className="border border-gray-300 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-black text-black dark:text-white"
+									onChange={(e) =>
+										updateSetting("display", "mapStyle", e.target.value)
+									}
+									className="rounded-md border border-gray-300 bg-white px-3 py-2 text-black dark:border-gray-700 dark:bg-black dark:text-white"
 								>
 									<option value="streets-v12">Streets</option>
 									<option value="satellite-v9">Satellite</option>
@@ -360,18 +376,18 @@ export default function SettingsPage() {
 
 					{/* Save Button */}
 					<div className="flex justify-end">
-						<Button 
+						<Button
 							onClick={handleSaveSettings}
 							disabled={saving}
-							className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
+							className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
 						>
-							<Save className="h-4 w-4 mr-2" />
-							{saving ? 'Saving...' : 'Save Settings'}
+							<Save className="mr-2 h-4 w-4" />
+							{saving ? "Saving..." : "Save Settings"}
 						</Button>
 					</div>
 
 					{/* Danger Zone */}
-					<Card className="border border-red-200 dark:border-red-800 bg-white dark:bg-black shadow-sm">
+					<Card className="border border-red-200 bg-white shadow-sm dark:border-red-800 dark:bg-black">
 						<CardHeader>
 							<div className="flex items-center gap-2">
 								<Trash2 className="h-5 w-5 text-red-600" />
@@ -380,12 +396,13 @@ export default function SettingsPage() {
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div>
-								<p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-									Once you delete your account, there is no going back. Please be certain.
+								<p className="mb-4 text-gray-600 text-sm dark:text-gray-400">
+									Once you delete your account, there is no going back. Please
+									be certain.
 								</p>
-								
+
 								{!showDeleteSection ? (
-									<Button 
+									<Button
 										variant="outline"
 										onClick={() => setShowDeleteSection(true)}
 										className="border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10"
@@ -393,9 +410,12 @@ export default function SettingsPage() {
 										Delete Account
 									</Button>
 								) : (
-									<div className="space-y-4 p-4 border border-red-200 dark:border-red-800 rounded-lg">
+									<div className="space-y-4 rounded-lg border border-red-200 p-4 dark:border-red-800">
 										<div>
-											<Label htmlFor="deletePassword" className="text-black dark:text-white font-medium">
+											<Label
+												htmlFor="deletePassword"
+												className="font-medium text-black dark:text-white"
+											>
 												Enter your password to confirm
 											</Label>
 											<Input
@@ -404,11 +424,11 @@ export default function SettingsPage() {
 												value={deletePassword}
 												onChange={(e) => setDeletePassword(e.target.value)}
 												placeholder="Your password"
-												className="mt-2 text-black dark:text-white bg-white dark:bg-black border-red-300 dark:border-red-700"
+												className="mt-2 border-red-300 bg-white text-black dark:border-red-700 dark:bg-black dark:text-white"
 											/>
 										</div>
 										<div className="flex gap-3">
-											<Button 
+											<Button
 												variant="outline"
 												onClick={() => {
 													setShowDeleteSection(false);
@@ -418,7 +438,7 @@ export default function SettingsPage() {
 											>
 												Cancel
 											</Button>
-											<Button 
+											<Button
 												onClick={handleDeleteAccount}
 												className="bg-red-600 text-white hover:bg-red-700"
 											>

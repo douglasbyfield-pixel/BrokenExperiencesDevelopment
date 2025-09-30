@@ -1,9 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-export default function Home() {
-	return (
-		<div className="container mx-auto max-w-7xl px-4 py-2">
-			<h1>Home</h1>
-		</div>
-	);
+export default function RootPage() {
+	// For now, just redirect to login to avoid authentication complexity
+	redirect("/login");
 }

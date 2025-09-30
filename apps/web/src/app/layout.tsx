@@ -1,7 +1,6 @@
+import Providers from "@web/components/providers";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Header from "@/components/header";
-import Providers from "@/components/providers";
 import "../index.css";
 
 const geistSans = Geist({
@@ -19,16 +18,15 @@ export const metadata: Metadata = {
 	description: "broken-experiences",
 };
 
-export default function RootLayout(props: LayoutProps<'/'>) {
+export default async function RootLayout(props: LayoutProps<"/">) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
 				<Providers>
-					<div className="flex flex-col h-dvh w-full">
-						<Header />
-						<main className="flex-1 min-h-0 w-full relative">
+					<div className="flex min-h-dvh w-full flex-col">
+						<main className="relative min-h-0 w-full flex-1">
 							{props.children}
 						</main>
 					</div>

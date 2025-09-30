@@ -2,9 +2,6 @@
 	"name": "@broken-experiences/libs",
 	"type": "module",
 	"private": true,
-	"exports": {
-		".": "./src/index.ts"
-	},
 	"scripts": {
 		"test": "bun run test:unit && bun run coverage",
 		"test:unit": "bun test",

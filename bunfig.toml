@@ -1,2 +1,7 @@
 [install]
 linker = "hoisted"
+
+logLevel = "warn"
+
+[console]
+depth = 3

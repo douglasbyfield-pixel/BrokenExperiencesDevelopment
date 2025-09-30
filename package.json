@@ -1,41 +1,42 @@
 {
-  "name": "broken-experiences",
-  "private": true,
-  "type": "module",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
-  "scripts": {
-    "check": "biome check --write .",
-		"dev": "concurrently --kill-others --names \"server,web,mobile\" \"bun run dev:server\" \"bun run dev:web\" \"bun run dev:mobile\"",
-    "build": "bun run --filter '*' build",
-    "check-types": "bun run --filter '*' check-types",
+	"name": "broken-experiences",
+	"private": true,
+	"type": "module",
+	"workspaces": [
+		"apps/*",
+		"packages/*"
+	],
+	"scripts": {
+		"check": "biome check --write .",
+		"dev": "concurrently --kill-others --names \"server,web\" \"bun run dev:server\" \"bun run dev:web\"",
+		"build": "bun run --filter '*' build",
+		"check-types": "bun run --filter '*' check-types",
+		"dev:native": "bun run --filter native dev",
     "dev:mobile": "bun run --filter mobile dev",
-    "dev:web": "bun run --filter web dev",
-    "dev:server": "bun run --filter server dev",
-    "db:push": "bun run --filter server db:push",
-    "db:studio": "bun run --filter server db:studio",
-    "db:generate": "bun run --filter server db:generate",
-    "db:migrate": "bun run --filter server db:migrate",
-    "db:start": "bun run --filter server db:start",
-    "db:watch": "bun run --filter server db:watch",
-    "db:stop": "bun run --filter server db:stop",
-    "db:down": "bun run --filter server db:down",
-    "cleanup": "kill-port 3001 3000 3002",
+		"dev:web": "bun run --filter web dev",
+		"dev:server": "bun run --filter server dev",
+		"db:push": "bun run --filter server db:push",
+		"db:studio": "bun run --filter server db:studio",
+		"db:generate": "bun run --filter server db:generate",
+		"db:migrate": "bun run --filter server db:migrate",
+		"db:start": "bun run --filter server db:start",
+		"db:watch": "bun run --filter server db:watch",
+		"db:stop": "bun run --filter server db:stop",
+		"db:down": "bun run --filter server db:down",
+		"cleanup": "kill-port 3001 3000",
 		"dev:clean": "bun run cleanup && bun run dev",
-    "db:reset": "bun run --filter server db:reset"
-  },
-  "dependencies": {
-    "@elysiajs/html": "^1.4.0",
-    "@t3-oss/env-core": "^0.13.8",
-    "openai": "^5.21.0"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.2.0",
-    "concurrently": "^9.2.0",
+		"db:reset": "bun run --filter server db:reset"
+	},
+	"dependencies": {
+		"@elysiajs/html": "^1.4.0",
+		"@t3-oss/env-core": "^0.13.8",
+		"openai": "^5.21.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.0",
+		"concurrently": "^9.2.0",
 		"wait-on": "^9.0.1",
 		"kill-port": "^2.0.1"
-  },
-  "packageManager": "bun@1.2.21"
+	},
+	"packageManager": "bun@1.2.21"
 }

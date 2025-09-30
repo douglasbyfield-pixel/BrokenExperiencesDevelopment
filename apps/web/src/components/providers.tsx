@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsProvider } from "@web/context/SettingsContext";
+import { SettingsNotifications } from "./settings-notifications";
 import { ThemeProvider } from "./theme-provider";
 import { Toaster } from "./ui/sonner";
 
@@ -11,8 +13,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 			enableSystem
 			disableTransitionOnChange
 		>
-			{children}
-			<Toaster richColors />
+			<SettingsProvider>
+				{children}
+				<Toaster richColors />
+				<SettingsNotifications />
+			</SettingsProvider>
 		</ThemeProvider>
 	);
 }

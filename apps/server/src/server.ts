@@ -1,23 +1,66 @@
 import "dotenv/config";
-import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
-import { openapi } from "@elysiajs/openapi";
+import { swagger } from "@elysiajs/swagger";
+import { Elysia } from "elysia";
+import logixlysia from "logixlysia";
 import { auth } from "./lib/auth";
 import { appRouter } from "./module";
-import logixlysia from "logixlysia";
+
+const corsOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001")
+	.split(",")
+	.map(s => s.trim())
+	.filter(Boolean);
 
 export const app = new Elysia()
-    .use(openapi())
-    .use(logixlysia())
+	.use(swagger({
+		path: "/swagger",
+		documentation: {
+			info: {
+				title: "Broken Experiences API",
+				version: "1.0.0",
+				description: "API for reporting and managing broken experiences"
+			},
+			tags: [
+				{ name: "Category", description: "Category endpoints" },
+				{ name: "Experience", description: "Experience endpoints" },
+				{ name: "Stats", description: "Statistics endpoints" },
+				{ name: "Misc", description: "Miscellaneous endpoints" }
+			]
+		}
+	}))
+	.use(logixlysia())
 	.use(
 		cors({
+<<<<<<< HEAD
 			origin: ["http://localhost:3001", "http://localhost:3000", "http://localhost:3002"],
+=======
+			origin: corsOrigins,
+>>>>>>> 7390103f0aca37d6f39f4a276f9947abe0764f36
 			methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
 			allowedHeaders: ["Content-Type", "Authorization"],
 			credentials: true,
 		}),
 	)
-	.mount(auth.handler)
-	.use(appRouter)
+	.get("/", () => ({
+		status: "ok",
+		message: "Broken Experiences API",
+		version: "1.0.0",
+		endpoints: {
+			health: "/misc/health",
+			docs: "/swagger",
+			categories: "/category",
+			experiences: "/experience",
+			stats: "/stats",
+			auth: "/api/auth"
+		}
+	}))
+	.get("/health", () => ({
+		status: "ok",
+		timestamp: new Date().toISOString()
+	}))
+	.all("/api/auth/*", ({ request }) => auth.handler(request))
+	.use(appRouter);
+
+console.log("CORS allowlist:", corsOrigins);
 
 export type App = typeof app;
