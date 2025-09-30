@@ -160,7 +160,8 @@ export default function CreateExperienceCard({
 			// Check if there was actually an error in the response
 			if (data && typeof data === 'object' && 'error' in data) {
 				console.error("❌ Server returned error:", data);
-				alert(`Failed: ${data.message || data.error}`);
+				const errorData = data as any;
+				alert(`Failed: ${errorData.message || errorData.error || 'Unknown error'}`);
 				return;
 			}
 			
