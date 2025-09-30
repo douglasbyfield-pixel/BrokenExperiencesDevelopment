@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import ExperienceCard from "../home/features/experience-card";
 
 interface SearchPageProps {
-	searchParams: { q?: string };
+	searchParams: Promise<{ q?: string }>;
 }
 
 async function SearchResults({ query }: { query: string }) {
@@ -72,8 +72,9 @@ function SearchLoading() {
 	);
 }
 
-export default function SearchPage({ searchParams }: SearchPageProps) {
-	const query = searchParams.q || "";
+export default async function SearchPage({ searchParams }: SearchPageProps) {
+	const resolvedSearchParams = await searchParams;
+	const query = resolvedSearchParams.q || "";
 
 	return (
 		<div className="min-h-screen bg-white">

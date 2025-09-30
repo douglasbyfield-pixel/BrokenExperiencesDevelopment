@@ -11,10 +11,16 @@ import {
 	SelectValue,
 } from "@web/components/ui/select";
 import type { CategoryOption } from "@web/types";
-import { MapPin } from "lucide-react";
+import { MapPin, Camera, X } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
 import z from "zod";
+
+interface PhotoFile {
+	id: string;
+	file: File;
+	preview: string;
+}
 
 interface CreateExperienceCardProps {
 	categoryOptions: CategoryOption;
@@ -29,6 +35,8 @@ export default function CreateExperienceCard({
 		address: string;
 	} | null>(null);
 	const [isGettingLocation, setIsGettingLocation] = useState(false);
+	const [photos, setPhotos] = useState<PhotoFile[]>([]);
+	const [isExpanded, setIsExpanded] = useState(false);
 
 	const handleGetLocation = () => {
 		setIsGettingLocation(true);
@@ -81,6 +89,29 @@ export default function CreateExperienceCard({
 		}
 	};
 
+	const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+		const files = event.target.files;
+		if (files) {
+			Array.from(files).forEach(file => {
+				const id = Date.now().toString() + Math.random().toString();
+				const preview = URL.createObjectURL(file);
+				setPhotos(prev => [...prev, { id, file, preview }]);
+			});
+		}
+	};
+
+	const removePhoto = (photoId: string) => {
+		setPhotos(prev => {
+			const updated = prev.filter(photo => photo.id !== photoId);
+			// Clean up object URL
+			const photoToRemove = prev.find(photo => photo.id !== photoId);
+			if (photoToRemove) {
+				URL.revokeObjectURL(photoToRemove.preview);
+			}
+			return updated;
+		});
+	};
+
 	const form = useForm({
 		defaultValues: {
 			description: "",
@@ -117,8 +148,11 @@ export default function CreateExperienceCard({
 			console.log("Experience created successfully:", data);
 			// Reset form on success
 			form.reset();
-			// Reset location
+			// Reset location and photos
 			setLocation(null);
+			photos.forEach(photo => URL.revokeObjectURL(photo.preview));
+			setPhotos([]);
+			setIsExpanded(false);
 			// Reload page to show new post
 			setTimeout(() => {
 				window.location.reload();
@@ -161,16 +195,27 @@ export default function CreateExperienceCard({
 									<textarea
 										id={field.name}
 										name={field.name}
-										placeholder="What's your broken experience?"
+										placeholder={isExpanded ? "Describe your experience in detail..." : "What's happening in your community?"}
 										value={field.state.value}
 										onBlur={field.handleBlur}
-										onChange={(e) => field.handleChange(e.target.value)}
+										onChange={(e) => {
+											field.handleChange(e.target.value);
+											if (!isExpanded && e.target.value.length > 0) {
+												setIsExpanded(true);
+											}
+										}}
 										className="w-full resize-none bg-transparent text-lg lg:text-xl text-black placeholder:text-gray-400 focus:outline-none min-h-[50px] lg:min-h-[60px]"
-										rows={3}
+										rows={isExpanded ? 4 : 2}
+										maxLength={500}
 									/>
 									{field.state.meta.errors.length > 0 && (
 										<p className="mt-1 text-sm text-red-500">
 											{String(field.state.meta.errors[0] || "Error")}
+										</p>
+									)}
+									{isExpanded && (
+										<p className="mt-1 text-xs text-gray-500">
+											{field.state.value.length}/500 characters
 										</p>
 									)}
 								</>
@@ -178,18 +223,75 @@ export default function CreateExperienceCard({
 						</form.Field>
 					</div>
 				</div>
+				
+				{/* Enhanced features when expanded */}
+				{isExpanded && (
+					<>
+						{/* Photo upload section */}
+						<div className="ml-10 lg:ml-14 space-y-3">
+							{photos.length > 0 && (
+								<div className="flex gap-2 flex-wrap">
+									{photos.map((photo) => (
+										<div key={photo.id} className="relative">
+											<div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+												<img 
+													src={photo.preview} 
+													alt="Upload preview" 
+													className="w-full h-full object-cover"
+												/>
+											</div>
+											<button
+												type="button"
+												onClick={() => removePhoto(photo.id)}
+												className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+											>
+												<X className="w-3 h-3" />
+											</button>
+										</div>
+									))}
+								</div>
+							)}
+							
+							{/* Location display when captured */}
+							{location && (
+								<div className="text-sm text-gray-600 p-2 bg-gray-50 rounded-lg">
+									<p className="flex items-center gap-1">
+										<MapPin className="w-3 h-3" />
+										<span className="font-medium">{location.address}</span>
+									</p>
+								</div>
+							)}
+						</div>
+					</>
+				)}
+				
 				<div className="ml-10 lg:ml-14 flex items-center justify-between">
 					<div className="flex items-center space-x-2 lg:space-x-4">
+						{/* Photo upload button */}
+						{isExpanded && (
+							<label className="cursor-pointer">
+								<div className="flex items-center space-x-1 text-gray-600 hover:text-black p-1">
+									<Camera className="h-5 w-5" />
+								</div>
+								<input
+									type="file"
+									accept="image/*"
+									multiple
+									className="hidden"
+									onChange={handlePhotoUpload}
+								/>
+							</label>
+						)}
 						<button 
 							type="button" 
 							onClick={handleGetLocation}
 							disabled={isGettingLocation}
-							className={`flex items-center space-x-1 text-gray-600 hover:text-black disabled:opacity-50 ${location ? 'text-green-600' : ''}`}
-							title={location ? `Location: ${location.address}` : 'Click to get your location'}
+							className={`flex items-center space-x-1 text-gray-600 hover:text-black disabled:opacity-50 ${location ? 'text-green-600' : ''} p-1`}
+							title={location ? `Location: ${location.address}` : 'Add location'}
 						>
 							<MapPin className="h-5 w-5" />
-							{isGettingLocation && <span className="text-xs">Getting...</span>}
-							{location && <span className="text-xs text-green-600">✓</span>}
+							{isGettingLocation && !isExpanded && <span className="text-xs">Getting...</span>}
+							{location && !isExpanded && <span className="text-xs text-green-600">✓</span>}
 						</button>
 						<form.Field name="categoryId">
 							{(field) => (
@@ -198,7 +300,7 @@ export default function CreateExperienceCard({
 										value={field.state.value}
 										onValueChange={field.handleChange}
 									>
-										<SelectTrigger className="w-[140px] lg:w-[180px] border-gray-200 bg-white text-gray-700">
+										<SelectTrigger className={`${isExpanded ? 'w-[160px] lg:w-[200px]' : 'w-[140px] lg:w-[180px]'} border-gray-200 bg-white text-gray-700`}>
 											<SelectValue placeholder="Category" />
 										</SelectTrigger>
 										<SelectContent>
@@ -222,7 +324,7 @@ export default function CreateExperienceCard({
 						{(state) => (
 							<Button
 								type="submit"
-								className="rounded-full bg-black px-4 lg:px-6 py-2 font-medium text-white hover:bg-gray-800 disabled:opacity-50 text-sm lg:text-base"
+								className={`rounded-full bg-black font-medium text-white hover:bg-gray-800 disabled:opacity-50 ${isExpanded ? 'px-6 py-2.5 text-base' : 'px-4 lg:px-6 py-2 text-sm lg:text-base'}`}
 								disabled={!state.canSubmit || state.isSubmitting || isExecuting}
 							>
 								{state.isSubmitting || isExecuting ? "Posting..." : "Post"}

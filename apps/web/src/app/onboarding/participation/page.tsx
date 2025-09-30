@@ -3,7 +3,7 @@
 import { Globe, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@web/components/ui/button";
 
 type Role = "reporter" | "organiser";
 
@@ -130,7 +130,7 @@ export default function ParticipationPage() {
 										window.localStorage.setItem("be.role", role);
 									}
 								} catch {}
-								router.replace("/onboarding/profile");
+								router.replace("/onboarding/permissions/location");
 							}}
 						>
 							<span className="flex items-center justify-center gap-2">

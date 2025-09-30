@@ -144,13 +144,13 @@ export default function SignInForm({
 				</div>
 
 				<div className="flex items-center justify-end">
-					<Button
+					<button
 						type="button"
 						onClick={() => setForgotOpen(true)}
-						className="font-medium text-black text-sm underline hover:text-gray-700"
+						className="font-medium text-black text-sm underline hover:text-gray-700 bg-transparent border-none cursor-pointer"
 					>
 						Forgot password?
-					</Button>
+					</button>
 				</div>
 
 				<form.Subscribe>
@@ -194,12 +194,12 @@ export default function SignInForm({
 			<div className="mt-8 border-gray-200 border-t pt-6">
 				<div className="text-center">
 					<span className="text-gray-600">Don't have an account? </span>
-					<Button
+					<button
 						onClick={onSwitchToSignUp}
-						className="font-medium text-black underline transition-colors duration-200 hover:text-gray-700"
+						className="font-medium text-black underline transition-colors duration-200 hover:text-gray-700 bg-transparent border-none cursor-pointer"
 					>
 						Sign up
-					</Button>
+					</button>
 				</div>
 			</div>
 

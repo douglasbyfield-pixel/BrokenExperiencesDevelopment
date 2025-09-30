@@ -218,14 +218,6 @@ export default function ProfilePage() {
 						<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 							<Button
 								variant="outline"
-								onClick={() => router.push("/home")}
-								className="h-12 justify-start"
-							>
-								<MapPin className="mr-3 h-4 w-4" />
-								Report New Issue
-							</Button>
-							<Button
-								variant="outline"
 								onClick={() => router.push("/map")}
 								className="h-12 justify-start"
 							>

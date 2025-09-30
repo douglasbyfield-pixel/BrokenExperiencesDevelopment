@@ -4,7 +4,7 @@ import { MapPin, Navigation } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button } from "@web/components/ui/button";
 
 export default function LocationPermissionPage() {
 	const router = useRouter();

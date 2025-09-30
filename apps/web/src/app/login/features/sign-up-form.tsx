@@ -208,12 +208,12 @@ export default function SignUpForm({
 
 			<div className="mt-3 text-center text-sm">
 				<span className="text-gray-600">I already have an account. </span>
-				<Button
+				<button
 					onClick={onSwitchToSignIn}
-					className="font-medium text-black underline"
+					className="font-medium text-black underline bg-transparent border-none cursor-pointer hover:text-gray-700"
 				>
 					Log in
-				</Button>
+				</button>
 			</div>
 
 			<div className="relative my-5">

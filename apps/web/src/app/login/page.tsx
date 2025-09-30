@@ -1,18 +1,11 @@
 "use client";
 
-import { Button } from "@web/components/ui/button";
-import { authClient } from "@web/lib/auth-client";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import SignInForm from "./features/sign-in-form";
 import SignUpForm from "./features/sign-up-form";
 
 export default function LoginPage() {
 	const [showSignIn, setShowSignIn] = useState(true);
-	const router = useRouter();
-	const { data: session, isPending } = authClient.useSession();
-
-	// Don't auto-redirect - let user manually navigate
 
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-white">
@@ -39,16 +32,6 @@ export default function LoginPage() {
 					<SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
 				)}
 
-				{/* Demo button */}
-				<div className="mt-6 border-gray-200 border-t pt-6">
-					<Button
-						variant="outline"
-						className="w-full"
-						onClick={() => window.location.href = "/home"}
-					>
-						Continue as Demo User (No Sign In)
-					</Button>
-				</div>
 
 				{/* Footer */}
 				<div className="mt-8 text-center text-gray-500 text-xs">
