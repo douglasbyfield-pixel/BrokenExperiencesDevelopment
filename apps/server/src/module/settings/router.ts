@@ -9,13 +9,25 @@ export const settingsRouter = new Elysia({
 	.get(
 		"/",
 		async () => {
+			// Return settings in the format the frontend expects
 			return {
-				status: "ok",
-				message: "Settings endpoint",
-				data: {
+				display: {
 					theme: "light",
-					notifications: true
-				}
+					mapStyle: "streets",
+					language: "en",
+				},
+				notifications: {
+					email: true,
+					push: false,
+					experienceUpdates: true,
+					communityUpdates: false,
+					marketing: false,
+				},
+				privacy: {
+					publicProfile: true,
+					showLocation: true,
+					showActivity: false,
+				},
 			};
 		},
 		{

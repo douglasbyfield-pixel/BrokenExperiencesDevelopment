@@ -102,6 +102,7 @@ export default function CreateExperienceCard({
 	const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = event.target.files;
 		if (files) {
+			setIsExpanded(true); // Expand form when photo is added
 			Array.from(files).forEach(file => {
 				const id = Date.now().toString() + Math.random().toString();
 				const preview = URL.createObjectURL(file);
@@ -114,10 +115,19 @@ export default function CreateExperienceCard({
 		setPhotos(prev => {
 			const updated = prev.filter(photo => photo.id !== photoId);
 			// Clean up object URL
-			const photoToRemove = prev.find(photo => photo.id !== photoId);
+			const photoToRemove = prev.find(photo => photo.id === photoId);
 			if (photoToRemove) {
 				URL.revokeObjectURL(photoToRemove.preview);
 			}
+			
+			// Minimize form if no photos and no text
+			if (updated.length === 0) {
+				const descriptionValue = form.getFieldValue('description');
+				if (!descriptionValue || descriptionValue.length === 0) {
+					setIsExpanded(false);
+				}
+			}
+			
 			return updated;
 		});
 	};
@@ -126,6 +136,8 @@ export default function CreateExperienceCard({
 		defaultValues: {
 			description: "",
 			categoryId: "",
+			priority: "medium",
+			status: "pending",
 		},
 		onSubmit: ({ value }) => {
 			// Ensure we have location data
@@ -139,6 +151,8 @@ export default function CreateExperienceCard({
 		  categoryId: value.categoryId,
 		  title: value.description.substring(0, 50),
 		  description: value.description,
+		  priority: value.priority || "medium",
+		  status: value.status || "pending",
 		  latitude: currentLocation.latitude,
 		  longitude: currentLocation.longitude,
 		  address: currentLocation.address,
@@ -219,8 +233,13 @@ export default function CreateExperienceCard({
 										onBlur={field.handleBlur}
 										onChange={(e) => {
 											field.handleChange(e.target.value);
+											// Expand when user types
 											if (!isExpanded && e.target.value.length > 0) {
 												setIsExpanded(true);
+											}
+											// Minimize when user clears the text (and no photos)
+											if (isExpanded && e.target.value.length === 0 && photos.length === 0) {
+												setIsExpanded(false);
 											}
 										}}
 										className="w-full resize-none bg-transparent text-lg lg:text-xl text-black placeholder:text-gray-400 focus:outline-none min-h-[50px] lg:min-h-[60px]"
@@ -282,6 +301,110 @@ export default function CreateExperienceCard({
 							)}
 						</div>
 					</>
+				)}
+				
+				{/* Priority and Status Selection - Show when expanded */}
+				{isExpanded && (
+					<div className="ml-10 lg:ml-14 space-y-4 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+						{/* Category chips */}
+						<div>
+							<p className="text-xs text-gray-500 font-medium mb-2">Category</p>
+							<div className="flex flex-wrap gap-2">
+								{Array.isArray(categoryOptions) && categoryOptions.slice(0, 8).map((category: any) => (
+									<form.Subscribe key={category.id} selector={(state) => [state.values.categoryId]}>
+										{([categoryId]) => (
+											<button
+												type="button"
+												onClick={() => {
+													form.setFieldValue('categoryId', category.id);
+												}}
+												className={`px-2.5 py-1 text-xs rounded-full transition-all font-medium ${
+													categoryId === category.id
+														? 'bg-black text-white'
+														: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+												}`}
+											>
+												#{category.name}
+											</button>
+										)}
+									</form.Subscribe>
+								))}
+							</div>
+						</div>
+						
+						{/* Priority Selection */}
+						<div>
+							<p className="text-xs text-gray-500 font-medium mb-2">Priority Level</p>
+							<form.Field name="priority">
+								{(field) => (
+									<div className="flex gap-2">
+										{['low', 'medium', 'high'].map((priority) => (
+											<button
+												key={priority}
+												type="button"
+												onClick={() => field.handleChange(priority)}
+												className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
+													field.state.value === priority
+														? priority === 'high'
+															? 'bg-red-500 text-white'
+															: priority === 'medium'
+															? 'bg-amber-500 text-white'
+															: 'bg-emerald-500 text-white'
+														: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+												}`}
+											>
+												{priority.charAt(0).toUpperCase() + priority.slice(1)}
+											</button>
+										))}
+									</div>
+								)}
+							</form.Field>
+						</div>
+						
+						{/* Status Selection */}
+						<div>
+							<p className="text-xs text-gray-500 font-medium mb-2">Current Status</p>
+							<form.Field name="status">
+								{(field) => (
+									<div className="flex gap-2">
+										<button
+											type="button"
+											onClick={() => field.handleChange('pending')}
+											className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
+												field.state.value === 'pending'
+													? 'bg-red-500 text-white'
+													: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+											}`}
+										>
+											Reported
+										</button>
+										<button
+											type="button"
+											onClick={() => field.handleChange('in-progress')}
+											className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
+												field.state.value === 'in-progress'
+													? 'bg-amber-500 text-white'
+													: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+											}`}
+										>
+											In Progress
+										</button>
+										<button
+											type="button"
+											onClick={() => field.handleChange('resolved')}
+											className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
+												field.state.value === 'resolved'
+													? 'bg-emerald-500 text-white'
+													: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+											}`}
+										>
+											Resolved
+										</button>
+									</div>
+								)}
+							</form.Field>
+						</div>
+					</div>
 				)}
 				
 				<div className="ml-10 lg:ml-14 flex items-center justify-between">

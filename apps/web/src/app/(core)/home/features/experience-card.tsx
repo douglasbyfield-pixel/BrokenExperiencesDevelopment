@@ -14,6 +14,45 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@web/components/auth-provider";
+import { Badge } from "@web/components/ui/badge";
+
+// Priority configuration matching the map
+const priorityConfig: Record<string, { color: string; label: string; bgColor: string }> = {
+	low: {
+		color: "#10b981",
+		label: "Low Priority",
+		bgColor: "bg-emerald-500"
+	},
+	medium: {
+		color: "#f59e0b",
+		label: "Medium Priority",
+		bgColor: "bg-amber-500"
+	},
+	high: {
+		color: "#ef4444",
+		label: "High Priority",
+		bgColor: "bg-red-500"
+	}
+};
+
+// Status configuration matching the map
+const statusConfig: Record<string, { color: string; label: string; textColor: string }> = {
+	pending: {
+		color: "#ef4444",
+		label: "Reported",
+		textColor: "text-red-600"
+	},
+	"in-progress": {
+		color: "#f59e0b",
+		label: "In Progress",
+		textColor: "text-amber-600"
+	},
+	resolved: {
+		color: "#10b981",
+		label: "Resolved",
+		textColor: "text-emerald-600"
+	}
+};
 
 interface ExperienceCardProps {
 	experience: Experience & { userVote?: boolean | null };
@@ -24,6 +63,9 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	const [isLiked, setIsLiked] = useState(experience.userVote === true);
 	const [likeCount, setLikeCount] = useState(experience.upvotes || 0);
 	const [showDropdown, setShowDropdown] = useState(false);
+	const [isEditingStatus, setIsEditingStatus] = useState(false);
+	const [localPriority, setLocalPriority] = useState(experience.priority);
+	const [localStatus, setLocalStatus] = useState(experience.status);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 
 	// Close dropdown when clicking outside
@@ -90,8 +132,20 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 	const handleEdit = () => {
 		setShowDropdown(false);
-		// TODO: Implement edit functionality (future enhancement)
-		alert('Edit functionality coming soon!');
+		setIsEditingStatus(true);
+	};
+	
+	const handleUpdateStatus = async (newPriority: string, newStatus: string) => {
+		try {
+			// TODO: Call backend API to update priority and status
+			setLocalPriority(newPriority);
+			setLocalStatus(newStatus);
+			setIsEditingStatus(false);
+			alert('Status updated! (Backend integration pending)');
+		} catch (error) {
+			console.error('Failed to update status:', error);
+			alert('Failed to update status');
+		}
 	};
 
 	// Get display name - show actual user name from database
@@ -130,49 +184,138 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								{new Date(experience.createdAt).toLocaleDateString()}
 							</span>
 						</div>
-						
-						{isOwnPost ? (
-							<div className="relative" ref={dropdownRef}>
-								<button 
-									className="p-1.5 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0"
-									onClick={() => setShowDropdown(!showDropdown)}
-								>
-									<MoreHorizontal className="h-4 w-4 text-gray-600" />
-								</button>
+					</div>
+
+					{/* Badges Row: Category, Priority, Status */}
+					<div className="mb-3">
+						{!isEditingStatus ? (
+							<div className="flex items-center gap-2 flex-wrap">
+								<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+									#{experience.category?.name || "general"}
+						</span>
 								
-								{showDropdown && (
-									<div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
-										<div className="py-1">
-											<button
-												onClick={handleEdit}
-												className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-											>
-												<Edit className="h-4 w-4 mr-2" />
-												Edit
-											</button>
-											<button
-												onClick={handleDelete}
-												className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-											>
-												<Trash2 className="h-4 w-4 mr-2" />
-												Delete
-											</button>
-										</div>
+								{/* Priority Badge */}
+								{localPriority && priorityConfig[localPriority] && (
+									<div className="flex items-center gap-1">
+										<div 
+											className="w-2 h-2 rounded-full"
+											style={{ backgroundColor: priorityConfig[localPriority].color }}
+										/>
+										<Badge
+											variant={
+												localPriority === "high"
+													? "destructive"
+													: localPriority === "medium"
+													? "default"
+													: "secondary"
+											}
+											className="text-xs"
+										>
+											{localPriority.charAt(0).toUpperCase() + localPriority.slice(1)}
+										</Badge>
 									</div>
+								)}
+								
+								{/* Status Badge */}
+								{localStatus && statusConfig[localStatus] && (
+									<Badge
+										variant="outline"
+										className={`text-xs ${statusConfig[localStatus].textColor}`}
+									>
+										{statusConfig[localStatus].label}
+									</Badge>
 								)}
 							</div>
 						) : (
-							<button className="p-1.5 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0">
-								<MoreHorizontal className="h-4 w-4 text-gray-600" />
-							</button>
+							<div className="space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+								{/* Edit Priority */}
+								<div>
+									<p className="text-xs text-gray-600 font-medium mb-2">Priority</p>
+									<div className="flex gap-2">
+										{['low', 'medium', 'high'].map((priority) => (
+											<button
+												key={priority}
+												type="button"
+												onClick={() => setLocalPriority(priority)}
+												className={`flex-1 px-2 py-1 text-xs rounded transition-all ${
+													localPriority === priority
+														? priority === 'high'
+															? 'bg-red-500 text-white'
+															: priority === 'medium'
+															? 'bg-amber-500 text-white'
+															: 'bg-emerald-500 text-white'
+														: 'bg-white text-gray-700 border border-gray-300'
+												}`}
+											>
+												{priority.charAt(0).toUpperCase() + priority.slice(1)}
+											</button>
+										))}
+									</div>
+								</div>
+								
+								{/* Edit Status */}
+								<div>
+									<p className="text-xs text-gray-600 font-medium mb-2">Status</p>
+									<div className="flex gap-2">
+										<button
+											type="button"
+											onClick={() => setLocalStatus('pending')}
+											className={`flex-1 px-2 py-1 text-xs rounded transition-all ${
+												localStatus === 'pending'
+													? 'bg-red-500 text-white'
+													: 'bg-white text-gray-700 border border-gray-300'
+											}`}
+										>
+											Reported
+										</button>
+										<button
+											type="button"
+											onClick={() => setLocalStatus('in-progress')}
+											className={`flex-1 px-2 py-1 text-xs rounded transition-all ${
+												localStatus === 'in-progress'
+													? 'bg-amber-500 text-white'
+													: 'bg-white text-gray-700 border border-gray-300'
+											}`}
+										>
+											In Progress
+										</button>
+										<button
+											type="button"
+											onClick={() => setLocalStatus('resolved')}
+											className={`flex-1 px-2 py-1 text-xs rounded transition-all ${
+												localStatus === 'resolved'
+													? 'bg-emerald-500 text-white'
+													: 'bg-white text-gray-700 border border-gray-300'
+											}`}
+										>
+											Resolved
+										</button>
+									</div>
+								</div>
+								
+								{/* Save/Cancel Buttons */}
+								<div className="flex gap-2 justify-end">
+									<button
+										type="button"
+										onClick={() => {
+											setLocalPriority(experience.priority);
+											setLocalStatus(experience.status);
+											setIsEditingStatus(false);
+										}}
+										className="px-3 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
+									>
+										Cancel
+									</button>
+									<button
+										type="button"
+										onClick={() => handleUpdateStatus(localPriority, localStatus)}
+										className="px-3 py-1 text-xs rounded bg-black text-white hover:bg-gray-800"
+									>
+										Save
+									</button>
+								</div>
+							</div>
 						)}
-					</div>
-
-					{/* Category Badge */}
-					<div className="mb-3">
-						<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-							#{experience.category?.name || "general"}
-						</span>
 					</div>
 
 					{/* Content */}
@@ -189,39 +332,39 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 					<div className="flex items-center gap-1.5 text-gray-600 mb-3">
 						<MapPin className="h-4 w-4 flex-shrink-0" />
 						<span className="text-sm">{experience.address}</span>
-					</div>
+				</div>
 
 					{/* Actions Bar */}
 					<div className="flex items-center justify-end gap-1 pt-2 border-t border-gray-100">
-						<button 
+					<button 
 							className="group flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-blue-50 transition-all"
-							onClick={() => {
-								// Share functionality
+						onClick={() => {
+							// Share functionality
 								const shareText = `Broken Experience: ${experience.title}\n${experience.description}\n${experience.address}`;
-								if (navigator.share) {
-									navigator.share({
+							if (navigator.share) {
+								navigator.share({
 										title: `Broken Experience: ${experience.title}`,
-										text: shareText,
-										url: window.location.href
-									}).catch(console.error);
-								} else {
-									navigator.clipboard.writeText(shareText);
-									alert('Experience details copied to clipboard!');
-								}
-							}}
-						>
+									text: shareText,
+									url: window.location.href
+								}).catch(console.error);
+							} else {
+								navigator.clipboard.writeText(shareText);
+								alert('Experience details copied to clipboard!');
+							}
+						}}
+					>
 							<Share className="h-4 w-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
 							<span className="text-sm font-medium text-gray-600 group-hover:text-blue-600 transition-colors">
 								Share
 							</span>
-						</button>
+					</button>
 
-						<button 
+					<button 
 							className="group flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
 							onClick={handleVote}
 							disabled={isExecuting}
-						>
-							<Heart
+					>
+						<Heart
 								className={`h-4 w-4 transition-colors ${
 									isLiked 
 										? "text-red-500 fill-red-500" 
@@ -234,8 +377,8 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 									: "text-gray-600 group-hover:text-red-500"
 							}`}>
 								{likeCount}
-							</span>
-						</button>
+						</span>
+					</button>
 					</div>
 				</div>
 			</div>
