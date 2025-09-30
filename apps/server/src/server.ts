@@ -40,7 +40,7 @@ export const app = new Elysia()
 	.get("/", () => ({
 		status: "ok",
 		message: "Broken Experiences API",
-		version: "1.0.0",
+		version: "1.0.1", 
 		description: "API for reporting and managing broken experiences in digital products",
 		timestamp: new Date().toISOString(),
 		environment: process.env.NODE_ENV || "development",
