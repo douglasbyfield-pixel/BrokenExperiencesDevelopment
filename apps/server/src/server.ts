@@ -6,7 +6,7 @@ import logixlysia from "logixlysia";
 import { auth } from "./lib/auth";
 import { appRouter } from "./module";
 
-const corsOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001")
+const corsOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app")
 	.split(",")
 	.map(s => s.trim())
 	.filter(Boolean);
