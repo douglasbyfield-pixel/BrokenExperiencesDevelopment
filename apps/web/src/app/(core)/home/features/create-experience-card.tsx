@@ -46,6 +46,8 @@ export default function CreateExperienceCard({
 					const lat = position.coords.latitude.toString();
 					const lng = position.coords.longitude.toString();
 					
+					console.log("📍 Got location:", { lat, lng });
+					
 					// Try to get address from coordinates using reverse geocoding
 					let address = `${lat}, ${lng}`;
 					try {
@@ -55,6 +57,7 @@ export default function CreateExperienceCard({
 						const data = await response.json();
 						if (data.features && data.features.length > 0) {
 							address = data.features[0].place_name;
+							console.log("📍 Got address:", address);
 						}
 					} catch (error) {
 						console.error("Failed to get address:", error);
@@ -69,6 +72,7 @@ export default function CreateExperienceCard({
 				},
 				(error) => {
 					console.error("Geolocation error:", error);
+					alert(`Location access denied: ${error.message}. Using default location.`);
 					// Set default location if geolocation fails
 					setLocation({
 						latitude: "0",
@@ -76,9 +80,15 @@ export default function CreateExperienceCard({
 						address: "Location not specified"
 					});
 					setIsGettingLocation(false);
+				},
+				{
+					enableHighAccuracy: true,
+					timeout: 10000,
+					maximumAge: 0
 				}
 			);
 		} else {
+			alert("Geolocation is not supported by your browser. Using default location.");
 			// Geolocation not supported, use default
 			setLocation({
 				latitude: "0",
@@ -120,21 +130,21 @@ export default function CreateExperienceCard({
 		onSubmit: ({ value }) => {
 			// Ensure we have location data
 			const currentLocation = location || {
-				latitude: "0",
-				longitude: "0",
-				address: "Location not specified"
+			  latitude: "0",
+			  longitude: "0",
+			  address: "Location not specified"
 			};
-
-			const submission = {
-				categoryId: value.categoryId,
-				title: value.description.substring(0, 50), // Use first 50 chars of description as title
-				description: value.description,
-				latitude: currentLocation.latitude,
-				longitude: currentLocation.longitude,
-				address: currentLocation.address,
-			};
+		  
+		const submission = {
+		  categoryId: value.categoryId,
+		  title: value.description.substring(0, 50),
+		  description: value.description,
+		  latitude: currentLocation.latitude,
+		  longitude: currentLocation.longitude,
+		  address: currentLocation.address,
+		};
 			execute(submission);
-		},
+		  },
 		validators: {
 			onSubmit: z.object({
 				description: z.string().min(5, "Please provide at least 5 characters"),
@@ -145,7 +155,15 @@ export default function CreateExperienceCard({
 
 	const { execute, isExecuting } = useAction(createExperienceAction, {
 		onSuccess: (data) => {
-			console.log("Experience created successfully:", data);
+			console.log("✅ Experience created successfully:", data);
+			
+			// Check if there was actually an error in the response
+			if (data && typeof data === 'object' && 'error' in data) {
+				console.error("❌ Server returned error:", data);
+				alert(`Failed: ${data.message || data.error}`);
+				return;
+			}
+			
 			// Reset form on success
 			form.reset();
 			// Reset location and photos
@@ -159,7 +177,7 @@ export default function CreateExperienceCard({
 			}, 500);
 		},
 		onError: (error) => {
-			console.error("Failed to create experience:", error);
+			console.error("❌ Failed to create experience:", error);
 			console.error("Error details:", JSON.stringify(error, null, 2));
 			
 			// Extract more detailed error message

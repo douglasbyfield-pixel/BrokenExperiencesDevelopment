@@ -36,21 +36,6 @@ export const categoryRouter = new Elysia({
 			},
 		},
 	)
-	.post(
-		"/",
-		({ body }) => {
-			const result = createCategory({ data: body });
-			return result;
-		},
-		{
-			body: "category.create",
-			detail: {
-				summary: "Add a category",
-				description:
-					"Creates and stores a new category in the database using the provided details.",
-			},
-		},
-	)
 	.get(
 		"/options",
 		async () => {
@@ -69,6 +54,21 @@ export const categoryRouter = new Elysia({
 			detail: {
 				summary: "Get all category options",
 				description: "Returns a list of all categories as dropdown options.",
+			},
+		},
+	)
+	.post(
+		"/",
+		({ body }) => {
+			const result = createCategory({ data: body });
+			return result;
+		},
+		{
+			body: "category.create",
+			detail: {
+				summary: "Add a category",
+				description:
+					"Creates and stores a new category in the database using the provided details.",
 			},
 		},
 	)

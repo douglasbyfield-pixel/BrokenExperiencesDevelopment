@@ -8,113 +8,145 @@ import {
 	MapPin,
 	MoreHorizontal,
 	Share,
+	AlertTriangle,
 } from "lucide-react";
+import { useState } from "react";
 
 interface ExperienceCardProps {
-	experience: Experience;
+	experience: Experience & { userVote?: boolean | null };
 }
 
 export default function ExperienceCard({ experience }: ExperienceCardProps) {
-	const { execute: voteOnExperience } = useAction(voteOnExperienceAction, {
-		onSuccess: () => {
-			// Reload to show updated vote count
-			window.location.reload();
+	const [isLiked, setIsLiked] = useState(experience.userVote === true);
+	const [likeCount, setLikeCount] = useState(experience.upvotes || 0);
+
+	const { execute: voteOnExperience, isExecuting } = useAction(voteOnExperienceAction, {
+		onSuccess: (result) => {
+			console.log("Vote successful:", result);
+			// No need to reload - optimistic update already done
 		},
 		onError: (error) => {
 			console.error("Vote failed:", error);
+			// Revert optimistic update on error
+			setIsLiked(!isLiked);
+			setLikeCount(isLiked ? likeCount + 1 : likeCount - 1);
 		}
 	});
 
-	const handleVote = (vote: boolean) => {
+	const handleVote = () => {
+		// Optimistic update
+		const newLikedState = !isLiked;
+		setIsLiked(newLikedState);
+		setLikeCount(newLikedState ? likeCount + 1 : likeCount - 1);
+
+		// Send vote to backend
 		voteOnExperience({
 			experienceId: experience.id,
-			vote: vote
+			vote: true // We only support upvotes/likes
 		});
 	};
 
-	return (
-		<article className="border-b border-gray-200 px-3 lg:px-4 py-3 transition-colors hover:bg-gray-50">
-			<div className="flex space-x-3">
-				<div className="h-10 w-10 lg:h-12 lg:w-12 rounded-full bg-gray-200 flex-shrink-0" />
+	// Get display name - show actual user name from database
+	const displayName = experience.reportedBy?.name || experience.reportedBy?.email?.split('@')[0] || "Anonymous";
+	const username = experience.reportedBy?.email?.split('@')[0] || "user";
 
-				<div className="min-w-0 flex-1">
-					{/* User Info */}
-					<div className="flex items-center space-x-1">
-						<span className="font-semibold text-black hover:underline">
-							{experience.reportedBy?.name || "Anonymous"}
-						</span>
-						{experience.reportedBy?.emailVerified && (
-							<svg viewBox="0 0 22 22" className="h-5 w-5 text-blue-400">
-								<path
-									fill="currentColor"
-									d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z"
-								/>
-							</svg>
-						)}
-						<span className="text-gray-600">@{experience.reportedBy?.email?.split('@')[0] || "user"}</span>
-						<span className="text-gray-600">·</span>
-						<span className="text-gray-600 hover:underline">
-							{new Date(experience.createdAt).toLocaleDateString()}
-						</span>
-						<button className="ml-auto p-2 rounded-full hover:bg-gray-100">
+	return (
+		<article className="border-b border-gray-200 px-4 py-4 transition-colors hover:bg-gray-50">
+			<div className="flex gap-3">
+				{/* Avatar */}
+				<div className="h-12 w-12 rounded-full bg-gradient-to-br from-red-400 to-orange-500 flex-shrink-0 flex items-center justify-center shadow-sm">
+					<AlertTriangle className="h-6 w-6 text-white" />
+				</div>
+
+				<div className="flex-1 min-w-0">
+					{/* Header: User info and category badge */}
+					<div className="flex items-start justify-between gap-2 mb-2">
+						<div className="flex items-center gap-2 flex-wrap">
+							<div className="flex items-center gap-1">
+								<span className="font-bold text-gray-900 hover:underline cursor-pointer">
+									{displayName}
+								</span>
+								<span className="text-gray-500 text-sm">@{username}</span>
+							</div>
+							<span className="text-gray-400">·</span>
+							<span className="text-gray-500 text-sm hover:underline cursor-pointer">
+								{new Date(experience.createdAt).toLocaleDateString()}
+							</span>
+						</div>
+						<button className="p-1.5 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0">
 							<MoreHorizontal className="h-4 w-4 text-gray-600" />
 						</button>
 					</div>
 
+					{/* Category Badge */}
+					<div className="mb-3">
+						<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+							#{experience.category?.name || "general"}
+						</span>
+					</div>
+
 					{/* Content */}
-					<div className="mt-2 lg:mt-3">
-						<h3 className="font-semibold text-black text-base lg:text-lg mb-1">{experience.title}</h3>
-						<p className="text-black whitespace-pre-wrap text-sm lg:text-base">
+					<div className="mb-3">
+						<h3 className="font-bold text-gray-900 text-lg mb-1.5 leading-tight">
+							{experience.title}
+						</h3>
+						<p className="text-gray-700 text-base whitespace-pre-wrap leading-relaxed">
 							{experience.description}
 						</p>
 					</div>
 
-					{/* Location & Category */}
-					<div className="mt-2 lg:mt-3 flex items-center space-x-3 lg:space-x-4 text-xs lg:text-sm text-gray-600">
-						<div className="flex items-center space-x-1">
-							<MapPin className="h-3 w-3 lg:h-4 lg:w-4" />
-							<span className="truncate">{experience.address}</span>
-						</div>
-						<div>
-							<span className="text-gray-800">#{experience.category?.name || "general"}</span>
-						</div>
+					{/* Location */}
+					<div className="flex items-center gap-1.5 text-gray-600 mb-3">
+						<MapPin className="h-4 w-4 flex-shrink-0" />
+						<span className="text-sm">{experience.address}</span>
 					</div>
-				</div>
 
-				{/* Actions moved to right side */}
-				<div className="flex flex-col items-center justify-center space-y-3 ml-3">
-					<button 
-						className="group flex flex-col items-center p-2 rounded-full hover:bg-gray-100"
-						onClick={() => {
-							// Share functionality
-							const shareText = `${experience.title}: ${experience.description}`;
-							if (navigator.share) {
-								navigator.share({
-									title: experience.title,
-									text: shareText,
-									url: window.location.href
-								}).catch(console.error);
-							} else {
-								navigator.clipboard.writeText(shareText);
-								alert('Experience details copied to clipboard!');
-							}
-						}}
-					>
-						<Share className="h-5 w-5 text-gray-500 group-hover:text-green-500" />
-						<span className="text-xs text-gray-500 group-hover:text-green-500 mt-1">Share</span>
-					</button>
+					{/* Actions Bar */}
+					<div className="flex items-center justify-end gap-1 pt-2 border-t border-gray-100">
+						<button 
+							className="group flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-blue-50 transition-all"
+							onClick={() => {
+								// Share functionality
+								const shareText = `Broken Experience: ${experience.title}\n${experience.description}\n${experience.address}`;
+								if (navigator.share) {
+									navigator.share({
+										title: `Broken Experience: ${experience.title}`,
+										text: shareText,
+										url: window.location.href
+									}).catch(console.error);
+								} else {
+									navigator.clipboard.writeText(shareText);
+									alert('Experience details copied to clipboard!');
+								}
+							}}
+						>
+							<Share className="h-4 w-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
+							<span className="text-sm font-medium text-gray-600 group-hover:text-blue-600 transition-colors">
+								Share
+							</span>
+						</button>
 
-					<button 
-						className="group flex flex-col items-center p-2 rounded-full hover:bg-gray-100"
-						onClick={() => handleVote(true)}
-					>
-						<Heart
-							className={`h-5 w-5 ${experience.upvotes > 0 ? "text-red-500 fill-current" : "text-gray-500 group-hover:text-red-500"}`}
-						/>
-						<span className={`text-xs mt-1 ${experience.upvotes > 0 ? "text-red-500" : "text-gray-500 group-hover:text-red-500"}`}>
-							{experience.upvotes || 0}
-						</span>
-					</button>
+						<button 
+							className="group flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+							onClick={handleVote}
+							disabled={isExecuting}
+						>
+							<Heart
+								className={`h-4 w-4 transition-colors ${
+									isLiked 
+										? "text-red-500 fill-red-500" 
+										: "text-gray-500 group-hover:text-red-500"
+								}`}
+							/>
+							<span className={`text-sm font-bold transition-colors ${
+								isLiked 
+									? "text-red-500" 
+									: "text-gray-600 group-hover:text-red-500"
+							}`}>
+								{likeCount}
+							</span>
+						</button>
+					</div>
 				</div>
 			</div>
 		</article>
