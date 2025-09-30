@@ -9,14 +9,24 @@ import {
 	MoreHorizontal,
 	Share,
 	AlertTriangle,
+	Trash2,
+	Edit,
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@web/components/auth-provider";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@web/components/ui/dropdown-menu";
 
 interface ExperienceCardProps {
 	experience: Experience & { userVote?: boolean | null };
 }
 
 export default function ExperienceCard({ experience }: ExperienceCardProps) {
+	const { user } = useAuth();
 	const [isLiked, setIsLiked] = useState(experience.userVote === true);
 	const [likeCount, setLikeCount] = useState(experience.upvotes || 0);
 
@@ -46,9 +56,28 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		});
 	};
 
+	const handleDelete = async () => {
+		if (confirm('Are you sure you want to delete this experience? This action cannot be undone.')) {
+			try {
+				// TODO: Implement delete functionality
+				alert('Delete functionality will be implemented');
+			} catch (error) {
+				console.error('Delete failed:', error);
+			}
+		}
+	};
+
+	const handleEdit = () => {
+		// TODO: Implement edit functionality
+		alert('Edit functionality will be implemented');
+	};
+
 	// Get display name - show actual user name from database
 	const displayName = experience.reportedBy?.name || experience.reportedBy?.email?.split('@')[0] || "Anonymous";
 	const username = experience.reportedBy?.email?.split('@')[0] || "user";
+	
+	// Check if current user owns this post
+	const isOwnPost = user?.id === experience.reportedBy?.id;
 
 	return (
 		<article className="border-b border-gray-200 px-4 py-4 transition-colors hover:bg-gray-50">
@@ -73,9 +102,33 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								{new Date(experience.createdAt).toLocaleDateString()}
 							</span>
 						</div>
-						<button className="p-1.5 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0">
-							<MoreHorizontal className="h-4 w-4 text-gray-600" />
-						</button>
+						
+						{isOwnPost ? (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<button className="p-1.5 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0">
+										<MoreHorizontal className="h-4 w-4 text-gray-600" />
+									</button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end">
+									<DropdownMenuItem onClick={handleEdit} className="cursor-pointer">
+										<Edit className="h-4 w-4 mr-2" />
+										Edit
+									</DropdownMenuItem>
+									<DropdownMenuItem 
+										onClick={handleDelete} 
+										className="cursor-pointer text-red-600 focus:text-red-600"
+									>
+										<Trash2 className="h-4 w-4 mr-2" />
+										Delete
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						) : (
+							<button className="p-1.5 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0">
+								<MoreHorizontal className="h-4 w-4 text-gray-600" />
+							</button>
+						)}
 					</div>
 
 					{/* Category Badge */}

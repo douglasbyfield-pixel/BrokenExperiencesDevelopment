@@ -285,32 +285,34 @@ export default function CreateExperienceCard({
 				)}
 				
 				<div className="ml-10 lg:ml-14 flex items-center justify-between">
-					<div className="flex items-center space-x-2 lg:space-x-4">
-						{/* Photo upload button */}
-						{isExpanded && (
-							<label className="cursor-pointer">
-								<div className="flex items-center space-x-1 text-gray-600 hover:text-black p-1">
-									<Camera className="h-5 w-5" />
-								</div>
-								<input
-									type="file"
-									accept="image/*"
-									multiple
-									className="hidden"
-									onChange={handlePhotoUpload}
-								/>
-							</label>
-						)}
+					<div className="flex items-center space-x-3 lg:space-x-4">
+						{/* Photo upload button - Always visible */}
+						<label className="cursor-pointer">
+							<div className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
+								<Camera className="h-5 w-5" />
+							</div>
+							<input
+								type="file"
+								accept="image/*"
+								multiple
+								className="hidden"
+								onChange={handlePhotoUpload}
+							/>
+						</label>
+						
+						{/* Location button */}
 						<button 
 							type="button" 
 							onClick={handleGetLocation}
 							disabled={isGettingLocation}
-							className={`flex items-center space-x-1 text-gray-600 hover:text-black disabled:opacity-50 ${location ? 'text-green-600' : ''} p-1`}
+							className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors disabled:opacity-50 ${
+								location 
+									? 'bg-green-50 text-green-600 hover:bg-green-100' 
+									: 'hover:bg-blue-50 text-blue-600 hover:text-blue-700'
+							}`}
 							title={location ? `Location: ${location.address}` : 'Add location'}
 						>
 							<MapPin className="h-5 w-5" />
-							{isGettingLocation && !isExpanded && <span className="text-xs">Getting...</span>}
-							{location && !isExpanded && <span className="text-xs text-green-600">✓</span>}
 						</button>
 						<form.Field name="categoryId">
 							{(field) => (
