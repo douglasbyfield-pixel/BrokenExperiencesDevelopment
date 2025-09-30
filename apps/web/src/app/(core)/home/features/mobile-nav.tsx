@@ -1,13 +1,14 @@
 "use client";
 
 import { Button } from "@web/components/ui/button";
-import { authClient } from "@web/lib/auth-client";
+import { useAuth } from "@web/components/auth-provider";
 import Link from "next/link";
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 
 export default function MobileNav() {
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const { signOut } = useAuth();
 
 	return (
 		<>
@@ -94,9 +95,8 @@ export default function MobileNav() {
 							<Button
 								variant="ghost"
 								onClick={async () => {
-									await authClient.signOut();
+									await signOut();
 									setIsMenuOpen(false);
-									window.location.href = "/login";
 								}}
 								className="flex items-center gap-3 rounded-lg px-3 py-3 text-red-600 hover:bg-red-50 transition-colors w-full justify-start"
 							>

@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback } from "@web/components/ui/avatar";
 import { Button } from "@web/components/ui/button";
 import { Card } from "@web/components/ui/card";
 import { cn } from "@web/lib/utils";
-import { authClient } from "@web/lib/auth-client";
+import { useAuth } from "@web/components/auth-provider";
 import type { Stats, UserStats, TrendingCategory } from "@web/types";
 import SearchInput from "./search-input";
 import { LogOut } from "lucide-react";
@@ -17,6 +17,7 @@ interface RightSidebarProps {
 }
 
 export default function RightSidebar({ className, stats, userStats, trendingCategories }: RightSidebarProps) {
+	const { signOut } = useAuth();
 	return (
 		<aside
 			className={cn(
@@ -116,10 +117,7 @@ export default function RightSidebar({ className, stats, userStats, trendingCate
 				<Card className="border-gray-200 bg-gray-50 p-4">
 					<Button
 						variant="outline"
-						onClick={async () => {
-							await authClient.signOut();
-							window.location.href = "/login";
-						}}
+						onClick={signOut}
 						className="w-full flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
 					>
 						<LogOut className="h-4 w-4" />

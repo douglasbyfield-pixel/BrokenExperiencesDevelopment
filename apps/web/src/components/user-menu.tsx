@@ -6,7 +6,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@web/components/ui/dropdown-menu";
-import { authClient } from "@web/lib/auth-client";
+import { useAuth } from "@web/components/auth-provider";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
@@ -14,13 +14,13 @@ import { Skeleton } from "./ui/skeleton";
 
 export default function UserMenu() {
 	const router = useRouter();
-	const { data: session, isPending } = authClient.useSession();
+	const { user, isLoading, signOut } = useAuth();
 
-	if (isPending) {
+	if (isLoading) {
 		return <Skeleton className="h-9 w-24" />;
 	}
 
-	if (!session) {
+	if (!user) {
 		return (
 			<Button
 				variant="outline"
@@ -39,25 +39,20 @@ export default function UserMenu() {
 					variant="outline"
 					className="border-black text-black hover:bg-gray-100"
 				>
-					{session.user.name}
+					{user.user_metadata?.name || user.email}
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="bg-card">
 				<DropdownMenuLabel>My Account</DropdownMenuLabel>
 				<DropdownMenuSeparator />
-				<DropdownMenuItem>{session.user.email}</DropdownMenuItem>
+				<DropdownMenuItem>{user.email}</DropdownMenuItem>
 				<DropdownMenuItem asChild>
 					<Button
 						variant="destructive"
 						className="w-full"
-						onClick={() => {
-							authClient.signOut({
-								fetchOptions: {
-									onSuccess: () => {
-										router.push("/");
-									},
-								},
-							});
+						onClick={async () => {
+							await signOut();
+							router.push("/");
 						}}
 					>
 						Sign Out

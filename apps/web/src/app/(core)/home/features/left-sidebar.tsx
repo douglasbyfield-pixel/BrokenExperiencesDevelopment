@@ -1,18 +1,19 @@
+"use client";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@web/components/ui/avatar";
 import { Button } from "@web/components/ui/button";
 import { cn, getInitials } from "@web/lib/utils";
-import { authClient } from "@web/lib/auth-client";
-import type { User } from "better-auth";
+import { useAuth } from "@web/components/auth-provider";
+import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
 
 interface LeftSidebarProps {
 	className?: string;
-	user?: User | null;
 }
 
-export default function LeftSidebar({ className, user }: LeftSidebarProps) {
-	console.log("LeftSidebar user:", user);
+export default function LeftSidebar({ className }: LeftSidebarProps) {
+	const { user, signOut } = useAuth();
 	
 	return (
 		<aside
@@ -85,22 +86,19 @@ export default function LeftSidebar({ className, user }: LeftSidebarProps) {
 				<div className="mt-auto pt-4 border-t border-gray-200">
 					<div className="flex items-center space-x-3 rounded-lg p-2 hover:bg-gray-100">
 						<Avatar className="h-10 w-10">
-							<AvatarImage src={user.image || undefined} />
+							<AvatarImage src={user?.user_metadata?.avatar_url || undefined} />
 							<AvatarFallback className="bg-gray-200 text-gray-700">
-								{getInitials(user.name)}
+								{getInitials(user?.user_metadata?.name || user?.email || 'User')}
 							</AvatarFallback>
 						</Avatar>
 						<div className="min-w-0 flex-1">
-							<p className="font-medium text-sm text-black">{user.name}</p>
-							<p className="text-gray-500 text-xs truncate">{user.email}</p>
+							<p className="font-medium text-sm text-black">{user?.user_metadata?.name || user?.email}</p>
+							<p className="text-gray-500 text-xs truncate">{user?.email}</p>
 						</div>
 						<Button
 							variant="ghost"
 							size="sm"
-							onClick={async () => {
-								await authClient.signOut();
-								window.location.href = "/login";
-							}}
+							onClick={signOut}
 							className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50"
 							title="Sign out"
 						>

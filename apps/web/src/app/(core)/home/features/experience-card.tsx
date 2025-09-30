@@ -6,7 +6,6 @@ import { useAction } from "next-safe-action/hooks";
 import {
 	Heart,
 	MapPin,
-	MessageCircle,
 	MoreHorizontal,
 	Share,
 } from "lucide-react";
@@ -80,31 +79,42 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 							<span className="text-gray-800">#{experience.category?.name || "general"}</span>
 						</div>
 					</div>
+				</div>
 
-					{/* Actions */}
-					<div className="mt-2 lg:mt-3 flex items-center justify-between">
-						<button className="group flex items-center space-x-1 lg:space-x-2 p-1 lg:p-2 rounded-full hover:bg-gray-100">
-							<MessageCircle className="h-4 w-4 lg:h-5 lg:w-5 text-gray-500 group-hover:text-blue-500" />
-							<span className="text-xs lg:text-sm text-gray-500 group-hover:text-blue-500">0</span>
-						</button>
+				{/* Actions moved to right side */}
+				<div className="flex flex-col items-center justify-center space-y-3 ml-3">
+					<button 
+						className="group flex flex-col items-center p-2 rounded-full hover:bg-gray-100"
+						onClick={() => {
+							// Share functionality
+							const shareText = `${experience.title}: ${experience.description}`;
+							if (navigator.share) {
+								navigator.share({
+									title: experience.title,
+									text: shareText,
+									url: window.location.href
+								}).catch(console.error);
+							} else {
+								navigator.clipboard.writeText(shareText);
+								alert('Experience details copied to clipboard!');
+							}
+						}}
+					>
+						<Share className="h-5 w-5 text-gray-500 group-hover:text-green-500" />
+						<span className="text-xs text-gray-500 group-hover:text-green-500 mt-1">Share</span>
+					</button>
 
-						<button className="group flex items-center space-x-1 lg:space-x-2 p-1 lg:p-2 rounded-full hover:bg-gray-100">
-							<Share className="h-4 w-4 lg:h-5 lg:w-5 text-gray-500 group-hover:text-green-500" />
-							<span className="text-xs lg:text-sm text-gray-500 group-hover:text-green-500">0</span>
-						</button>
-
-						<button 
-							className="group flex items-center space-x-1 lg:space-x-2 p-1 lg:p-2 rounded-full hover:bg-gray-100"
-							onClick={() => handleVote(true)}
-						>
-							<Heart
-								className={`h-4 w-4 lg:h-5 lg:w-5 ${experience.upvotes > 0 ? "text-red-500 fill-current" : "text-gray-500 group-hover:text-red-500"}`}
-							/>
-							<span className={`text-xs lg:text-sm ${experience.upvotes > 0 ? "text-red-500" : "text-gray-500 group-hover:text-red-500"}`}>
-								{experience.upvotes || 0}
-							</span>
-						</button>
-					</div>
+					<button 
+						className="group flex flex-col items-center p-2 rounded-full hover:bg-gray-100"
+						onClick={() => handleVote(true)}
+					>
+						<Heart
+							className={`h-5 w-5 ${experience.upvotes > 0 ? "text-red-500 fill-current" : "text-gray-500 group-hover:text-red-500"}`}
+						/>
+						<span className={`text-xs mt-1 ${experience.upvotes > 0 ? "text-red-500" : "text-gray-500 group-hover:text-red-500"}`}>
+							{experience.upvotes || 0}
+						</span>
+					</button>
 				</div>
 			</div>
 		</article>

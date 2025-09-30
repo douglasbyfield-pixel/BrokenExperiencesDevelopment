@@ -3,7 +3,7 @@ import GoogleLogo from "@web/components/icons/google-logo";
 import { Button } from "@web/components/ui/button";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
-import { authClient } from "@web/lib/auth-client";
+import { useAuth } from "@web/components/auth-provider";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,7 +16,7 @@ export default function SignUpForm({
 	onSwitchToSignIn: () => void;
 }) {
 	const router = useRouter();
-	const { data: session, isPending } = authClient.useSession();
+	const { signIn, signUpEmail } = useAuth();
 	const [showPassword, setShowPassword] = useState(false);
 	const [serverEmailError, setServerEmailError] = useState<string | null>(null);
 
@@ -27,25 +27,12 @@ export default function SignUpForm({
 			name: "",
 		},
 		onSubmit: async ({ value }) => {
-			await authClient.signUp.email(
-				{
-					email: value.email,
-					password: value.password,
-					name: value.name,
-				},
-				{
-					onSuccess: () => {
-						toast.success("Sign up successful");
-						// Small delay to ensure session is set before redirect
-						setTimeout(() => {
-							router.push("/home");
-						}, 100);
-					},
-					onError: (error) => {
-						toast.error(error.error.message || error.error.statusText);
-					},
-				},
-			);
+			try {
+				await signUpEmail(value.email, value.password, value.name);
+				toast.success("Sign up successful");
+			} catch (error: any) {
+				toast.error(error.message || "Sign up failed");
+			}
 		},
 		validators: {
 			onSubmit: z.object({
@@ -230,10 +217,11 @@ export default function SignUpForm({
 					variant="outline"
 					className="h-12 w-full justify-center border-gray-300 text-black hover:bg-gray-50 hover:text-black"
 					onClick={async () => {
-						const { error } = await authClient.signIn.social({
-							provider: "google",
-						});
-						if (error) toast.error(error.message);
+						try {
+							await signIn("google");
+						} catch (error: any) {
+							toast.error(error.message || "Sign up failed");
+						}
 					}}
 				>
 					<GoogleLogo className="mr-2" /> Sign Up with Google
