@@ -14,7 +14,7 @@ export const reportRouter = new Elysia({
 	body: 'report.create',
 	detail: {
 		summary: 'Create a new report',
-		description: 'Creates and stores a new report with the provided details from the experience form.',
+		description: 'Creates and stores a new report with the provided details from the broken experience form.',
 	}
 })
 .get('/:id', ({ params }) => {

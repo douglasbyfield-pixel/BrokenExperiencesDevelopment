@@ -2,12 +2,6 @@ import { pgTable, uuid, text, varchar, timestamp, integer, numeric, jsonb, boole
 import { user } from "./auth";
 import { relations } from "drizzle-orm";
 
-export const ReportStatusEnum = {
-	pending: "pending",
-	under_review: "under_review",
-	resolved: "resolved",
-	rejected: "rejected",
-} as const;
 
 export const ReportPriorityEnum = {
 	low: "low",
@@ -35,13 +29,6 @@ export const report = pgTable("report", {
 	
 	/** GPS longitude coordinate of the report location */
 	longitude: numeric(),
-	
-	// Report management
-	/** Current status of the report (pending, under_review, resolved, rejected) */
-	status: varchar()
-		.notNull()
-		.$type<keyof typeof ReportStatusEnum>()
-		.default(ReportStatusEnum.pending),
 	
 	/** Priority level of the report (low, medium, high, urgent) */
 	priority: varchar()
