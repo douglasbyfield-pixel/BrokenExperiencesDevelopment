@@ -304,7 +304,7 @@ export default function CreateExperienceCard({
 											<SelectValue placeholder="Category" />
 										</SelectTrigger>
 										<SelectContent>
-											{categoryOptions.map((category) => (
+											{Array.isArray(categoryOptions) && categoryOptions.map((category) => (
 												<SelectItem key={category.id} value={category.id}>
 													{category.name}
 												</SelectItem>
