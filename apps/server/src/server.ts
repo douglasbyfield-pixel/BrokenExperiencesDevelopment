@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { cors } from "@elysiajs/cors";
-import { openapi } from "@elysiajs/openapi";
+import { swagger } from "@elysiajs/swagger";
 import { Elysia } from "elysia";
 import logixlysia from "logixlysia";
 import { auth } from "./lib/auth";
@@ -12,7 +12,22 @@ const corsOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://l
 	.filter(Boolean);
 
 export const app = new Elysia()
-	.use(openapi())
+	.use(swagger({
+		path: "/swagger",
+		documentation: {
+			info: {
+				title: "Broken Experiences API",
+				version: "1.0.0",
+				description: "API for reporting and managing broken experiences"
+			},
+			tags: [
+				{ name: "Category", description: "Category endpoints" },
+				{ name: "Experience", description: "Experience endpoints" },
+				{ name: "Stats", description: "Statistics endpoints" },
+				{ name: "Misc", description: "Miscellaneous endpoints" }
+			]
+		}
+	}))
 	.use(logixlysia())
 	.use(
 		cors({
