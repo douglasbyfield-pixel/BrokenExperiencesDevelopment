@@ -4,9 +4,9 @@ import { Button } from "@web/components/ui/button";
 import { Dialog } from "@web/components/ui/dialog";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
-import { authClient } from "@web/lib/auth-client";
+import { useAuth } from "@web/components/auth-provider";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import z from "zod";
@@ -19,12 +19,7 @@ export default function SignInForm({
 	const router = useRouter();
 	const [forgotOpen, setForgotOpen] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
-	// const { data: session, isPending } = authClient.useSession();
-
-	// Debug logging
-	// useEffect(() => {
-	// 	console.log("Session state changed:", { session, isPending });
-	// }, [session, isPending]);
+	const { signInEmail, signIn } = useAuth();
 
 
 	const form = useForm({
@@ -33,16 +28,12 @@ export default function SignInForm({
 			password: "",
 		},
 		onSubmit: async ({ value }) => {
-            const { error } = await authClient.signIn.email({
-                email: value.email,
-                password: value.password,
-            });
-            if (error) {
-                toast.error(error.message);
-                return;
+            try {
+                await signInEmail(value.email, value.password);
+                toast.success("Sign in successful");
+            } catch (error: any) {
+                toast.error(error.message || "Sign in failed");
             }
-            toast.success("Sign in successful");
-            router.push("/home");
         },
 		validators: {
 			onSubmit: z.object({
@@ -181,10 +172,11 @@ export default function SignInForm({
 					variant="outline"
 					className="h-12 w-full justify-center border-gray-300 text-black hover:bg-gray-50 hover:text-black"
 					onClick={async () => {
-						const { error } = await authClient.signIn.social({
-							provider: "google",
-						});
-						if (error) toast.error(error.message);
+						try {
+							await signIn("google");
+						} catch (error: any) {
+							toast.error(error.message || "Sign in failed");
+						}
 					}}
 				>
 					<GoogleLogo className="mr-2" /> Sign In with Google
