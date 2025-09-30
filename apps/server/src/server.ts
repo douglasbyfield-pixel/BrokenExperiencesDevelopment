@@ -22,6 +22,23 @@ export const app = new Elysia()
 			credentials: true,
 		}),
 	)
+	.get("/", () => ({
+		status: "ok",
+		message: "Broken Experiences API",
+		version: "1.0.0",
+		endpoints: {
+			health: "/misc/health",
+			docs: "/swagger",
+			categories: "/category",
+			experiences: "/experience",
+			stats: "/stats",
+			auth: "/api/auth"
+		}
+	}))
+	.get("/health", () => ({
+		status: "ok",
+		timestamp: new Date().toISOString()
+	}))
 	.all("/api/auth/*", ({ request }) => auth.handler(request))
 	.use(appRouter);
 
