@@ -10,7 +10,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@web/components/ui/select";
-import type { CategoryOption } from "@web/types";
+import type { Category } from "@web/types";
 import { MapPin, Camera, X } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
@@ -23,7 +23,7 @@ interface PhotoFile {
 }
 
 interface CreateExperienceCardProps {
-	categoryOptions: CategoryOption[];
+	categoryOptions: Category;
 }
 
 export default function CreateExperienceCard({
