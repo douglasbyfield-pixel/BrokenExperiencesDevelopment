@@ -19,4 +19,5 @@ export type ReportCreate = Static<typeof reportCreateSchema>;
 
 export const reportModel = new Elysia().model({
 	"report.create": reportCreateSchema,
+	"report.identifier.params": t.Object({ id: t.String({ format: "uuid" }) }),
 });

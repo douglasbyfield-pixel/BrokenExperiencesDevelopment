@@ -49,7 +49,6 @@ export const report = pgTable("report", {
 		.$type<keyof typeof ReportPriorityEnum>()
 		.default(ReportPriorityEnum.medium),
 	
-	// Timestamps
 	/** When the report was created */
 	createdAt: timestamp().notNull().defaultNow(),
 	
@@ -59,7 +58,6 @@ export const report = pgTable("report", {
 	/** When the report was resolved (if applicable) */
 	resolvedAt: timestamp(),
 	
-	// Engagement metrics
 	/** Number of upvotes the report has received */
 	upvotes: integer().notNull().default(0),
 	
@@ -105,8 +103,8 @@ export const reportVerification = pgTable("report_verification", {
 	/** User who attempted the verification */
 	verifiedBy: uuid().references(() => user.id, { onDelete: "cascade" }),
 	
-	/** Status of the verification (confirmed, rejected, pending) */
-	verificationStatus: varchar().notNull().$type<"confirmed" | "rejected" | "pending">().default("pending"),
+	/** Status of the verification (verified, rejected, pending) */
+	verificationStatus: varchar().notNull().$type<"verified" | "rejected" | "pending">().default("pending"),
 	
 	/** Optional notes from the verifier about the verification */
 	verificationNotes: text(),
