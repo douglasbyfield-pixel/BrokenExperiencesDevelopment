@@ -4,12 +4,17 @@ import { env } from "@server/env";
 import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
+const trustedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001")
+	.split(",")
+	.map(s => s.trim())
+	.filter(Boolean);
+
 export const auth = betterAuth<BetterAuthOptions>({
 	database: drizzleAdapter(db, {
 		provider: "pg",
 		schema: schema,
 	}),
-	trustedOrigins: ["http://localhost:3001", "http://localhost:3000", "https://brokenexperiences.onrender.com"],
+	trustedOrigins: trustedOrigins,
 	secret: env.BETTER_AUTH_SECRET,
 	baseURL: env.BETTER_AUTH_URL,
 	emailAndPassword: {
