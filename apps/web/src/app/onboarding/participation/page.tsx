@@ -4,6 +4,7 @@ import { Globe, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@web/components/ui/button";
+import logoImage from "../../../../public/images/logo.png";
 
 type Role = "reporter" | "organiser";
 
@@ -23,7 +24,7 @@ export default function ParticipationPage() {
 				<div className="mb-8 animate-fade-in text-center">
 					<div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-black bg-white p-3 shadow-lg transition-transform duration-300 hover:rotate-6">
 						<img
-							src="/favicon/be-logoimage.png"
+							src={logoImage.src}
 							alt="Broken Experiences"
 							className="h-full w-full object-contain"
 						/>
