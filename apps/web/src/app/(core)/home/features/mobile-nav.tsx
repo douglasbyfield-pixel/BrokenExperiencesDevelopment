@@ -5,7 +5,6 @@ import { authClient } from "@web/lib/auth-client";
 import Link from "next/link";
 import { useState } from "react";
 import { LogOut } from "lucide-react";
-import logoImage from "../../../../../public/images/logo.png";
 
 export default function MobileNav() {
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -25,11 +24,11 @@ export default function MobileNav() {
 					</button>
 					<div className="flex items-center space-x-2">
 						<div className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-black bg-white p-1">
-							<img
-								src={logoImage.src}
-								alt="Broken Experiences"
-								className="h-full w-full object-contain"
-							/>
+					<img
+						src="/images/logo.png"
+						alt="Broken Experiences"
+						className="h-full w-full object-contain"
+					/>
 						</div>
 						<h1 className="font-bold text-lg text-black">
 							Broken<span className="text-gray-600">Experiences</span>

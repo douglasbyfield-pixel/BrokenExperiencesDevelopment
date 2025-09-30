@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useState } from "react";
 import SignInForm from "./sign-in-form";
 import SignUpForm from "./sign-up-form";
-import logoImage from "../../../../../public/images/logo.png";
 
 export default function AuthForms() {
 	const [showSignIn, setShowSignIn] = useState(true);
@@ -16,11 +15,11 @@ export default function AuthForms() {
 				<div className="flex justify-center">
 					<div className="text-center">
 						<div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-black bg-white p-3">
-							<img
-								src={logoImage.src}
-								alt="Broken Experiences"
-								className="h-full w-full object-contain"
-							/>
+				<img
+					src="/images/logo.png"
+					alt="Broken Experiences"
+					className="h-full w-full object-contain"
+				/>
 						</div>
 						<h1 className="font-bold text-2xl text-black">
 							Broken Experiences
@@ -37,7 +36,7 @@ export default function AuthForms() {
 				<div className="flex items-center space-x-3">
 					<div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-black bg-white p-2">
 					<img
-						src={logoImage.src}
+						src="/images/logo.png"
 						alt="Broken Experiences"
 						className="h-full w-full object-contain"
 					/>

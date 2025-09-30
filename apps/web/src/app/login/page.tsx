@@ -3,7 +3,6 @@
 import { useState } from "react";
 import SignInForm from "./features/sign-in-form";
 import SignUpForm from "./features/sign-up-form";
-import logoImage from "../../../public/images/logo.png";
 
 export default function LoginPage() {
 	const [showSignIn, setShowSignIn] = useState(true);
@@ -14,11 +13,11 @@ export default function LoginPage() {
 				{/* Logo */}
 				<div className="mb-8 text-center">
 					<div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-black bg-white p-3">
-						<img
-							src={logoImage.src}
-							alt="Broken Experiences"
-							className="h-full w-full object-contain"
-						/>
+					<img
+						src="/images/logo.png"
+						alt="Broken Experiences"
+						className="h-full w-full object-contain"
+					/>
 					</div>
 					<h1 className="font-bold text-2xl text-black">Broken Experiences</h1>
 					<p className="mt-1 text-gray-600 text-sm">

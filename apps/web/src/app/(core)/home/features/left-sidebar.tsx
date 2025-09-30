@@ -5,7 +5,6 @@ import { authClient } from "@web/lib/auth-client";
 import type { User } from "better-auth";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
-import logoImage from "../../../../../public/images/logo.png";
 
 interface LeftSidebarProps {
 	className?: string;
@@ -26,11 +25,11 @@ export default function LeftSidebar({ className, user }: LeftSidebarProps) {
 				{/* Logo */}
 				<div className="mb-6 lg:mb-8 flex items-center space-x-3">
 					<div className="flex h-10 w-10 lg:h-12 lg:w-12 items-center justify-center rounded-xl border-2 border-black bg-white p-1.5">
-						<img
-							src={logoImage.src}
-							alt="Broken Experiences"
-							className="h-full w-full object-contain"
-						/>
+					<img
+						src="/images/logo.png"
+						alt="Broken Experiences"
+						className="h-full w-full object-contain"
+					/>
 					</div>
 					<h1 className="font-bold text-lg lg:text-xl text-black">
 						Broken
