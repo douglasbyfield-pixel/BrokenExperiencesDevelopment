@@ -163,8 +163,8 @@ export default function CreateExperienceCard({
 			onSubmit: z.object({
 				description: z.string().min(5, "Please provide at least 5 characters"),
 				categoryId: z.string().min(1, "Category is required"),
-				priority: z.string().optional(),
-				status: z.string().optional(),
+				priority: z.string(),
+				status: z.string(),
 			}),
 		},
 	});
