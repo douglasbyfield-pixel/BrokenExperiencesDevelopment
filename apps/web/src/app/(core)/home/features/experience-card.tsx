@@ -1,6 +1,6 @@
 "use client";
 
-import { voteOnExperienceAction } from "@web/action/experience";
+import { voteOnExperienceAction, deleteExperienceAction } from "@web/action/experience";
 import type { Experience } from "@web/types";
 import { useAction } from "next-safe-action/hooks";
 import {
@@ -43,6 +43,18 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		}
 	});
 
+	const { execute: deleteExperience, isExecuting: isDeleting } = useAction(deleteExperienceAction, {
+		onSuccess: () => {
+			console.log("✅ Experience deleted successfully");
+			// Reload the page to show updated feed
+			window.location.reload();
+		},
+		onError: (error) => {
+			console.error("❌ Delete failed:", error);
+			alert(`Failed to delete: ${error.error?.serverError || 'Unknown error'}`);
+		}
+	});
+
 	const handleVote = () => {
 		// Optimistic update
 		const newLikedState = !isLiked;
@@ -58,18 +70,13 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 	const handleDelete = async () => {
 		if (confirm('Are you sure you want to delete this experience? This action cannot be undone.')) {
-			try {
-				// TODO: Implement delete functionality
-				alert('Delete functionality will be implemented');
-			} catch (error) {
-				console.error('Delete failed:', error);
-			}
+			deleteExperience({ experienceId: experience.id });
 		}
 	};
 
 	const handleEdit = () => {
-		// TODO: Implement edit functionality
-		alert('Edit functionality will be implemented');
+		// TODO: Implement edit functionality (future enhancement)
+		alert('Edit functionality coming soon!');
 	};
 
 	// Get display name - show actual user name from database
