@@ -3,7 +3,7 @@ import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { Elysia } from "elysia";
 import logixlysia from "logixlysia";
-import { auth } from "./lib/auth";
+// import { auth } from "./lib/auth"; // Removed - using Supabase Auth
 import { appRouter } from "./module";
 
 const corsOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app")
@@ -83,7 +83,7 @@ export const app = new Elysia()
 		status: "ok",
 		timestamp: new Date().toISOString()
 	}))
-	.all("/api/auth/*", ({ request }) => auth.handler(request))
+	// Removed Better Auth handler - using Supabase Auth
 	.use(appRouter);
 
 console.log("CORS allowlist:", corsOrigins);
