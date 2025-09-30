@@ -12,7 +12,7 @@
 			"@server/*": ["./src/*"],
 			"@web/*": ["../web/src/*"]
 		},
-		"outDir": "./dist",
+		"outDir": "./build",
 		"types": ["bun"],
 		"composite": true,
 		"incremental": true,
@@ -20,5 +20,6 @@
 		"jsxFactory": "Html.createElement",
 		"jsxFragmentFactory": "Html.Fragment",
 		"plugins": [{ "name": "@kitajs/ts-html-plugin" }]
-	}
+	},
+	"exclude": ["node_modules", "build", "dist"]
 }
