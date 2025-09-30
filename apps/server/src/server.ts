@@ -41,13 +41,42 @@ export const app = new Elysia()
 		status: "ok",
 		message: "Broken Experiences API",
 		version: "1.0.0",
+		description: "API for reporting and managing broken experiences in digital products",
+		timestamp: new Date().toISOString(),
+		environment: process.env.NODE_ENV || "development",
 		endpoints: {
-			health: "/misc/health",
-			docs: "/swagger",
-			categories: "/category",
-			experiences: "/experience",
-			stats: "/stats",
-			auth: "/api/auth"
+			health: {
+				url: "/health",
+				description: "Health check endpoint"
+			},
+			documentation: {
+				url: "/swagger",
+				description: "Interactive API documentation"
+			},
+			categories: {
+				url: "/category",
+				description: "Manage experience categories",
+				methods: ["GET", "POST"]
+			},
+			experiences: {
+				url: "/experience", 
+				description: "Create and retrieve broken experiences",
+				methods: ["GET", "POST", "PATCH", "DELETE"]
+			},
+			statistics: {
+				url: "/stats",
+				description: "Get platform statistics and analytics",
+				methods: ["GET"]
+			},
+			authentication: {
+				url: "/api/auth",
+				description: "User authentication and authorization",
+				methods: ["GET", "POST"]
+			}
+		},
+		cors: {
+			enabled: true,
+			allowedOrigins: corsOrigins
 		}
 	}))
 	.get("/health", () => ({
