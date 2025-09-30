@@ -1,22 +1,16 @@
-import { createInsertSchema } from "drizzle-typebox";
-import Elysia, { type Static, t } from "elysia";
-import { ReportPriorityEnum, report } from "../../db/schema/report";
+import { z } from "zod";
 
-const baseReportInsertSchema = createInsertSchema(report);
-
-export const reportCreateSchema = t.Object({
-	description: baseReportInsertSchema.properties.description,
-	categories: t.Array(t.String(), { default: [] }),
-	latitude: t.Optional(baseReportInsertSchema.properties.latitude),
-	longitude: t.Optional(baseReportInsertSchema.properties.longitude),
-	priority: t.Enum(ReportPriorityEnum, { default: ReportPriorityEnum.medium }),
-	// For file uploads
-	images: t.Optional(t.Files()),
+export const reportCreateSchema = z.object({
+	description: z.string(),
+	categories: z.array(z.string()),
+	latitude: z.string().optional(),
+	longitude: z.string().optional(),
 });
 
-export type ReportCreate = Static<typeof reportCreateSchema>;
+export type ReportCreate = z.infer<typeof reportCreateSchema>;
 
-export const reportModel = new Elysia().model({
-	"report.create": reportCreateSchema,
-	"report.identifier.params": t.Object({ id: t.String({ format: "uuid" }) }),
+export const reportParamsSchema = z.object({
+	id: z.string().uuid(),
 });
+
+export type ReportParams = z.infer<typeof reportParamsSchema>;

@@ -55,7 +55,8 @@ export function ExperienceForm({
   };
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    form.setFieldValue("description", e.target.value);
+    const value = e.target.value;
+    form.setFieldValue("description", value);
     
     // Auto-resize textarea
     const textarea = e.target;
@@ -102,22 +103,32 @@ export function ExperienceForm({
           {/* Description */}
           <div>
             <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
-            <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{form.state.values.description}</p>
+            <form.Field
+              name="description"
+              children={(field) => (
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{field.state.value}</p>
+              )}
+            />
           </div>
 
           {/* Categories */}
           <div>
             <h3 className="text-sm font-medium text-gray-700 mb-2">Categories</h3>
-            <div className="flex flex-wrap gap-2">
-              {form.state.values.categories.map((category) => (
-                <span
-                  key={category}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
-                >
-                  {category}
-                </span>
-              ))}
-            </div>
+            <form.Field
+              name="categories"
+              children={(field) => (
+                <div className="flex flex-wrap gap-2">
+                  {field.state.value.map((category) => (
+                    <span
+                      key={category}
+                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                    >
+                      {category}
+                    </span>
+                  ))}
+                </div>
+              )}
+            />
           </div>
 
         </div>
@@ -196,13 +207,21 @@ export function ExperienceForm({
       {/* Caption input overlay */}
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent">
         <div className="w-full flex justify-between items-center gap-2">
-          <textarea
-            id="description"
-            value={form.state.values.description}
-            onChange={handleDescriptionChange}
-            placeholder="Describe your experience"
-            className="w-full min-h-[40px] max-h-[120px] px-4 py-2 rounded-full border border-gray-300 bg-gray-100 text-gray-900 placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent my-2 overflow-hidden"
-            style={{ height: '40px' }}
+          <form.Field
+            name="description"
+            children={(field) => (
+              <textarea
+                id="description"
+                value={field.state.value}
+                onChange={(e) => {
+                  field.handleChange(e.target.value);
+                  handleDescriptionChange(e);
+                }}
+                placeholder="Describe your experience"
+                className="w-full min-h-[40px] max-h-[120px] px-4 py-2 rounded-full border border-gray-300 bg-gray-100 text-gray-900 placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent my-2 overflow-hidden"
+                style={{ height: '40px' }}
+              />
+            )}
           />
           <button
             onClick={handleSubmit}
