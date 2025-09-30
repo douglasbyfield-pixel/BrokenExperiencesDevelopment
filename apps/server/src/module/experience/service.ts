@@ -262,6 +262,22 @@ export const updateExperience = async (options?: {
 	return options?.id;
 };
 
-export const deleteExperience = async (options?: { id: string }) => {
-	return options?.id;
+export const deleteExperience = async (options: { id: string; userId: string }) => {
+	// First verify the user owns this experience
+	const existingExperience = await db.query.experience.findFirst({
+		where: (experience, { eq }) => eq(experience.id, options.id),
+	});
+
+	if (!existingExperience) {
+		throw new Error("Experience not found");
+	}
+
+	if (existingExperience.reportedBy !== options.userId) {
+		throw new Error("You can only delete your own experiences");
+	}
+
+	// Delete the experience (cascade will handle votes and images)
+	await db.delete(experience).where(eq(experience.id, options.id));
+
+	return { success: true, id: options.id };
 };

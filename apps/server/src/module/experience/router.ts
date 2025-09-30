@@ -213,9 +213,32 @@ export const experienceRouter = new Elysia({
 	)
 	.delete(
 		"/:experienceId",
-		async ({ params }) => {
-			const result = await deleteExperience({ id: params.experienceId });
-			return result;
+		async (ctx: any) => {
+			try {
+				const authHeader = ctx.request.headers.get('authorization') || ctx.request.headers.get('Authorization');
+				const user = await verifySupabaseToken(authHeader || undefined);
+
+				if (!user) {
+					ctx.set.status = 401;
+					return {
+						error: "Authentication required",
+						message: "You must be logged in to delete an experience"
+					};
+				}
+
+				const result = await deleteExperience({ 
+					id: ctx.params.experienceId,
+					userId: user.id 
+				});
+				return result;
+			} catch (error) {
+				console.error("❌ Error in DELETE /experience/:experienceId:", error);
+				ctx.set.status = 500;
+				return {
+					error: "Server error",
+					message: error instanceof Error ? error.message : "Unknown error"
+				};
+			}
 		},
 		{
 			params: "experience.identifier.params",
