@@ -12,14 +12,8 @@ import {
 	Trash2,
 	Edit,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@web/components/auth-provider";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@web/components/ui/dropdown-menu";
 
 interface ExperienceCardProps {
 	experience: Experience & { userVote?: boolean | null };
@@ -29,6 +23,25 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	const { user } = useAuth();
 	const [isLiked, setIsLiked] = useState(experience.userVote === true);
 	const [likeCount, setLikeCount] = useState(experience.upvotes || 0);
+	const [showDropdown, setShowDropdown] = useState(false);
+	const dropdownRef = useRef<HTMLDivElement>(null);
+
+	// Close dropdown when clicking outside
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+				setShowDropdown(false);
+			}
+		};
+
+		if (showDropdown) {
+			document.addEventListener("mousedown", handleClickOutside);
+		}
+
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+		};
+	}, [showDropdown]);
 
 	const { execute: voteOnExperience, isExecuting } = useAction(voteOnExperienceAction, {
 		onSuccess: (result) => {
@@ -69,12 +82,14 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	};
 
 	const handleDelete = async () => {
+		setShowDropdown(false);
 		if (confirm('Are you sure you want to delete this experience? This action cannot be undone.')) {
 			deleteExperience({ experienceId: experience.id });
 		}
 	};
 
 	const handleEdit = () => {
+		setShowDropdown(false);
 		// TODO: Implement edit functionality (future enhancement)
 		alert('Edit functionality coming soon!');
 	};
@@ -85,6 +100,12 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	
 	// Check if current user owns this post
 	const isOwnPost = user?.id === experience.reportedBy?.id;
+	
+	console.log("🔍 Post ownership check:", { 
+		userId: user?.id, 
+		postAuthorId: experience.reportedBy?.id, 
+		isOwnPost 
+	});
 
 	return (
 		<article className="border-b border-gray-200 px-4 py-4 transition-colors hover:bg-gray-50">
@@ -111,26 +132,35 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						</div>
 						
 						{isOwnPost ? (
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<button className="p-1.5 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0">
-										<MoreHorizontal className="h-4 w-4 text-gray-600" />
-									</button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end">
-									<DropdownMenuItem onClick={handleEdit} className="cursor-pointer">
-										<Edit className="h-4 w-4 mr-2" />
-										Edit
-									</DropdownMenuItem>
-									<DropdownMenuItem 
-										onClick={handleDelete} 
-										className="cursor-pointer text-red-600 focus:text-red-600"
-									>
-										<Trash2 className="h-4 w-4 mr-2" />
-										Delete
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
+							<div className="relative" ref={dropdownRef}>
+								<button 
+									className="p-1.5 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0"
+									onClick={() => setShowDropdown(!showDropdown)}
+								>
+									<MoreHorizontal className="h-4 w-4 text-gray-600" />
+								</button>
+								
+								{showDropdown && (
+									<div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+										<div className="py-1">
+											<button
+												onClick={handleEdit}
+												className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+											>
+												<Edit className="h-4 w-4 mr-2" />
+												Edit
+											</button>
+											<button
+												onClick={handleDelete}
+												className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+											>
+												<Trash2 className="h-4 w-4 mr-2" />
+												Delete
+											</button>
+										</div>
+									</div>
+								)}
+							</div>
 						) : (
 							<button className="p-1.5 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0">
 								<MoreHorizontal className="h-4 w-4 text-gray-600" />
