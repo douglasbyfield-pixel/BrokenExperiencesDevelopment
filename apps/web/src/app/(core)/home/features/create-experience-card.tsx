@@ -23,7 +23,7 @@ interface PhotoFile {
 }
 
 interface CreateExperienceCardProps {
-	categoryOptions: CategoryOption;
+	categoryOptions: CategoryOption[];
 }
 
 export default function CreateExperienceCard({
@@ -195,7 +195,7 @@ export default function CreateExperienceCard({
 									<textarea
 										id={field.name}
 										name={field.name}
-										placeholder={isExpanded ? "Describe your experience in detail..." : "What's happening in your community?"}
+										placeholder={isExpanded ? "Describe your experience in detail..." : "What's your broken experience?"}
 										value={field.state.value}
 										onBlur={field.handleBlur}
 										onChange={(e) => {

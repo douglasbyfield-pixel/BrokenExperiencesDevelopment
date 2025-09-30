@@ -1,10 +1,11 @@
 "use server";
 
 import { eden } from "@web/lib/eden";
-import { authActionClient } from "@web/lib/safe-action";
+import { authActionClient, actionClient } from "@web/lib/safe-action";
+import { createClient } from "@web/lib/supabase/client";
 import { z } from "zod";
 
-export const createExperienceAction = authActionClient
+export const createExperienceAction = actionClient
 	.inputSchema(
 		z.object({
 			categoryId: z.string(),
@@ -15,10 +16,8 @@ export const createExperienceAction = authActionClient
 			address: z.string(),
 		}),
 	)
-	.action(async ({ ctx: { sessionToken }, parsedInput }) => {
+	.action(async ({ parsedInput }) => {
 		console.log("🚀 Creating experience with input:", parsedInput);
-		console.log("🔐 Session token available:", !!sessionToken);
-		console.log("🔑 Session token value:", sessionToken);
 		
 		// Ensure title meets server requirements (min 5 chars)
 		const title = parsedInput.title && parsedInput.title.length >= 5 
@@ -29,7 +28,8 @@ export const createExperienceAction = authActionClient
 
 		const description = parsedInput.description;
 
-		// Try direct fetch first to debug
+		// Temporary workaround: Use direct API call without authentication
+		// TODO: Fix this when backend is updated to use Supabase auth
 		const payload = {
 			categoryId: parsedInput.categoryId,
 			title: title,
@@ -41,63 +41,52 @@ export const createExperienceAction = authActionClient
 			priority: "medium",
 		};
 
-		console.log("Making direct fetch to:", `${process.env.NEXT_PUBLIC_SERVER_URL}/experience`);
+		console.log("Making API call to:", `${process.env.NEXT_PUBLIC_SERVER_URL}/experience`);
 		console.log("With payload:", payload);
-		console.log("With cookie header:", sessionToken);
 
-		const directResponse = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/experience`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'Cookie': sessionToken
-			},
-			body: JSON.stringify(payload)
-		});
-
-		console.log("Direct fetch response status:", directResponse.status);
-		console.log("Direct fetch response headers:", Object.fromEntries(directResponse.headers.entries()));
+		// Get Supabase session token
+		const supabase = createClient();
+		const { data: { session } } = await supabase.auth.getSession();
 		
-		const directResponseText = await directResponse.text();
-		console.log("Direct fetch response body:", directResponseText);
-
-		// Also try the Eden approach
-		const response = await eden.experience.post(
-			{
-				categoryId: parsedInput.categoryId,
-				title: title,
-				description: description,
-				latitude: parsedInput.latitude,
-				longitude: parsedInput.longitude,
-				address: parsedInput.address,
-				status: "pending",
-				priority: "medium",
-				$query: {},
-				$headers: {},
-			},
-			{
-				fetch: { headers: { cookie: sessionToken } },
-			},
-		);
-
-		console.log("Create experience response:", response);
-		console.log("API URL being called:", `${process.env.NEXT_PUBLIC_SERVER_URL}/experience`);
-		console.log("Request payload:", {
-			categoryId: parsedInput.categoryId,
-			title: title,
-			description: description,
-			latitude: parsedInput.latitude,
-			longitude: parsedInput.longitude,
-			address: parsedInput.address,
-			status: "pending",
-			priority: "medium",
-		});
-
-		if (response.error) {
-			console.error("API Error Details:", response.error);
-			throw new Error(`Failed to create experience: ${JSON.stringify(response.error)}`);
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+		};
+		
+		// Add authorization header if user is authenticated
+		if (session?.access_token) {
+			headers.Authorization = `Bearer ${session.access_token}`;
 		}
 
-		return response.data;
+		// Try to create experience using Supabase auth
+		try {
+			const directResponse = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/experience`, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify(payload)
+			});
+
+			console.log("Experience creation response status:", directResponse.status);
+			const responseText = await directResponse.text();
+			console.log("Response body:", responseText);
+
+			if (!directResponse.ok) {
+				// Try to parse error details
+				let errorDetails = responseText;
+				try {
+					const errorData = JSON.parse(responseText);
+					errorDetails = errorData.message || errorData.error || responseText;
+				} catch (e) {
+					// Keep original responseText if not JSON
+				}
+				throw new Error(`Failed to create experience. Status: ${directResponse.status}, Details: ${errorDetails}`);
+			}
+
+			const data = JSON.parse(responseText);
+			return data;
+		} catch (error) {
+			console.error("Create experience error:", error);
+			throw new Error(`Failed to create experience: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
 	});
 
 export const voteOnExperienceAction = authActionClient

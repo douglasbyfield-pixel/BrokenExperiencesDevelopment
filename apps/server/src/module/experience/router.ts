@@ -1,4 +1,4 @@
-import { betterAuthView } from "@server/lib/auth/view";
+import { betterAuthView, supabaseAuth } from "@server/lib/auth/view";
 import Elysia from "elysia";
 import { experienceModel } from "./schema";
 import {
@@ -65,16 +65,15 @@ export const experienceRouter = new Elysia({
 	)
 	.post(
 		"/",
-		async ({ body, session }) => {
-			console.log("----->", session.userId);
+		async (ctx: any) => {
+			console.log("----->", ctx.session?.userId);
 			const result = await createExperience({
-				userId: session.userId,
-				data: body,
+				userId: ctx.session?.userId || "anonymous",
+				data: ctx.body,
 			});
 			return result;
 		},
 		{
-			auth: true,
 			body: "experience.create",
 			detail: {
 				summary: "Add a experience",
@@ -84,17 +83,36 @@ export const experienceRouter = new Elysia({
 		},
 	)
 	.post(
-		"/:experienceId/vote",
-		async ({ body, params, session }) => {
-			const result = await voteOnExperience({
-				id: params.experienceId,
+		"/temp",
+		async ({ body }) => {
+			console.log("Temporary unauthenticated experience creation");
+			// Use a default user for now until proper Supabase auth is implemented
+			const result = await createExperience({
+				userId: "temp-user-id",
 				data: body,
-				userId: session.userId,
 			});
 			return result;
 		},
 		{
-			auth: true,
+			body: "experience.create",
+			detail: {
+				summary: "Add experience (temporary unauthenticated)",
+				description:
+					"Temporary endpoint for creating experiences without authentication.",
+			},
+		},
+	)
+	.post(
+		"/:experienceId/vote",
+		async (ctx: any) => {
+			const result = await voteOnExperience({
+				id: ctx.params.experienceId,
+				data: ctx.body,
+				userId: ctx.session?.userId || "anonymous",
+			});
+			return result;
+		},
+		{
 			params: "experience.identifier.params",
 			body: "experience.vote",
 			detail: {

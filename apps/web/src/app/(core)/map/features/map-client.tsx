@@ -12,6 +12,8 @@ import {
 } from "@web/components/ui/card";
 import { Input } from "@web/components/ui/input";
 import type { Experience } from "@web/types";
+import { voteOnExperienceAction } from "@web/action/experience";
+import { useAction } from "next-safe-action/hooks";
 import {
 	AlertCircle,
 	Building,
@@ -42,34 +44,15 @@ import {
 
 // Using Elysia API backend (which connects to Supabase underneath)
 
-interface Issue {
-	id: string;
-	title: string;
-	description: string;
-	latitude: number;
-	longitude: number;
-	address?: string;
-	status: "reported" | "pending" | "resolved";
-	severity: "low" | "medium" | "high" | "critical";
-	reporterId: string;
-	categoryId?: string;
-	imageUrls?: string[];
-	createdAt: Date;
-	updatedAt: Date;
-	resolvedAt?: Date;
-	upvotes: number;
-	downvotes: number;
-}
-
 const statusConfig = {
-	reported: {
+	pending: {
 		icon: AlertCircle,
 		color: "#ef4444",
 		label: "Reported",
 		bgColor: "bg-red-100 dark:bg-red-900/20",
 		textColor: "text-red-700 dark:text-red-400",
 	},
-	pending: {
+	in_progress: {
 		icon: Clock,
 		color: "#f59e0b",
 		label: "In Progress",
@@ -85,7 +68,7 @@ const statusConfig = {
 	},
 };
 
-const severityConfig = {
+const priorityConfig = {
 	low: {
 		scale: 0.8,
 		zIndex: 1,
@@ -130,55 +113,8 @@ const categoryConfig = {
 	water: { icon: Droplets, color: "#3b82f6", label: "Water" },
 	roads: { icon: Construction, color: "#f97316", label: "Roads" },
 	safety: { icon: Shield, color: "#dc2626", label: "Safety" },
+	"digital aids": { icon: Zap, color: "#9333ea", label: "Digital Aids" },
 	other: { icon: Building, color: "#64748b", label: "Other" },
-};
-
-// Elysia Backend API functions
-const getAllIssues = async (): Promise<Issue[]> => {
-	console.log("🔄 Fetching all issues from Elysia API...");
-	try {
-		const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/issue`);
-
-		if (!response.ok) {
-			throw new Error(`API error: ${response.status}`);
-		}
-
-		const issues: Issue[] = await response.json();
-		console.log(
-			`✅ Successfully fetched ${issues.length} issues from Elysia API`,
-		);
-		return issues;
-	} catch (error) {
-		console.error("❌ Failed to fetch issues from API:", error);
-		return [];
-	}
-};
-
-const updateIssueUpvotes = async (issueId: string): Promise<Issue | null> => {
-	console.log(`🔄 Voting on issue ${issueId} via Elysia API...`);
-	try {
-		const response = await fetch(
-			`${process.env.NEXT_PUBLIC_SERVER_URL}/issue/${issueId}/vote`,
-			{
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({ type: "upvote" }),
-			},
-		);
-
-		if (!response.ok) {
-			throw new Error(`Vote API error: ${response.status}`);
-		}
-
-		const updatedIssue: Issue = await response.json();
-		console.log(`✅ Successfully voted on issue ${issueId}`);
-		return updatedIssue;
-	} catch (error) {
-		console.error("❌ Failed to vote via API:", error);
-		return null;
-	}
 };
 
 interface MapClientProps {
@@ -190,20 +126,19 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const mapContainerRef = useRef<HTMLDivElement>(null);
 	const [map, setMap] = useState<any>(null);
 	const [mapLoaded, setMapLoaded] = useState(false);
-	const [issues, setIssues] = useState<Issue[]>([]);
-	const [filteredIssues, setFilteredIssues] = useState<Issue[]>([]);
-	const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+	const [filteredExperiences, setFilteredExperiences] = useState<Experience[]>(experiences);
+	const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
 	const [userLocation, setUserLocation] = useState<{
 		lat: number;
 		lng: number;
 	} | null>(null);
 	const [activeFilters, setActiveFilters] = useState<{
 		status: string[];
-		severity: string[];
+		priority: string[];
 		category: string[];
 	}>({
 		status: [],
-		severity: [],
+		priority: [],
 		category: [],
 	});
 	const [searchQuery, setSearchQuery] = useState("");
@@ -220,6 +155,16 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const [currentRoute, setCurrentRoute] = useState<any>(null);
 	const [isNavigating, setIsNavigating] = useState(false);
 	const [navPanelMinimized, setNavPanelMinimized] = useState(false);
+
+	const { execute: voteOnExperience } = useAction(voteOnExperienceAction, {
+		onSuccess: () => {
+			// Reload to show updated vote count
+			window.location.reload();
+		},
+		onError: (error) => {
+			console.error("Vote failed:", error);
+		}
+	});
 
 	// Debounce search query
 	useEffect(() => {
@@ -277,53 +222,34 @@ export default function MapClient({ experiences }: MapClientProps) {
 		requestLocation();
 	}, []);
 
-	// Fetch issues on mount - use Elysia API (which connects to Supabase)
+	// Update filtered experiences when experiences prop changes
 	useEffect(() => {
-		const initializeData = async () => {
-			try {
-				console.log("🚀 Loading data from Elysia API...");
-				await loadRealData();
-				console.log("✅ Successfully loaded data from API");
-			} catch (error) {
-				console.error("❌ Failed to load data from API:", error);
-				// Only set empty array if API fails, no mock data
-				setIssues([]);
-			}
-		};
-
-		initializeData();
-	}, []);
-
-	const loadRealData = async () => {
-		console.log("Loading data from Elysia API...");
-		const realIssues = await getAllIssues();
-		setIssues(realIssues);
-		console.log(`✅ Loaded ${realIssues.length} issues from Elysia API`);
-	};
+		setFilteredExperiences(experiences);
+	}, [experiences]);
 
 	// Memoized filtering function for better performance
-	const filteredIssuesMemo = useMemo(() => {
-		let filtered = [...issues];
+	const filteredExperiencesMemo = useMemo(() => {
+		let filtered = [...experiences];
 
 		// Apply status filters
 		if (activeFilters.status.length > 0) {
-			filtered = filtered.filter((issue) =>
-				activeFilters.status.includes(issue.status),
+			filtered = filtered.filter((experience) =>
+				activeFilters.status.includes(experience.status),
 			);
 		}
 
-		// Apply severity filters
-		if (activeFilters.severity.length > 0) {
-			filtered = filtered.filter((issue) =>
-				activeFilters.severity.includes(issue.severity),
+		// Apply priority filters
+		if (activeFilters.priority.length > 0) {
+			filtered = filtered.filter((experience) =>
+				activeFilters.priority.includes(experience.priority),
 			);
 		}
 
 		// Apply category filters
 		if (activeFilters.category.length > 0) {
 			filtered = filtered.filter(
-				(issue) =>
-					issue.categoryId && activeFilters.category.includes(issue.categoryId),
+				(experience) =>
+					experience.categoryId && activeFilters.category.includes(experience.categoryId),
 			);
 		}
 
@@ -331,23 +257,23 @@ export default function MapClient({ experiences }: MapClientProps) {
 		if (debouncedSearchQuery) {
 			const searchLower = debouncedSearchQuery.toLowerCase();
 			filtered = filtered.filter(
-				(issue) =>
-					issue.title.toLowerCase().includes(searchLower) ||
-					issue.description.toLowerCase().includes(searchLower) ||
-					(issue.address && issue.address.toLowerCase().includes(searchLower)),
+				(experience) =>
+					experience.title.toLowerCase().includes(searchLower) ||
+					experience.description.toLowerCase().includes(searchLower) ||
+					(experience.address && experience.address.toLowerCase().includes(searchLower)),
 			);
 		}
 
 		return filtered;
-	}, [issues, activeFilters, debouncedSearchQuery]);
+	}, [experiences, activeFilters, debouncedSearchQuery]);
 
-	// Update filtered issues when memo changes
+	// Update filtered experiences when memo changes
 	useEffect(() => {
-		setFilteredIssues(filteredIssuesMemo);
-	}, [filteredIssuesMemo]);
+		setFilteredExperiences(filteredExperiencesMemo);
+	}, [filteredExperiencesMemo]);
 
 	const toggleFilter = (
-		type: "status" | "severity" | "category",
+		type: "status" | "priority" | "category",
 		value: string,
 	) => {
 		setActiveFilters((prev) => {
@@ -365,21 +291,11 @@ export default function MapClient({ experiences }: MapClientProps) {
 		});
 	};
 
-	const handleVote = async (issueId: string) => {
-		try {
-			const updatedIssue = await updateIssueUpvotes(issueId);
-
-			if (updatedIssue) {
-				setIssues((prev) =>
-					prev.map((issue) => (issue.id === issueId ? updatedIssue : issue)),
-				);
-				if (selectedIssue?.id === issueId) {
-					setSelectedIssue(updatedIssue);
-				}
-			}
-		} catch (error) {
-			console.error("Failed to vote:", error);
-		}
+	const handleVote = (experienceId: string) => {
+		voteOnExperience({
+			experienceId: experienceId,
+			vote: true
+		});
 	};
 
 	const getDirections = async (
@@ -720,12 +636,12 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 						(window as any).findNearbyIssues = () => {
 							console.log("🔍 Finding nearby issues...");
-							const nearby = filteredIssues.filter((issue) => {
+							const nearby = filteredExperiences.filter((experience) => {
 								const distance = getDistance(
 									newLocation.lat,
 									newLocation.lng,
-									issue.latitude,
-									issue.longitude,
+									Number(experience.latitude),
+									Number(experience.longitude),
 								);
 								return distance <= 2;
 							});
@@ -734,8 +650,8 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 							if (nearby.length > 0) {
 								const bounds = new mapboxgl.LngLatBounds();
-								nearby.forEach((issue) => {
-									bounds.extend([issue.longitude, issue.latitude]);
+								nearby.forEach((experience) => {
+									bounds.extend([Number(experience.longitude), Number(experience.latitude)]);
 								});
 								bounds.extend([newLocation.lng, newLocation.lat]);
 
@@ -755,47 +671,47 @@ export default function MapClient({ experiences }: MapClientProps) {
 						};
 
 						(window as any).showClosestIssue = () => {
-							console.log("🎯 Finding closest issue...");
+							console.log("🎯 Finding closest experience...");
 
-							if (filteredIssues.length === 0) {
+							if (filteredExperiences.length === 0) {
 								alert("No issues available to show.");
 								popup.remove();
 								return;
 							}
 
 							// Find the closest issue
-							let closestIssue = filteredIssues[0];
+							let closestExperience = filteredExperiences[0];
 							let closestDistance = getDistance(
 								newLocation.lat,
 								newLocation.lng,
-								closestIssue.latitude,
-								closestIssue.longitude,
+								Number(closestExperience.latitude),
+								Number(closestExperience.longitude),
 							);
 
-							filteredIssues.forEach((issue) => {
+							filteredExperiences.forEach((experience) => {
 								const distance = getDistance(
 									newLocation.lat,
 									newLocation.lng,
-									issue.latitude,
-									issue.longitude,
+									Number(experience.latitude),
+									Number(experience.longitude),
 								);
 								if (distance < closestDistance) {
 									closestDistance = distance;
-									closestIssue = issue;
+									closestExperience = experience;
 								}
 							});
 
 							// Fly to closest issue and select it
 							mapInstance.flyTo({
-								center: [closestIssue.longitude, closestIssue.latitude],
+								center: [Number(closestExperience.longitude), Number(closestExperience.latitude)],
 								zoom: 17,
 								pitch: 68,
 								duration: 2000,
 							});
 
-							setSelectedIssue(closestIssue);
+							setSelectedExperience(closestExperience);
 							console.log(
-								`Closest issue: ${closestIssue.title} (${closestDistance.toFixed(2)}km away)`,
+								`Closest issue: ${closestExperience.title} (${closestDistance.toFixed(2)}km away)`,
 							);
 							popup.remove();
 						};
@@ -858,11 +774,11 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 	// Create markers when map loads and we have issues
 	useEffect(() => {
-		if (!map || !mapLoaded || !filteredIssues.length) return;
+		if (!map || !mapLoaded || !filteredExperiences.length) return;
 
 		console.log(
 			"🎯 Creating markers for",
-			filteredIssues.length,
+			filteredExperiences.length,
 			"filtered issues",
 		);
 
@@ -873,11 +789,52 @@ export default function MapClient({ experiences }: MapClientProps) {
 		// Dynamically import mapboxgl for markers
 		import("mapbox-gl").then(({ default: mapboxgl }) => {
 			// Create markers for each issue
-			filteredIssues.forEach((issue) => {
-				const severity = severityConfig[issue.severity];
-				const category =
-					categoryConfig[issue.categoryId as keyof typeof categoryConfig] ||
-					categoryConfig.other;
+			filteredExperiences.forEach((experience) => {
+				// Debug: Log each experience being processed
+				console.log("🎯 Creating marker for experience:", {
+					id: experience.id,
+					title: experience.title,
+					latitude: experience.latitude,
+					longitude: experience.longitude,
+					priority: experience.priority,
+					categoryId: experience.categoryId
+				});
+				
+				// Validate coordinates
+				const lat = Number(experience.latitude);
+				const lng = Number(experience.longitude);
+				
+				if (isNaN(lat) || isNaN(lng)) {
+					console.warn("⚠️ Skipping marker for invalid coordinates:", {
+						id: experience.id,
+						title: experience.title,
+						latitude: experience.latitude,
+						longitude: experience.longitude
+					});
+					return;
+				}
+				
+				const priority = priorityConfig[experience.priority];
+				// Map experience titles to EXACT categories from categoryConfig legend
+				const getCategoryFromTitle = (title: string, description: string) => {
+					const text = (title + " " + description).toLowerCase();
+					
+					// Match EXACTLY to categoryConfig keys
+					if (text.includes('streetlight') || text.includes('light') || text.includes('lighting')) return 'lighting';
+					if (text.includes('pothole') || text.includes('road') || text.includes('street') || text.includes('pavement')) return 'roads';
+					if (text.includes('traffic') || text.includes('sign') || text.includes('signal')) return 'traffic';
+					if (text.includes('water') || text.includes('burst') || text.includes('flooding') || text.includes('flood') || text.includes('pipe')) return 'water';
+					if (text.includes('garbage') || text.includes('trash') || text.includes('waste') || text.includes('collection')) return 'sanitation';
+					if (text.includes('tree') || text.includes('fallen') || text.includes('environment') || text.includes('nature')) return 'environment';
+					if (text.includes('sidewalk') || text.includes('building') || text.includes('structure') || text.includes('construction')) return 'infrastructure';
+					if (text.includes('utility') || text.includes('power') || text.includes('electric') || text.includes('cable')) return 'utilities';
+					if (text.includes('safety') || text.includes('dangerous') || text.includes('hazard') || text.includes('security')) return 'safety';
+					
+					return 'other';
+				};
+				
+				const categoryKey = getCategoryFromTitle(experience.title || '', experience.description || '');
+				const category = categoryConfig[categoryKey as keyof typeof categoryConfig] || categoryConfig.other;
 
 				const getIconSVG = (categoryId: string) => {
 					const iconSVGs: Record<string, string> = {
@@ -892,6 +849,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 						sanitation:
 							'<path d="M3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6H3z"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-6 5v6m4-6v6"/>',
 						utilities: '<polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>',
+						"digital aids": '<polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>',
 						water:
 							'<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
 						roads:
@@ -909,31 +867,33 @@ export default function MapClient({ experiences }: MapClientProps) {
 				markerEl.innerHTML = `
 					<div class="relative drop-shadow-lg">
 						<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
-							 style="background-color: ${category.color}; z-index: ${severity.zIndex};">
+							 style="background-color: ${category.color}; z-index: ${priority.zIndex};">
 							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-								${getIconSVG(issue.categoryId || "other")}
+								${getIconSVG(categoryKey || "other")}
 							</svg>
 						</div>
 						<div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow-lg" 
-							 style="background-color: ${severity.color};"></div>
+							 style="background-color: ${priority.color};"></div>
 						<div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-6 h-6 rounded-full border-2 opacity-50"
-							 style="border-color: ${severity.color}; animation: pulse 2s infinite;"></div>
+							 style="border-color: ${priority.color}; animation: pulse 2s infinite;"></div>
 					</div>
 				`;
 
 				markerEl.addEventListener("click", (e) => {
 					e.stopPropagation();
-					setSelectedIssue(issue);
-					console.log("📍 Issue selected:", issue.title);
+					setSelectedExperience(experience);
+					console.log("📍 Issue selected:", experience.title);
 				});
 				new mapboxgl.Marker(markerEl)
-					.setLngLat([issue.longitude, issue.latitude])
+					.setLngLat([lng, lat])
 					.addTo(map);
+					
+				console.log("✅ Created marker at coordinates:", [lng, lat]);
 			});
 
 			console.log("✅ Zoom-responsive markers created successfully");
 		});
-	}, [map, mapLoaded, filteredIssues]);
+	}, [map, mapLoaded, filteredExperiences]);
 
 	// Real-time location tracking with high accuracy
 	const startLiveTracking = useCallback(() => {
@@ -1037,7 +997,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 				<div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
 					<div className="flex items-center gap-3 rounded-lg bg-white p-6">
 						<div className="h-6 w-6 animate-spin rounded-full border-blue-600 border-b-2" />
-						<span>Loading map...</span>
+						<span className="text-black">Loading map...</span>
 					</div>
 				</div>
 			)}
@@ -1116,36 +1076,36 @@ export default function MapClient({ experiences }: MapClientProps) {
 							variant="ghost"
 							className="flex h-auto flex-col items-center gap-1 p-3 text-xs"
 							onClick={() => {
-								if (userLocation && filteredIssues.length > 0) {
-									let closestIssue = filteredIssues[0];
+								if (userLocation && filteredExperiences.length > 0) {
+									let closestExperience = filteredExperiences[0];
 									let closestDistance = getDistance(
 										userLocation.lat,
 										userLocation.lng,
-										closestIssue.latitude,
-										closestIssue.longitude,
+										Number(closestExperience.latitude),
+										Number(closestExperience.longitude),
 									);
 
-									filteredIssues.forEach((issue) => {
+									filteredExperiences.forEach((experience) => {
 										const distance = getDistance(
 											userLocation.lat,
 											userLocation.lng,
-											issue.latitude,
-											issue.longitude,
+											Number(experience.latitude),
+											Number(experience.longitude),
 										);
 										if (distance < closestDistance) {
 											closestDistance = distance;
-											closestIssue = issue;
+											closestExperience = experience;
 										}
 									});
 
 									map?.flyTo({
-										center: [closestIssue.longitude, closestIssue.latitude],
+										center: [Number(closestExperience.longitude), Number(closestExperience.latitude)],
 										zoom: 17,
 										pitch: 68,
 										duration: 2000,
 									});
 
-									setSelectedIssue(closestIssue);
+									setSelectedExperience(closestExperience);
 									setShowQuickActions(false);
 								}
 							}}
@@ -1172,7 +1132,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 							variant="ghost"
 							className="flex h-auto flex-col items-center gap-1 p-3 text-xs"
 							onClick={() => {
-								const recentIssues = filteredIssues
+								const recentIssues = filteredExperiences
 									.sort(
 										(a, b) =>
 											new Date(b.createdAt).getTime() -
@@ -1183,8 +1143,8 @@ export default function MapClient({ experiences }: MapClientProps) {
 								if (recentIssues.length > 0) {
 									import("mapbox-gl").then(({ default: mapboxgl }) => {
 										const bounds = new mapboxgl.LngLatBounds();
-										recentIssues.forEach((issue) => {
-											bounds.extend([issue.longitude, issue.latitude]);
+										recentIssues.forEach((experience) => {
+											bounds.extend([Number(experience.longitude), Number(experience.latitude)]);
 										});
 
 										map?.fitBounds(bounds, {
@@ -1219,6 +1179,32 @@ export default function MapClient({ experiences }: MapClientProps) {
 						>
 							<Compass className="h-4 w-4" />
 							<span>My Location</span>
+						</Button>
+
+						<Button
+							size="sm"
+							variant="ghost"
+							className="flex h-auto flex-col items-center gap-1 p-3 text-xs"
+							onClick={() => {
+								if (filteredExperiences.length > 0 && map) {
+									import("mapbox-gl").then(({ default: mapboxgl }) => {
+										const bounds = new mapboxgl.LngLatBounds();
+										filteredExperiences.forEach((experience) => {
+											bounds.extend([Number(experience.longitude), Number(experience.latitude)]);
+										});
+
+										map.fitBounds(bounds, {
+											padding: 50,
+											pitch: 0,
+											duration: 2000,
+										});
+									});
+									setShowQuickActions(false);
+								}
+							}}
+						>
+							<MapPin className="h-4 w-4" />
+							<span>Show All ({filteredExperiences.length})</span>
 						</Button>
 					</div>
 				</div>
@@ -1297,21 +1283,21 @@ export default function MapClient({ experiences }: MapClientProps) {
 								</div>
 							</div>
 							<div>
-								<h4 className="mb-2 font-medium text-sm">Severity</h4>
+								<h4 className="mb-2 font-medium text-sm">Priority</h4>
 								<div className="flex flex-wrap gap-2">
-									{Object.entries(severityConfig).map(([severity, config]) => (
+									{Object.entries(priorityConfig).map(([priority, config]) => (
 										<Button
-											key={severity}
+											key={priority}
 											size="sm"
 											variant={
-												activeFilters.severity.includes(severity)
+												activeFilters.priority.includes(priority)
 													? "default"
 													: "outline"
 											}
-											onClick={() => toggleFilter("severity", severity)}
+											onClick={() => toggleFilter("priority", priority)}
 											className={`text-xs ${config.bgColor} ${config.textColor}`}
 										>
-											{severity.charAt(0).toUpperCase() + severity.slice(1)}
+											{priority.charAt(0).toUpperCase() + priority.slice(1)}
 										</Button>
 									))}
 								</div>
@@ -1345,42 +1331,42 @@ export default function MapClient({ experiences }: MapClientProps) {
 					{searchQuery && (
 						<div className="max-h-48 overflow-y-auto">
 							<h4 className="mb-2 font-medium text-sm">
-								Results ({filteredIssues.length})
+								Results ({filteredExperiences.length})
 							</h4>
-							{filteredIssues.slice(0, 5).map((issue) => (
+							{filteredExperiences.slice(0, 5).map((experience) => (
 								<div
-									key={issue.id}
+									key={experience.id}
 									className="cursor-pointer rounded border-b p-2 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800"
 									onClick={() => {
-										setSelectedIssue(issue);
+										setSelectedExperience(experience);
 										if (map) {
 											map.flyTo({
-												center: [issue.longitude, issue.latitude],
+												center: [Number(experience.longitude), Number(experience.latitude)],
 												zoom: 16,
 												duration: 1000,
 											});
 										}
 									}}
 								>
-									<h5 className="font-medium text-sm">{issue.title}</h5>
+									<h5 className="font-medium text-sm">{experience.title}</h5>
 									<p className="truncate text-gray-600 text-xs dark:text-gray-400">
-										{issue.description}
+										{experience.description}
 									</p>
 									<div className="mt-1 flex items-center gap-2">
 										<Badge
 											variant={
-												issue.severity === "high"
+												experience.priority === "high"
 													? "destructive"
-													: issue.severity === "medium"
+													: experience.priority === "medium"
 														? "default"
 														: "secondary"
 											}
 											className="text-xs"
 										>
-											{issue.severity}
+											{experience.priority}
 										</Badge>
 										<span className="text-gray-500 text-xs">
-											👍 {issue.upvotes}
+											👍 {experience.upvotes}
 										</span>
 									</div>
 								</div>
@@ -1391,21 +1377,21 @@ export default function MapClient({ experiences }: MapClientProps) {
 			)}
 
 			{/* Issue Details Panel */}
-			{selectedIssue && (
+			{selectedExperience && (
 				<div className="absolute right-4 bottom-4 left-4 z-20 mx-auto max-w-md rounded-lg bg-white p-4 shadow-lg dark:bg-gray-900">
 					<div className="mb-3 flex items-start justify-between">
 						<div className="flex-1">
 							<h3 className="mb-1 font-semibold text-lg">
-								{selectedIssue.title}
+								{selectedExperience.title}
 							</h3>
 							<p className="mb-2 text-gray-600 text-sm dark:text-gray-400">
-								{selectedIssue.description}
+								{selectedExperience.description}
 							</p>
 						</div>
 						<Button
 							size="icon"
 							variant="ghost"
-							onClick={() => setSelectedIssue(null)}
+							onClick={() => setSelectedExperience(null)}
 							className="shrink-0"
 						>
 							<X className="h-4 w-4" />
@@ -1415,34 +1401,34 @@ export default function MapClient({ experiences }: MapClientProps) {
 					<div className="mb-3 flex items-center gap-2">
 						<Badge
 							variant={
-								selectedIssue.severity === "high"
+								selectedExperience.priority === "high"
 									? "destructive"
-									: selectedIssue.severity === "medium"
+									: selectedExperience.priority === "medium"
 										? "default"
 										: "secondary"
 							}
 						>
-							{selectedIssue.severity}
+							{selectedExperience.priority}
 						</Badge>
 						<Badge
 							variant="outline"
-							className={statusConfig[selectedIssue.status].textColor}
+							className={statusConfig[selectedExperience.status].textColor}
 						>
-							{statusConfig[selectedIssue.status].label}
+							{statusConfig[selectedExperience.status].label}
 						</Badge>
-						{selectedIssue.categoryId && (
+						{selectedExperience.categoryId && (
 							<Badge variant="secondary">
 								{categoryConfig[
-									selectedIssue.categoryId as keyof typeof categoryConfig
+									selectedExperience.categoryId as keyof typeof categoryConfig
 								]?.label || "Other"}
 							</Badge>
 						)}
 					</div>
 
-					{selectedIssue.address && (
+					{selectedExperience.address && (
 						<p className="mb-3 flex items-center gap-1 text-gray-500 text-xs">
 							<MapPin className="h-3 w-3" />
-							{selectedIssue.address}
+							{selectedExperience.address}
 						</p>
 					)}
 
@@ -1454,11 +1440,11 @@ export default function MapClient({ experiences }: MapClientProps) {
 								className="flex items-center gap-1 text-gray-700 transition-colors hover:text-green-600"
 								onClick={(e) => {
 									e.stopPropagation();
-									handleVote(selectedIssue.id);
+									handleVote(selectedExperience.id);
 								}}
 							>
 								<ThumbsUp className="h-4 w-4" />
-								<span className="font-medium">{selectedIssue.upvotes}</span>
+								<span className="font-medium">{selectedExperience.upvotes}</span>
 							</Button>
 						</div>
 
@@ -1467,13 +1453,13 @@ export default function MapClient({ experiences }: MapClientProps) {
 								size="sm"
 								variant={isNavigating ? "default" : "outline"}
 								onClick={() => {
-									if (userLocation && selectedIssue) {
+									if (userLocation && selectedExperience) {
 										if (isNavigating) {
 											clearRoute();
 										} else {
 											showRoute(userLocation, {
-												lat: selectedIssue.latitude,
-												lng: selectedIssue.longitude,
+												lat: Number(selectedExperience.latitude),
+												lng: Number(selectedExperience.longitude),
 											});
 										}
 									}
@@ -1486,9 +1472,9 @@ export default function MapClient({ experiences }: MapClientProps) {
 								size="sm"
 								variant="outline"
 								onClick={() => {
-									if (selectedIssue) {
+									if (selectedExperience) {
 										// Copy issue location to clipboard
-										const shareText = `Check out this issue: ${selectedIssue.title} at ${selectedIssue.latitude},${selectedIssue.longitude}`;
+										const shareText = `Check out this issue: ${selectedExperience.title} at ${Number(selectedExperience.latitude)},${Number(selectedExperience.longitude)}`;
 										navigator.clipboard.writeText(shareText);
 									}
 								}}
@@ -1500,11 +1486,11 @@ export default function MapClient({ experiences }: MapClientProps) {
 					</div>
 
 					<div className="mt-2 border-t pt-2 text-gray-500 text-xs">
-						Reported {new Date(selectedIssue.createdAt).toLocaleDateString()}
-						{selectedIssue.resolvedAt && (
+						Reported {new Date(selectedExperience.createdAt).toLocaleDateString()}
+						{selectedExperience.resolvedAt && (
 							<span className="ml-2">
 								• Resolved{" "}
-								{new Date(selectedIssue.resolvedAt).toLocaleDateString()}
+								{new Date(selectedExperience.resolvedAt).toLocaleDateString()}
 							</span>
 						)}
 					</div>
