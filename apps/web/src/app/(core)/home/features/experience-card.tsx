@@ -64,8 +64,8 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	const [likeCount, setLikeCount] = useState(experience.upvotes || 0);
 	const [showDropdown, setShowDropdown] = useState(false);
 	const [isEditingStatus, setIsEditingStatus] = useState(false);
-	const [localPriority, setLocalPriority] = useState(experience.priority);
-	const [localStatus, setLocalStatus] = useState(experience.status);
+	const [localPriority, setLocalPriority] = useState<string>(experience.priority);
+	const [localStatus, setLocalStatus] = useState<string>(experience.status);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 
 	// Close dropdown when clicking outside
