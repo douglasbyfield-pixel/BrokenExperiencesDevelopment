@@ -9,7 +9,7 @@ import type { Stats, UserStats, TrendingCategory } from "@web/types";
 import SearchInput from "./search-input";
 import { useSearch } from "@web/context/SearchContext";
 import { LogOut } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface RightSidebarProps {
 	className?: string;
@@ -48,11 +48,12 @@ export default function RightSidebar({ className, stats, userStats, trendingCate
 	return (
 		<aside
 			className={cn(
-				"hidden sticky top-0 h-screen w-60 lg:w-64 xl:w-72 flex-col bg-white px-3 lg:px-4 py-4 lg:flex",
+				"hidden sticky top-0 h-screen w-72 lg:w-80 flex-col bg-white px-3 lg:px-4 py-4 lg:flex",
 				className,
 			)}
 		>
-			<div className="space-y-6">
+			<div className="px-3 lg:px-4 py-4">
+				<div className="space-y-6">
 				{/* Search */}
 				<SearchInput onSearch={onSearch} onSearchChange={onSearchChange} />
 
@@ -183,6 +184,7 @@ export default function RightSidebar({ className, stats, userStats, trendingCate
 						<a href="#" className="hover:underline">Cookie Policy</a>
 					</div>
 					<p>© 2025 Broken Experiences</p>
+				</div>
 				</div>
 			</div>
 		</aside>

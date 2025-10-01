@@ -9,7 +9,7 @@ interface FeedProps {
 
 export default function Feed({ experiences }: FeedProps) {
 	return (
-		<div className="min-h-screen">
+		<div>
 			{experiences && experiences.length > 0 ? (
 				experiences.map((experience) => (
 					<ExperienceCard key={experience.id} experience={experience} />
