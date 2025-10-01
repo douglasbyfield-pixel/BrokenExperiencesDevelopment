@@ -24,6 +24,7 @@ export const getExperiences = async (options: { query: ExperienceQuery; userId?:
 		status: experience.status,
 		priority: experience.priority,
 		createdAt: experience.createdAt,
+		resolvedAt: experience.resolvedAt,
 		upvotes: experience.upvotes,
 		downvotes: experience.downvotes,
 	}).from(experience).orderBy(desc(experience.createdAt)).limit(100); // Add limit for performance

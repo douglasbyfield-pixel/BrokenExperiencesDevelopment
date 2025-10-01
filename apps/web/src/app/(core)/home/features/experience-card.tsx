@@ -19,6 +19,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@web/components/auth-provider";
 import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
+import { ImageModal } from "@web/components/ui/image-modal";
 import {
 	Popover,
 	PopoverTrigger,
@@ -79,6 +80,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	const [showDropdown, setShowDropdown] = useState(false);
 	const [isEditingStatus, setIsEditingStatus] = useState(false);
 	const [localPriority, setLocalPriority] = useState<string>(experience.priority);
+	
+	// Image modal state
+	const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+	const [currentImageIndex, setCurrentImageIndex] = useState(0);
 	const [localStatus, setLocalStatus] = useState<string>(experience.status);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -120,6 +125,11 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 			experienceId: experience.id,
 			vote: isLiked ? 'down' : 'up' // Toggle between up and down
 		});
+	};
+
+	const handleImageClick = (index: number) => {
+		setCurrentImageIndex(index);
+		setIsImageModalOpen(true);
 	};
 
 	const handleDelete = async () => {
@@ -430,6 +440,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 										alt="Experience"
 										className="w-full h-auto max-h-[28rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
 										loading="lazy"
+										onClick={() => handleImageClick(0)}
 									/>
 								) : realImages.length === 2 ? (
 									/* Two images - side by side */
@@ -441,6 +452,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 												alt={`Experience ${idx + 1}`}
 												className="w-full h-56 object-cover cursor-pointer hover:opacity-95 transition-opacity"
 												loading="lazy"
+												onClick={() => handleImageClick(idx)}
 											/>
 										))}
 									</div>
@@ -452,6 +464,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 											alt="Experience 1"
 											className="w-full h-full min-h-[28rem] object-cover row-span-2 cursor-pointer hover:opacity-95 transition-opacity"
 											loading="lazy"
+											onClick={() => handleImageClick(0)}
 										/>
 										<div className="flex flex-col gap-1">
 											<img 
@@ -459,12 +472,14 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 												alt="Experience 2"
 												className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
 												loading="lazy"
+												onClick={() => handleImageClick(1)}
 											/>
 											<img 
 												src={realImages[2].imageUrl}
 												alt="Experience 3"
 												className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
 												loading="lazy"
+												onClick={() => handleImageClick(2)}
 											/>
 										</div>
 									</div>
@@ -478,9 +493,13 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 													alt={`Experience ${idx + 1}`}
 													className="w-full h-56 object-cover cursor-pointer group-hover:opacity-95 transition-opacity"
 													loading="lazy"
+													onClick={() => handleImageClick(idx)}
 												/>
 												{idx === 3 && realImages.length > 4 && (
-													<div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center cursor-pointer group-hover:bg-opacity-75 transition-all">
+													<div 
+														className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center cursor-pointer group-hover:bg-opacity-75 transition-all"
+														onClick={() => handleImageClick(3)}
+													>
 														<span className="text-white text-3xl font-bold drop-shadow-lg">
 															+{realImages.length - 4}
 														</span>
@@ -536,5 +555,24 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 				</div>
 			</div>
 		</article>
+		
+		{/* Image Modal */}
+		{(() => {
+			const realImages = experience.experienceImages?.filter(
+				(img: any) => img.imageUrl && img.imageUrl.trim() !== '' && !img.imageUrl.includes('placeholder')
+			) || [];
+			
+			if (realImages.length === 0) return null;
+			
+			return (
+				<ImageModal
+					images={realImages.map((img: any) => img.imageUrl)}
+					currentIndex={currentImageIndex}
+					isOpen={isImageModalOpen}
+					onClose={() => setIsImageModalOpen(false)}
+					onIndexChange={setCurrentImageIndex}
+				/>
+			);
+		})()}
 	);
 }
