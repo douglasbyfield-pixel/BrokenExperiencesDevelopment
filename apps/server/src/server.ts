@@ -31,11 +31,7 @@ export const app = new Elysia()
 	.use(logixlysia())
 	.use(
 		cors({
-<<<<<<< HEAD
-			origin: ["http://localhost:3001", "http://localhost:3000", "http://localhost:3002"],
-=======
 			origin: corsOrigins,
->>>>>>> 7390103f0aca37d6f39f4a276f9947abe0764f36
 			methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
 			allowedHeaders: ["Content-Type", "Authorization"],
 			credentials: true,
