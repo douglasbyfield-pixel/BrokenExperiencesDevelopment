@@ -1,6 +1,7 @@
 import { db } from "@server/db";
 import { experience, experienceImage, vote } from "@server/db/schema";
 import { decrement, increment } from "@server/db/utils";
+import { user } from "@server/db/schema";
 import { eq, ilike, or } from "drizzle-orm";
 import type {
 	ExperienceCreate,
@@ -9,15 +10,35 @@ import type {
 	ExperienceVote,
 } from "./schema";
 
-export const getExperiences = async (_options: { query: ExperienceQuery }) => {
+export const getExperiences = async (options: { query: ExperienceQuery; userId?: string }) => {
 	const retrievedExperiences = await db.query.experience.findMany({
 		with: { experienceImages: true, reportedBy: true, category: true },
 		orderBy: (experience, { desc }) => [desc(experience.createdAt)],
 	});
-	return retrievedExperiences;
+
+	// If userId is provided, fetch their votes and add to experiences
+	if (options.userId) {
+		const userVotes = await db.query.vote.findMany({
+			where: (vote, { eq }) => eq(vote.userId, options.userId as string),
+		});
+
+		const voteMap = new Map(
+			userVotes.map(v => [v.experienceId, v.vote])
+		);
+
+		return retrievedExperiences.map(exp => ({
+			...exp,
+			userVote: voteMap.get(exp.id) ?? null,
+		}));
+	}
+
+	return retrievedExperiences.map(exp => ({
+		...exp,
+		userVote: null,
+	}));
 };
 
-export const searchExperiences = async (searchTerm: string) => {
+export const searchExperiences = async (searchTerm: string, userId?: string) => {
 	const searchPattern = `%${searchTerm}%`;
 	const searchResults = await db.query.experience.findMany({
 		where: or(
@@ -29,7 +50,27 @@ export const searchExperiences = async (searchTerm: string) => {
 		orderBy: (experience, { desc }) => [desc(experience.createdAt)],
 		limit: 20,
 	});
-	return searchResults;
+
+	// If userId is provided, fetch their votes and add to experiences
+	if (userId) {
+		const userVotes = await db.query.vote.findMany({
+			where: (vote, { eq }) => eq(vote.userId, userId),
+		});
+
+		const voteMap = new Map(
+			userVotes.map(v => [v.experienceId, v.vote])
+		);
+
+		return searchResults.map(exp => ({
+			...exp,
+			userVote: voteMap.get(exp.id) ?? null,
+		}));
+	}
+
+	return searchResults.map(exp => ({
+		...exp,
+		userVote: null,
+	}));
 };
 
 export const getNearbyExperiences = async (options: {
@@ -41,43 +82,81 @@ export const getNearbyExperiences = async (options: {
 
 export const createExperience = async (options: {
 	userId: string;
+	userData: { id: string; email: string; name: string; emailVerified: boolean };
 	data: ExperienceCreate;
 }) => {
-	const { data } = options;
-
-	const createdExperience = await db.transaction(async (tx) => {
-		const [newExperience] = await tx
-			.insert(experience)
-			.values({
-				title: data.title,
-				reportedBy: options.userId,
-				description: data.description,
-				latitude: data.latitude,
-				longitude: data.longitude,
-				address: data.address,
-				categoryId: data.categoryId,
-				status: data.status,
-				priority: data.priority,
-			})
-			.returning();
-
-		const [newExperienceImage] = await tx
-			.insert(experienceImage)
-			.values({
-				experienceId: newExperience.id,
-				imageUrl: "https://via.placeholder.com/150",
-			})
-			.returning();
-
-		return {
-			experience: newExperience,
-			experienceImage: newExperienceImage,
-		};
+	console.log("📝 createExperience called with:", {
+		userId: options.userId,
+		data: options.data
 	});
+	
+	try {
+		const { data } = options;
 
-	return createdExperience;
+		const createdExperience = await db.transaction(async (tx) => {
+			// Ensure user exists in the database and update their info if needed
+			const existingUser = await tx.query.user.findFirst({
+				where: (user, { eq }) => eq(user.id, options.userId)
+			});
+
+			if (!existingUser) {
+				console.log("⚠️ User doesn't exist in DB, creating with real data:", options.userData);
+				await tx.insert(user).values({
+					id: options.userData.id,
+					name: options.userData.name,
+					email: options.userData.email,
+					emailVerified: options.userData.emailVerified,
+				}).onConflictDoNothing();
+			} else {
+				// Update user info to keep it in sync with Supabase auth
+				console.log("✅ User exists, updating with latest data:", {
+					oldName: existingUser.name,
+					newName: options.userData.name
+				});
+				await tx.update(user)
+					.set({
+						name: options.userData.name,
+						email: options.userData.email,
+						emailVerified: options.userData.emailVerified,
+					})
+					.where(eq(user.id, options.userId));
+			}
+
+			const [newExperience] = await tx
+				.insert(experience)
+				.values({
+					title: data.title,
+					reportedBy: options.userId,
+					description: data.description,
+					latitude: String(data.latitude), 
+					longitude: String(data.longitude), 
+					address: data.address,
+					categoryId: data.categoryId,
+					status: data.status || 'pending', 
+					priority: data.priority || 'medium',
+				})
+				.returning();
+
+			const [newExperienceImage] = await tx
+				.insert(experienceImage)
+				.values({
+					experienceId: newExperience.id,
+					imageUrl: "https://via.placeholder.com/150",
+				})
+				.returning();
+
+			return {
+				experience: newExperience,
+				experienceImage: newExperienceImage,
+			};
+		});
+
+		return createdExperience;
+	} catch (error) {
+		console.error("❌ Error in createExperience:", error);
+		throw error;
+	}
 };
-
 export const getExperience = async (options?: { id: string }) => {
 	const getExperience = await db.query.experience.findFirst({
 		where: (experience, { eq }) => eq(experience.id, options?.id as string),
@@ -97,12 +176,8 @@ export const voteOnExperience = async (options: {
 			eq(vote.experienceId, options.id) && eq(vote.userId, options.userId),
 	});
 
+	// If user is voting the same way again, toggle it off (remove the vote)
 	if (voteAlreadyExists && voteAlreadyExists.vote === options.data.vote) {
-		return voteAlreadyExists;
-	}
-
-	// If vote exists and is opposite, remove the vote and decrement the corresponding column
-	if (voteAlreadyExists && voteAlreadyExists.vote !== options.data.vote) {
 		const votedExperience = await db.transaction(async (tx) => {
 			// Remove the vote
 			await tx.delete(vote).where(eq(vote.id, voteAlreadyExists.id));
@@ -118,7 +193,37 @@ export const voteOnExperience = async (options: {
 				.where(eq(experience.id, options.id))
 				.returning();
 
-			return updatedExperience;
+			return { ...updatedExperience, userVote: null };
+		});
+		return votedExperience;
+	}
+
+	// If vote exists and is opposite, switch the vote
+	if (voteAlreadyExists && voteAlreadyExists.vote !== options.data.vote) {
+		const votedExperience = await db.transaction(async (tx) => {
+			// Update the vote
+			await tx.update(vote)
+				.set({ vote: options.data.vote })
+				.where(eq(vote.id, voteAlreadyExists.id));
+
+			// Decrement old vote type and increment new vote type
+			const [updatedExperience] = await tx
+				.update(experience)
+				.set(
+					voteAlreadyExists.vote
+						? { 
+							upvotes: decrement(experience.upvotes),
+							downvotes: increment(experience.downvotes)
+						}
+						: { 
+							upvotes: increment(experience.upvotes),
+							downvotes: decrement(experience.downvotes)
+						},
+				)
+				.where(eq(experience.id, options.id))
+				.returning();
+
+			return { ...updatedExperience, userVote: options.data.vote };
 		});
 		return votedExperience;
 	}
@@ -144,7 +249,7 @@ export const voteOnExperience = async (options: {
 			.where(eq(experience.id, options.id))
 			.returning();
 
-		return updatedExperience;
+		return { ...updatedExperience, userVote: options.data.vote };
 	});
 
 	return votedExperience;
@@ -157,6 +262,22 @@ export const updateExperience = async (options?: {
 	return options?.id;
 };
 
-export const deleteExperience = async (options?: { id: string }) => {
-	return options?.id;
+export const deleteExperience = async (options: { id: string; userId: string }) => {
+	// First verify the user owns this experience
+	const existingExperience = await db.query.experience.findFirst({
+		where: (experience, { eq }) => eq(experience.id, options.id),
+	});
+
+	if (!existingExperience) {
+		throw new Error("Experience not found");
+	}
+
+	if (existingExperience.reportedBy !== options.userId) {
+		throw new Error("You can only delete your own experiences");
+	}
+
+	// Delete the experience (cascade will handle votes and images)
+	await db.delete(experience).where(eq(experience.id, options.id));
+
+	return { success: true, id: options.id };
 };

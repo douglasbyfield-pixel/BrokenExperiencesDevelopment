@@ -22,12 +22,11 @@ export const statsRouter = new Elysia({
 	)
 	.get(
 		"/user",
-		async ({ session }) => {
-			const result = await getUserStats(session.userId);
+		async (ctx: any) => {
+			const result = await getUserStats(ctx.session?.userId || "anonymous");
 			return result;
 		},
 		{
-			auth: true,
 			detail: {
 				summary: "Get user stats",
 				description: "Returns stats for the authenticated user.",

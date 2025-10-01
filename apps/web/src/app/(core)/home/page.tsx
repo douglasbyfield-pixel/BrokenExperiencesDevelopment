@@ -1,6 +1,7 @@
 "use client";
 
 import { eden } from "@web/lib/eden";
+import { createClient } from "@web/lib/supabase/client";
 import { useEffect, useState } from "react";
 import CreateExperienceCard from "./features/create-experience-card";
 import Feed from "./features/feed";
@@ -18,12 +19,28 @@ export default function HomePage() {
 		const fetchData = async () => {
 			try {
 				setLoading(true);
-				const [experiencesResult, categoryResult] = await Promise.all([
-					eden.experience.get({ $query: {} }),
+				
+				// Get auth token
+				const supabase = createClient();
+				const { data: { session } } = await supabase.auth.getSession();
+				
+				// Fetch experiences with auth header if available
+				const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
+				const headers: HeadersInit = {
+					"Content-Type": "application/json",
+				};
+				
+				if (session?.access_token) {
+					headers["Authorization"] = `Bearer ${session.access_token}`;
+				}
+				
+				const [experiencesResponse, categoryResult] = await Promise.all([
+					fetch(`${apiUrl}/experience`, { headers }),
 					eden.category.get({ $query: { limit: 50, offset: 0 } })
 				]);
 
-				setExperiences(experiencesResult?.data ?? []);
+				const experiencesData = await experiencesResponse.json();
+				setExperiences(experiencesData ?? []);
 				setCategoryOptions(Array.isArray(categoryResult?.data) ? categoryResult.data : []);
 			} catch (err) {
 				console.error("Error loading home page:", err);

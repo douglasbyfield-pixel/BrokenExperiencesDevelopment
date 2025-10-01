@@ -19,4 +19,9 @@ process.on("unhandledRejection", (error) => {
 	console.error(error);
 });
 
-export const server = app.listen(env.PORT);
+export const server = app.listen({
+	port: env.PORT,
+	hostname: "0.0.0.0", // Listen on all interfaces for Render
+});
+
+console.log(`🦊 Elysia is running at http://0.0.0.0:${env.PORT}`);

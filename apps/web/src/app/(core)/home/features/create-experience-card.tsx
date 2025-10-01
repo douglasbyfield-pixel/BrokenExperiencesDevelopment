@@ -10,7 +10,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@web/components/ui/select";
-import type { CategoryOption } from "@web/types";
+import type { Category } from "@web/types";
 import { MapPin, Camera, X } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
@@ -23,7 +23,7 @@ interface PhotoFile {
 }
 
 interface CreateExperienceCardProps {
-	categoryOptions: CategoryOption;
+	categoryOptions: Category;
 }
 
 export default function CreateExperienceCard({
@@ -46,6 +46,8 @@ export default function CreateExperienceCard({
 					const lat = position.coords.latitude.toString();
 					const lng = position.coords.longitude.toString();
 					
+					console.log("📍 Got location:", { lat, lng });
+					
 					// Try to get address from coordinates using reverse geocoding
 					let address = `${lat}, ${lng}`;
 					try {
@@ -55,6 +57,7 @@ export default function CreateExperienceCard({
 						const data = await response.json();
 						if (data.features && data.features.length > 0) {
 							address = data.features[0].place_name;
+							console.log("📍 Got address:", address);
 						}
 					} catch (error) {
 						console.error("Failed to get address:", error);
@@ -69,6 +72,7 @@ export default function CreateExperienceCard({
 				},
 				(error) => {
 					console.error("Geolocation error:", error);
+					alert(`Location access denied: ${error.message}. Using default location.`);
 					// Set default location if geolocation fails
 					setLocation({
 						latitude: "0",
@@ -76,9 +80,15 @@ export default function CreateExperienceCard({
 						address: "Location not specified"
 					});
 					setIsGettingLocation(false);
+				},
+				{
+					enableHighAccuracy: true,
+					timeout: 10000,
+					maximumAge: 0
 				}
 			);
 		} else {
+			alert("Geolocation is not supported by your browser. Using default location.");
 			// Geolocation not supported, use default
 			setLocation({
 				latitude: "0",
@@ -92,6 +102,7 @@ export default function CreateExperienceCard({
 	const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = event.target.files;
 		if (files) {
+			setIsExpanded(true); // Expand form when photo is added
 			Array.from(files).forEach(file => {
 				const id = Date.now().toString() + Math.random().toString();
 				const preview = URL.createObjectURL(file);
@@ -104,10 +115,19 @@ export default function CreateExperienceCard({
 		setPhotos(prev => {
 			const updated = prev.filter(photo => photo.id !== photoId);
 			// Clean up object URL
-			const photoToRemove = prev.find(photo => photo.id !== photoId);
+			const photoToRemove = prev.find(photo => photo.id === photoId);
 			if (photoToRemove) {
 				URL.revokeObjectURL(photoToRemove.preview);
 			}
+			
+			// Minimize form if no photos and no text
+			if (updated.length === 0) {
+				const descriptionValue = form.getFieldValue('description');
+				if (!descriptionValue || descriptionValue.length === 0) {
+					setIsExpanded(false);
+				}
+			}
+			
 			return updated;
 		});
 	};
@@ -116,36 +136,51 @@ export default function CreateExperienceCard({
 		defaultValues: {
 			description: "",
 			categoryId: "",
+			priority: "medium",
+			status: "pending",
 		},
 		onSubmit: ({ value }) => {
 			// Ensure we have location data
 			const currentLocation = location || {
-				latitude: "0",
-				longitude: "0",
-				address: "Location not specified"
+			  latitude: "0",
+			  longitude: "0",
+			  address: "Location not specified"
 			};
-
-			const submission = {
-				categoryId: value.categoryId,
-				title: value.description.substring(0, 50), // Use first 50 chars of description as title
-				description: value.description,
-				latitude: currentLocation.latitude,
-				longitude: currentLocation.longitude,
-				address: currentLocation.address,
-			};
+		  
+		const submission = {
+		  categoryId: value.categoryId,
+		  title: value.description.substring(0, 50),
+		  description: value.description,
+		  priority: value.priority || "medium",
+		  status: value.status || "pending",
+		  latitude: currentLocation.latitude,
+		  longitude: currentLocation.longitude,
+		  address: currentLocation.address,
+		};
 			execute(submission);
-		},
+		  },
 		validators: {
 			onSubmit: z.object({
 				description: z.string().min(5, "Please provide at least 5 characters"),
 				categoryId: z.string().min(1, "Category is required"),
+				priority: z.string(),
+				status: z.string(),
 			}),
 		},
 	});
 
 	const { execute, isExecuting } = useAction(createExperienceAction, {
 		onSuccess: (data) => {
-			console.log("Experience created successfully:", data);
+			console.log("✅ Experience created successfully:", data);
+			
+			// Check if there was actually an error in the response
+			if (data && typeof data === 'object' && 'error' in data) {
+				console.error("❌ Server returned error:", data);
+				const errorData = data as any;
+				alert(`Failed: ${errorData.message || errorData.error || 'Unknown error'}`);
+				return;
+			}
+			
 			// Reset form on success
 			form.reset();
 			// Reset location and photos
@@ -159,7 +194,7 @@ export default function CreateExperienceCard({
 			}, 500);
 		},
 		onError: (error) => {
-			console.error("Failed to create experience:", error);
+			console.error("❌ Failed to create experience:", error);
 			console.error("Error details:", JSON.stringify(error, null, 2));
 			
 			// Extract more detailed error message
@@ -195,13 +230,18 @@ export default function CreateExperienceCard({
 									<textarea
 										id={field.name}
 										name={field.name}
-										placeholder={isExpanded ? "Describe your experience in detail..." : "What's happening in your community?"}
+										placeholder={isExpanded ? "Describe your experience in detail..." : "What's your broken experience?"}
 										value={field.state.value}
 										onBlur={field.handleBlur}
 										onChange={(e) => {
 											field.handleChange(e.target.value);
+											// Expand when user types
 											if (!isExpanded && e.target.value.length > 0) {
 												setIsExpanded(true);
+											}
+											// Minimize when user clears the text (and no photos)
+											if (isExpanded && e.target.value.length === 0 && photos.length === 0) {
+												setIsExpanded(false);
 											}
 										}}
 										className="w-full resize-none bg-transparent text-lg lg:text-xl text-black placeholder:text-gray-400 focus:outline-none min-h-[50px] lg:min-h-[60px]"
@@ -210,7 +250,9 @@ export default function CreateExperienceCard({
 									/>
 									{field.state.meta.errors.length > 0 && (
 										<p className="mt-1 text-sm text-red-500">
-											{String(field.state.meta.errors[0] || "Error")}
+											{typeof field.state.meta.errors[0] === 'string' 
+												? field.state.meta.errors[0] 
+												: field.state.meta.errors[0]?.message || "Error"}
 										</p>
 									)}
 									{isExpanded && (
@@ -265,33 +307,139 @@ export default function CreateExperienceCard({
 					</>
 				)}
 				
+				{/* Priority and Status Selection - Show when expanded */}
+				{isExpanded && (
+					<div className="ml-10 lg:ml-14 space-y-4 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+						{/* Category chips */}
+						<div>
+							<p className="text-xs text-gray-500 font-medium mb-2">Category</p>
+							<div className="flex flex-wrap gap-2">
+								{Array.isArray(categoryOptions) && categoryOptions.slice(0, 8).map((category: any) => (
+									<form.Subscribe key={category.id} selector={(state) => [state.values.categoryId]}>
+										{([categoryId]) => (
+											<button
+												type="button"
+												onClick={() => {
+													form.setFieldValue('categoryId', category.id);
+												}}
+												className={`px-2.5 py-1 text-xs rounded-full transition-all font-medium ${
+													categoryId === category.id
+														? 'bg-black text-white'
+														: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+												}`}
+											>
+												#{category.name}
+											</button>
+										)}
+									</form.Subscribe>
+								))}
+							</div>
+						</div>
+						
+						{/* Priority Selection */}
+						<div>
+							<p className="text-xs text-gray-500 font-medium mb-2">Priority Level</p>
+							<form.Field name="priority">
+								{(field) => (
+									<div className="flex gap-2">
+										{['low', 'medium', 'high'].map((priority) => (
+											<button
+												key={priority}
+												type="button"
+												onClick={() => field.handleChange(priority)}
+												className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
+													field.state.value === priority
+														? priority === 'high'
+															? 'bg-red-500 text-white'
+															: priority === 'medium'
+															? 'bg-amber-500 text-white'
+															: 'bg-emerald-500 text-white'
+														: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+												}`}
+											>
+												{priority.charAt(0).toUpperCase() + priority.slice(1)}
+											</button>
+										))}
+									</div>
+								)}
+							</form.Field>
+						</div>
+						
+						{/* Status Selection */}
+						<div>
+							<p className="text-xs text-gray-500 font-medium mb-2">Current Status</p>
+							<form.Field name="status">
+								{(field) => (
+									<div className="flex gap-2">
+										<button
+											type="button"
+											onClick={() => field.handleChange('pending')}
+											className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
+												field.state.value === 'pending'
+													? 'bg-red-500 text-white'
+													: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+											}`}
+										>
+											Reported
+										</button>
+										<button
+											type="button"
+											onClick={() => field.handleChange('in-progress')}
+											className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
+												field.state.value === 'in-progress'
+													? 'bg-amber-500 text-white'
+													: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+											}`}
+										>
+											In Progress
+										</button>
+										<button
+											type="button"
+											onClick={() => field.handleChange('resolved')}
+											className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
+												field.state.value === 'resolved'
+													? 'bg-emerald-500 text-white'
+													: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+											}`}
+										>
+											Resolved
+										</button>
+									</div>
+								)}
+							</form.Field>
+						</div>
+					</div>
+				)}
+				
 				<div className="ml-10 lg:ml-14 flex items-center justify-between">
-					<div className="flex items-center space-x-2 lg:space-x-4">
-						{/* Photo upload button */}
-						{isExpanded && (
-							<label className="cursor-pointer">
-								<div className="flex items-center space-x-1 text-gray-600 hover:text-black p-1">
-									<Camera className="h-5 w-5" />
-								</div>
-								<input
-									type="file"
-									accept="image/*"
-									multiple
-									className="hidden"
-									onChange={handlePhotoUpload}
-								/>
-							</label>
-						)}
+					<div className="flex items-center space-x-3 lg:space-x-4">
+						{/* Photo upload button - Always visible */}
+						<label className="cursor-pointer">
+							<div className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
+								<Camera className="h-5 w-5" />
+							</div>
+							<input
+								type="file"
+								accept="image/*"
+								multiple
+								className="hidden"
+								onChange={handlePhotoUpload}
+							/>
+						</label>
+						
+						{/* Location button */}
 						<button 
 							type="button" 
 							onClick={handleGetLocation}
 							disabled={isGettingLocation}
-							className={`flex items-center space-x-1 text-gray-600 hover:text-black disabled:opacity-50 ${location ? 'text-green-600' : ''} p-1`}
+							className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors disabled:opacity-50 ${
+								location 
+									? 'bg-green-50 text-green-600 hover:bg-green-100' 
+									: 'hover:bg-blue-50 text-blue-600 hover:text-blue-700'
+							}`}
 							title={location ? `Location: ${location.address}` : 'Add location'}
 						>
 							<MapPin className="h-5 w-5" />
-							{isGettingLocation && !isExpanded && <span className="text-xs">Getting...</span>}
-							{location && !isExpanded && <span className="text-xs text-green-600">✓</span>}
 						</button>
 						<form.Field name="categoryId">
 							{(field) => (
@@ -304,7 +452,7 @@ export default function CreateExperienceCard({
 											<SelectValue placeholder="Category" />
 										</SelectTrigger>
 										<SelectContent>
-											{categoryOptions.map((category) => (
+											{Array.isArray(categoryOptions) && categoryOptions.map((category) => (
 												<SelectItem key={category.id} value={category.id}>
 													{category.name}
 												</SelectItem>
@@ -313,7 +461,9 @@ export default function CreateExperienceCard({
 									</Select>
 									{field.state.meta.errors.length > 0 && (
 										<p className="text-sm text-red-500">
-											{String(field.state.meta.errors[0] || "Error")}
+											{typeof field.state.meta.errors[0] === 'string' 
+												? field.state.meta.errors[0] 
+												: field.state.meta.errors[0]?.message || "Error"}
 										</p>
 									)}
 								</>

@@ -52,8 +52,8 @@ export const categoryRouter = new Elysia({
 		},
 		{
 			detail: {
-				summary: "Get all categories",
-				description: "Returns a list of all categories in the database.",
+				summary: "Get all category options",
+				description: "Returns a list of all categories as dropdown options.",
 			},
 		},
 	)

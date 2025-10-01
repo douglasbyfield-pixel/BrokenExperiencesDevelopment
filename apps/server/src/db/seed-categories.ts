@@ -2,19 +2,16 @@ import { db } from "./index";
 import { category } from "./schema";
 
 const categories = [
-	{ name: "Road & Infrastructure" },
-	{ name: "Street Lighting" },
-	{ name: "Sidewalks & Walkways" },
-	{ name: "Parks & Recreation" },
-	{ name: "Waste Management" },
-	{ name: "Water & Drainage" },
-	{ name: "Public Safety" },
-	{ name: "Traffic & Parking" },
-	{ name: "Graffiti & Vandalism" },
-	{ name: "Noise & Disturbances" },
-	{ name: "Building Maintenance" },
-	{ name: "Public Transportation" },
-	{ name: "Environmental Issues" },
+	{ name: "Infrastructure" },
+	{ name: "Traffic" },
+	{ name: "Lighting" },
+	{ name: "Environment" },
+	{ name: "Sanitation" },
+	{ name: "Utilities" },
+	{ name: "Water" },
+	{ name: "Roads" },
+	{ name: "Safety" },
+	{ name: "Digital Aids" },
 	{ name: "Other" }
 ];
 

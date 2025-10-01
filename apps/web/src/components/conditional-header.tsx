@@ -1,6 +1,6 @@
 "use client";
 
-import { authClient } from "@web/lib/auth-client";
+import { useAuth } from "@web/components/auth-provider";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import Header from "./header";
@@ -21,7 +21,7 @@ export default function ConditionalHeader({
 	children,
 }: ConditionalHeaderProps) {
 	const pathname = usePathname();
-	const { data: session, isPending } = authClient.useSession();
+	const { user, isLoading } = useAuth();
 
 	const shouldHideHeader = HIDE_HEADER_ROUTES.includes(pathname);
 
@@ -31,7 +31,7 @@ export default function ConditionalHeader({
 	}
 
 	// Don't show header if user is not logged in (except on auth routes which are already handled above)
-	if (!isPending && !session) {
+	if (!isLoading && !user) {
 		return <div className="h-svh">{children}</div>;
 	}
 

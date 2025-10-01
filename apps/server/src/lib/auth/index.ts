@@ -4,7 +4,7 @@ import { env } from "@server/env";
 import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
-const trustedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001")
+const trustedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app")
 	.split(",")
 	.map(s => s.trim())
 	.filter(Boolean);
@@ -28,10 +28,10 @@ export const auth = betterAuth<BetterAuthOptions>({
 		},
 	},
 	advanced: {
-		database: { generateId: false },
+		generateId: () => crypto.randomUUID(),
 		cookiePrefix: "broken-exp",
 		crossSubDomainCookies: {
-			enabled: true,
+			enabled: false,
 		},
 	},
 	session: {

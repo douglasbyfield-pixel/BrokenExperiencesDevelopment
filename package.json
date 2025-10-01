@@ -29,6 +29,7 @@
 	},
 	"dependencies": {
 		"@elysiajs/html": "^1.4.0",
+		"@radix-ui/react-dropdown-menu": "^2.1.16",
 		"@t3-oss/env-core": "^0.13.8",
 		"openai": "^5.21.0"
 	},
