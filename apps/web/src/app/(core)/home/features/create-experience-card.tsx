@@ -260,6 +260,7 @@ export default function CreateExperienceCard({
 			createExperience(submission, {
 				onSuccess: () => {
 					console.log('✅ Experience created successfully with TanStack Query');
+					toast.success('Experience posted successfully!');
 					// Reset form on success
 					form.reset();
 					// Reset location and photos
@@ -267,8 +268,7 @@ export default function CreateExperienceCard({
 					photos.forEach(photo => URL.revokeObjectURL(photo.preview));
 					setPhotos([]);
 					setIsExpanded(false);
-					// Reload page to show new post
-					window.location.reload();
+					// TanStack Query will automatically refetch and update the feed
 				},
 				onError: (error) => {
 					console.error('❌ Experience creation failed:', error);

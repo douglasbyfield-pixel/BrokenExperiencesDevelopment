@@ -23,6 +23,7 @@ export default function HomePage() {
 		error: experiencesError 
 	} = useExperiences();
 
+
 	// Use TanStack Query for categories
 	const { 
 		data: categoryOptions = [], 
