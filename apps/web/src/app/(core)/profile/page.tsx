@@ -3,6 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@web/components/ui/avatar";
 import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
+import { BackButton } from "@web/components/ui/back-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import { useAuth } from "@web/components/auth-provider";
 import { eden } from "@web/lib/eden";
@@ -119,14 +120,7 @@ export default function ProfilePage() {
 			{/* Header */}
 			<div className="bg-white border-b border-gray-200 px-4 py-4">
 				<div className="flex items-center space-x-3">
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => router.back()}
-						className="p-2"
-					>
-						<ArrowLeft className="h-4 w-4" />
-					</Button>
+					<BackButton fallbackUrl="/home" />
 					<h1 className="text-xl font-semibold text-black">Profile</h1>
 				</div>
 			</div>
