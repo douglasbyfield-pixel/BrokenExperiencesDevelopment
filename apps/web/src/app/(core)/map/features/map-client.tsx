@@ -1498,10 +1498,9 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 					<div className="mt-2 border-t pt-2 text-gray-500 text-xs">
 						Reported {new Date(selectedExperience.createdAt).toLocaleDateString()}
-						{selectedExperience.resolvedAt && (
+						{selectedExperience.status === 'resolved' && (
 							<span className="ml-2">
-								• Resolved{" "}
-								{new Date(selectedExperience.resolvedAt).toLocaleDateString()}
+								• Resolved
 							</span>
 						)}
 					</div>
