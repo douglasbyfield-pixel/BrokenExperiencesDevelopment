@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@web/components/ui/select";
 import type { Category } from "@web/types";
-import { MapPin, Camera, X } from "lucide-react";
+import { MapPin, Camera, X, Image as Picture } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { useState, useEffect } from "react";
 import z from "zod";
@@ -46,6 +46,7 @@ export default function CreateExperienceCard({
 	const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
 	const [photos, setPhotos] = useState<PhotoFile[]>([]);
 	const [isExpanded, setIsExpanded] = useState(false);
+	const [isMobile, setIsMobile] = useState(false);
 	
 	// Image modal state
 	const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -53,6 +54,17 @@ export default function CreateExperienceCard({
 
   // Request location permission on component mount
   useEffect(() => {
+    // Check if device is mobile
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent) || 
+                            window.innerWidth <= 768;
+      setIsMobile(isMobileDevice);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
     const requestLocationPermission = () => {
       if (navigator.geolocation) {
         // Check if we can get the current position (this will trigger permission request)
@@ -108,6 +120,10 @@ export default function CreateExperienceCard({
     };
 
     requestLocationPermission();
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
   }, []);
 
   const handleGetLocation = () => {
@@ -327,7 +343,7 @@ export default function CreateExperienceCard({
 	});
 
 	return (
-		<div className="border-b border-gray-200 p-2 bg-white">
+		<div className="border-b border-gray-200 p-2 pt-8 pb-4 bg-white">
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
@@ -415,12 +431,12 @@ export default function CreateExperienceCard({
 								</div>
 							)}
 							
-							{/* Location display when captured */}
-							{location && (
-								<div className="text-xs text-gray-600 p-1.5 bg-gray-50 rounded-md">
+							{/* Location display only when permission is denied */}
+							{locationPermission === 'denied' && (
+								<div className="text-xs text-red-600 p-1.5 bg-red-50 rounded-md">
 									<p className="flex items-center gap-1">
 										<MapPin className="w-2.5 h-2.5" />
-										<span className="font-medium truncate">{location.address}</span>
+										<span className="font-medium">Location permission required</span>
 									</p>
 								</div>
 							)}
@@ -428,12 +444,12 @@ export default function CreateExperienceCard({
 					</>
 				)}
 				
-				<div className="ml-10 flex items-center justify-between">
+				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-2">
 						{/* Photo upload button - Always visible */}
 						<label className="cursor-pointer">
 							<div className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
-								<Camera className="h-4 w-4" />
+								<Picture className="h-4 w-4" />
 							</div>
 							<input
 								type="file"
@@ -443,6 +459,23 @@ export default function CreateExperienceCard({
 								onChange={handlePhotoUpload}
 							/>
 						</label>
+						
+						{/* Camera button for mobile devices */}
+						{isMobile && (
+							<label className="cursor-pointer">
+								<div className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
+									<Camera className="h-4 w-4" />
+								</div>
+								<input
+									type="file"
+									accept="image/*"
+									capture="environment"
+									multiple
+									className="hidden"
+									onChange={handlePhotoUpload}
+								/>
+							</label>
+						)}
 						
 						{/* Location button - hide when location is granted */}
 						{!(location && locationPermission === 'granted') && (
