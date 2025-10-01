@@ -48,7 +48,7 @@ export default function RightSidebar({ className, stats, userStats, trendingCate
 	return (
 		<aside
 			className={cn(
-				"hidden sticky top-0 h-screen w-72 lg:w-80 flex-col bg-white px-3 lg:px-4 py-4 lg:flex",
+				"hidden w-72 lg:w-80 flex-col bg-white lg:flex sticky top-0 self-start max-h-screen overflow-y-auto",
 				className,
 			)}
 		>
