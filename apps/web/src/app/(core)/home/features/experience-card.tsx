@@ -5,16 +5,29 @@ import type { Experience } from "@web/types";
 import { useAction } from "next-safe-action/hooks";
 import {
 	Heart,
+	Link,
 	MapPin,
 	MoreHorizontal,
 	Share,
 	AlertTriangle,
 	Trash2,
 	Edit,
+	MessageCircle,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@web/components/auth-provider";
 import { Badge } from "@web/components/ui/badge";
+import { Button } from "@web/components/ui/button";
+import {
+	Popover,
+	PopoverTrigger,
+	PopoverPortal,
+	PopoverPositioner,
+	PopoverPopup,
+	PopoverTitle,
+	PopoverDescription,
+	PopoverClose,
+} from "@web/components/animate-ui/primitives/base/popover";
 
 // Priority configuration matching the map
 const priorityConfig: Record<string, { color: string; label: string; bgColor: string }> = {
@@ -145,6 +158,34 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		} catch (error) {
 			console.error('Failed to update status:', error);
 			alert('Failed to update status');
+		}
+	};
+
+	const handleCopyLink = async () => {
+		try {
+			const shareText = `Broken Experience: ${experience.title}\n${experience.description}\n${experience.address}`;
+			await navigator.clipboard.writeText(shareText);
+			alert('Experience details copied to clipboard!');
+		} catch (error) {
+			console.error('Failed to copy to clipboard:', error);
+			alert('Failed to copy to clipboard');
+		}
+	};
+
+	const handleWhatsAppShare = () => {
+		const shareText = `Broken Experience: ${experience.title}\n\n${experience.description}\n\n📍 ${experience.address}`;
+		
+		// Check if we're on mobile
+		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+		
+		if (isMobile) {
+			// Use the WhatsApp app directly on mobile
+			const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(shareText)}`;
+			window.location.href = whatsappUrl;
+		} else {
+			// Use WhatsApp Web on desktop
+			const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+			window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
 		}
 	};
 
@@ -332,56 +373,41 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 					</div>
 
 					{/* Location */}
-					<div className="flex items-center gap-1.5 text-gray-600 mb-3">
-						<MapPin className="h-4 w-4 flex-shrink-0" />
-						<span className="text-sm">{experience.address}</span>
-				</div>
-
-					{/* Actions Bar */}
-					<div className="flex items-center justify-end gap-1 pt-2 border-t border-gray-100">
-					<button 
-							className="group flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-blue-50 transition-all"
-						onClick={() => {
-							// Share functionality
-								const shareText = `Broken Experience: ${experience.title}\n${experience.description}\n${experience.address}`;
-							if (navigator.share) {
-								navigator.share({
-										title: `Broken Experience: ${experience.title}`,
-									text: shareText,
-									url: window.location.href
-								}).catch(console.error);
-							} else {
-								navigator.clipboard.writeText(shareText);
-								alert('Experience details copied to clipboard!');
-							}
-						}}
-					>
-							<Share className="h-4 w-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
-							<span className="text-sm font-medium text-gray-600 group-hover:text-blue-600 transition-colors">
-								Share
-							</span>
-					</button>
-
-					<button 
-							className="group flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-							onClick={handleVote}
-							disabled={isExecuting}
-					>
-						<Heart
-								className={`h-4 w-4 transition-colors ${
-									isLiked 
-										? "text-red-500 fill-red-500" 
-										: "text-gray-500 group-hover:text-red-500"
-								}`}
-							/>
-							<span className={`text-sm font-bold transition-colors ${
-								isLiked 
-									? "text-red-500" 
-									: "text-gray-600 group-hover:text-red-500"
-							}`}>
-								{likeCount}
-						</span>
-					</button>
+					<div className="flex items-center justify-between text-gray-600 mb-3">
+						<div className="flex items-center gap-1.5">
+							<MapPin className="h-4 w-4 flex-shrink-0" />
+							<span className="text-sm">{experience.address}</span>
+						</div>
+						<Popover>
+							<PopoverTrigger className="group flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all">
+								<Share className="h-4 w-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
+							</PopoverTrigger>
+							<PopoverPortal>
+								<PopoverPositioner>
+									<PopoverPopup 
+										className="w-48 p-1 bg-white border border-gray-200 rounded-lg shadow-lg dark:bg-gray-900 dark:border-gray-700"
+										transition={{ type: 'spring', stiffness: 500, damping: 30, duration: 0.15 }}
+									>
+										<div className="flex flex-col gap-1">
+											<button
+												onClick={handleCopyLink}
+												className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 w-full text-left text-gray-700 dark:text-gray-200"
+											>
+												<Link className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+												<span className="text-sm">Copy link</span>
+											</button>
+											<button
+												onClick={handleWhatsAppShare}
+												className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 w-full text-left text-gray-700 dark:text-gray-200"
+											>
+												<MessageCircle className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+												<span className="text-sm">Share on WhatsApp</span>
+											</button>
+										</div>
+									</PopoverPopup>
+								</PopoverPositioner>
+							</PopoverPortal>
+						</Popover>
 					</div>
 				</div>
 			</div>
