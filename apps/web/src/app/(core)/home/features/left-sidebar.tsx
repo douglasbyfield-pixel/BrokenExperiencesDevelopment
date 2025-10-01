@@ -18,7 +18,7 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
 	return (
 		<aside
 			className={cn(
-				"sticky top-0 hidden h-screen w-60 lg:w-64 xl:w-72 flex-col bg-white py-4 px-3 lg:px-4 lg:flex",
+				"sticky top-0 hidden h-screen w-48 lg:w-52 xl:w-56 flex-col bg-white py-4 px-3 lg:px-4 lg:flex",
 				className,
 			)}
 		>

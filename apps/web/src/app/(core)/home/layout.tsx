@@ -2,8 +2,10 @@
 
 import LeftSidebar from "./features/left-sidebar";
 import RightSidebar from "./features/right-sidebar";
+import MobileNav from "./features/mobile-nav";
 import { eden } from "@web/lib/eden";
 import { useEffect, useState } from "react";
+import { SearchProvider } from "@web/context/SearchContext";
 
 export default function HomeLayout({
 	children,
@@ -13,6 +15,11 @@ export default function HomeLayout({
 	const [stats, setStats] = useState<any>(null);
 	const [trendingCategories, setTrendingCategories] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
+
+	// Dummy search function for layout - will be overridden by page-level search
+	const handleSearch = (searchTerm: string) => {
+		console.log("Search from layout:", searchTerm);
+	};
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -34,18 +41,25 @@ export default function HomeLayout({
 	}, []);
 
 	return (
-		<div className="min-h-screen bg-white">
-			<div className="mx-auto flex max-w-screen-xl">
-				<LeftSidebar />
-				<main className="flex-1 min-w-0 lg:border-x lg:border-gray-200">
-					{children}
-				</main>
-				<RightSidebar 
-					stats={stats} 
+		<SearchProvider onSearch={handleSearch}>
+			<div className="min-h-screen bg-white">
+				<MobileNav 
+					stats={stats}
 					userStats={null}
 					trendingCategories={trendingCategories}
 				/>
+				<div className="mx-auto flex max-w-screen-2xl">
+					<LeftSidebar />
+					<main className="flex-1 min-w-0 lg:border-x lg:border-gray-200">
+						{children}
+					</main>
+					<RightSidebar
+						stats={stats}
+						userStats={null}
+						trendingCategories={trendingCategories}
+					/>
+				</div>
 			</div>
-		</div>
+		</SearchProvider>
 	);
 }
