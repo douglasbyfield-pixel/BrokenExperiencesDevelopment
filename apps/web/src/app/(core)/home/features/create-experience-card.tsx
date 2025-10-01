@@ -3,6 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import { createExperienceAction } from "@web/action/experience";
 import { Button } from "@web/components/ui/button";
+import { useCreateExperience } from "@web/hooks/use-experiences";
 import {
 	Select,
 	SelectContent,
@@ -245,7 +246,25 @@ export default function CreateExperienceCard({
 				imageUrls: imageUrls,
 			};
 			console.log('📤 Submitting experience with data:', submission);
-			execute(submission);
+			// Use TanStack Query mutation for better performance
+			createExperience(submission, {
+				onSuccess: () => {
+					console.log('✅ Experience created successfully with TanStack Query');
+					// Reset form on success
+					form.reset();
+					// Reset location and photos
+					setLocation(null);
+					photos.forEach(photo => URL.revokeObjectURL(photo.preview));
+					setPhotos([]);
+					setIsExpanded(false);
+					// Reload page to show new post
+					window.location.reload();
+				},
+				onError: (error) => {
+					console.error('❌ Experience creation failed:', error);
+					toast.error('Failed to create experience. Please try again.');
+				}
+			});
 		},
 		validators: {
 			onSubmit: z.object({
@@ -257,7 +276,10 @@ export default function CreateExperienceCard({
 		},
 	});
 
-	const { execute, isExecuting } = useAction(createExperienceAction, {
+	// Use TanStack Query for creating experiences
+	const { mutate: createExperience, isPending: isExecuting } = useCreateExperience();
+	
+	const { execute, isExecuting: isExecutingAction } = useAction(createExperienceAction, {
 		onSuccess: (data) => {
 			console.log("✅ Experience created successfully:", data);
 			

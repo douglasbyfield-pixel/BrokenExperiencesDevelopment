@@ -7,53 +7,36 @@ import CreateExperienceCard from "./features/create-experience-card";
 import Feed from "./features/feed";
 import FeedHeader from "./features/feed-header";
 import MobileNav from "./features/mobile-nav";
+import { useExperiences } from "@web/hooks/use-experiences";
+import { useQuery } from "@tanstack/react-query";
 
 export default function HomePage() {
-	const [experiences, setExperiences] = useState<any[]>([]);
-	const [categoryOptions, setCategoryOptions] = useState<any[]>([]);
 	const [activeTab, setActiveTab] = useState<"for-you" | "communities">("for-you");
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
 
-	useEffect(() => {
-		const fetchData = async () => {
-			try {
-				setLoading(true);
-				
-				// Get auth token
-				const supabase = createClient();
-				const { data: { session } } = await supabase.auth.getSession();
-				
-				// Fetch experiences with auth header if available
-				const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
-				const headers: HeadersInit = {
-					"Content-Type": "application/json",
-				};
-				
-				if (session?.access_token) {
-					headers["Authorization"] = `Bearer ${session.access_token}`;
-				}
-				
-				const [experiencesResponse, categoryResult] = await Promise.all([
-					fetch(`${apiUrl}/experience`, { headers }),
-					eden.category.get({ $query: { limit: 50, offset: 0 } })
-				]);
+	// Use TanStack Query for experiences - much faster with caching!
+	const { 
+		data: experiences = [], 
+		isLoading: experiencesLoading, 
+		error: experiencesError 
+	} = useExperiences();
 
-				const experiencesData = await experiencesResponse.json();
-				console.log('📥 Fetched experiences from API:', experiencesData);
-				console.log('📥 First experience images:', experiencesData[0]?.experienceImages);
-				setExperiences(experiencesData ?? []);
-				setCategoryOptions(Array.isArray(categoryResult?.data) ? categoryResult.data : []);
-			} catch (err) {
-				console.error("Error loading home page:", err);
-				setError("Something went wrong. Please try refreshing the page.");
-			} finally {
-				setLoading(false);
-			}
-		};
+	// Use TanStack Query for categories
+	const { 
+		data: categoryOptions = [], 
+		isLoading: categoriesLoading 
+	} = useQuery({
+		queryKey: ['categories'],
+		queryFn: async () => {
+			console.log('📂 Fetching categories with TanStack Query...');
+			const result = await eden.category.get({ $query: { limit: 50, offset: 0 } });
+			return Array.isArray(result?.data) ? result.data : [];
+		},
+		staleTime: 10 * 60 * 1000, // Cache categories for 10 minutes
+		gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
+	});
 
-		fetchData();
-	}, []);
+	const loading = experiencesLoading || categoriesLoading;
+	const error = experiencesError ? "Something went wrong. Please try refreshing the page." : null;
 
 	const handleTabChange = (tab: "for-you" | "communities") => {
 		setActiveTab(tab);
