@@ -193,8 +193,9 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
 									#{experience.category?.name || "general"}
 						</span>
-								
-								{/* Priority Badge */}
+
+								{/* Shows priority of the experience */}
+								{/* Priority Badge
 								{localPriority && priorityConfig[localPriority] && (
 									<div className="flex items-center gap-1">
 										<div 
@@ -215,8 +216,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 										</Badge>
 									</div>
 								)}
-								
-								{/* Status Badge */}
+								 */}
+							
+								{/* Shows if the experience is reported, in progress, or resolved */}
+								{/* Status Badge
 								{localStatus && statusConfig[localStatus] && (
 									<Badge
 										variant="outline"
@@ -224,7 +227,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 									>
 										{statusConfig[localStatus].label}
 									</Badge>
-								)}
+								)} */}
 							</div>
 						) : (
 							<div className="space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
