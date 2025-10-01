@@ -5,6 +5,7 @@ import { createExperienceAction } from "@web/action/experience";
 import { Button } from "@web/components/ui/button";
 import { useCreateExperience } from "@web/hooks/use-experiences";
 import { ImageModal } from "@web/components/ui/image-modal";
+import { CameraCapture } from "@web/components/ui/camera-capture";
 import {
   Select,
   SelectContent,
@@ -51,6 +52,9 @@ export default function CreateExperienceCard({
 	// Image modal state
 	const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 	const [currentImageIndex, setCurrentImageIndex] = useState(0);
+	
+	// Camera state
+	const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   // Request location permission on component mount
   useEffect(() => {
@@ -221,6 +225,15 @@ export default function CreateExperienceCard({
       }
       return prev.filter(p => p.id !== id);
     });
+  };
+
+  const handleCameraCapture = (file: File) => {
+    const newPhoto: PhotoFile = {
+      id: Math.random().toString(36).substr(2, 9),
+      file,
+      preview: URL.createObjectURL(file)
+    };
+    setPhotos(prev => [...prev, newPhoto]);
   };
 
   const form = useForm({
@@ -462,19 +475,13 @@ export default function CreateExperienceCard({
 						
 						{/* Camera button for mobile devices */}
 						{isMobile && (
-							<label className="cursor-pointer">
-								<div className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
-									<Camera className="h-4 w-4" />
-								</div>
-								<input
-									type="file"
-									accept="image/*"
-									capture="environment"
-									multiple
-									className="hidden"
-									onChange={handlePhotoUpload}
-								/>
-							</label>
+							<button
+								type="button"
+								onClick={() => setIsCameraOpen(true)}
+								className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors"
+							>
+								<Camera className="h-4 w-4" />
+							</button>
 						)}
 						
 						{/* Location button - hide when location is granted */}
@@ -569,6 +576,13 @@ export default function CreateExperienceCard({
 					onIndexChange={setCurrentImageIndex}
 				/>
 			)}
+			
+			{/* Camera Capture Modal */}
+			<CameraCapture
+				isOpen={isCameraOpen}
+				onCapture={handleCameraCapture}
+				onClose={() => setIsCameraOpen(false)}
+			/>
 		</div>
 	);
 }
