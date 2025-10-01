@@ -28,11 +28,20 @@ export function useExperiences(userId?: string) {
 
       try {
         const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
+        
+        // Add authorization header if user is logged in
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        
         const response = await fetch(`${apiUrl}/experience`, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
+          cache: 'no-store', // Force fresh data
         });
 
         if (!response.ok) {
@@ -41,7 +50,10 @@ export function useExperiences(userId?: string) {
 
         const experiences = await response.json();
         const endTime = performance.now();
-        console.log(`✅ Experiences fetched in ${(endTime - startTime).toFixed(2)}ms`);
+        console.log(`✅ Experiences fetched: ${experiences.length} items in ${(endTime - startTime).toFixed(2)}ms`);
+        if (experiences.length > 0) {
+          console.log('✅ First experience:', experiences[0].id, experiences[0].description?.substring(0, 50));
+        }
 
         return experiences;
       } catch (error) {
@@ -49,11 +61,13 @@ export function useExperiences(userId?: string) {
         throw error;
       }
     },
-    // Cache for 2 minutes, background refetch every 30 seconds
-    staleTime: 2 * 60 * 1000,
-    refetchInterval: 30 * 1000,
-    // Keep in cache for 5 minutes
-    gcTime: 5 * 60 * 1000,
+    // Cache for 30 seconds, background refetch every 10 seconds for more frequent updates
+    staleTime: 30 * 1000,
+    refetchInterval: 10 * 1000,
+    // Keep in cache for 2 minutes
+    gcTime: 2 * 60 * 1000,
+    // Refetch on window focus to catch new posts
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -249,26 +263,55 @@ export function useCreateExperience() {
 
   return useMutation({
     mutationFn: async (experienceData: any) => {
-      console.log('📝 Creating experience...');
+      console.log('📝 Creating experience with data:', experienceData);
+      
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.error('❌ No session found, user not authenticated');
+        throw new Error('You must be logged in to create an experience');
+      }
+      
+      console.log('✅ User authenticated:', session.user.id);
       
       const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
+      console.log('📤 Sending POST to:', `${apiUrl}/experience`);
+      
       const response = await fetch(`${apiUrl}/experience`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(experienceData),
       });
 
+      console.log('📥 Response status:', response.status, response.statusText);
+      
       if (!response.ok) {
-        throw new Error(`Failed to create experience: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ Server error response:', errorText);
+        throw new Error(`Failed to create experience: ${response.statusText} - ${errorText}`);
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log('✅ Server response:', result);
+      return result;
     },
-    onSuccess: () => {
-      // Invalidate and refetch experiences
-      queryClient.invalidateQueries({ queryKey: experienceKeys.all });
+    onSuccess: async (newExperience) => {
+      console.log('✅ Experience created, invalidating cache and refetching...');
+      // Invalidate and refetch experiences immediately
+      await queryClient.invalidateQueries({ 
+        queryKey: experienceKeys.all,
+        refetchType: 'all' 
+      });
+      // Force an immediate refetch
+      await queryClient.refetchQueries({ 
+        queryKey: experienceKeys.all,
+        type: 'all'
+      });
+      console.log('✅ Cache invalidated and refetched');
     },
   });
 }
