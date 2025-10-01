@@ -4,6 +4,7 @@ import { useForm } from "@tanstack/react-form";
 import { createExperienceAction } from "@web/action/experience";
 import { Button } from "@web/components/ui/button";
 import { useCreateExperience } from "@web/hooks/use-experiences";
+import { ImageModal } from "@web/components/ui/image-modal";
 import {
 	Select,
 	SelectContent,
@@ -45,6 +46,10 @@ export default function CreateExperienceCard({
 	const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
 	const [photos, setPhotos] = useState<PhotoFile[]>([]);
 	const [isExpanded, setIsExpanded] = useState(false);
+	
+	// Image modal state
+	const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+	const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
 	// Request location permission on component mount
 	useEffect(() => {
@@ -190,6 +195,11 @@ export default function CreateExperienceCard({
 			
 			return updated;
 		});
+	};
+
+	const handleImageClick = (index: number) => {
+		setCurrentImageIndex(index);
+		setIsImageModalOpen(true);
 	};
 
 	const handleCancel = () => {
@@ -384,9 +394,12 @@ export default function CreateExperienceCard({
 						<div className="ml-10 space-y-2">
 							{photos.length > 0 && (
 								<div className="flex gap-2.5 flex-wrap">
-									{photos.map((photo) => (
+									{photos.map((photo, index) => (
 										<div key={photo.id} className="relative group">
-											<div className="w-24 h-24 rounded-xl overflow-hidden border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-gray-50 shadow-sm hover:shadow-md transition-shadow">
+											<div 
+												className="w-24 h-24 rounded-xl overflow-hidden border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-gray-50 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+												onClick={() => handleImageClick(index)}
+											>
 												<img 
 													src={photo.preview} 
 													alt="Upload preview" 
@@ -520,6 +533,17 @@ export default function CreateExperienceCard({
 					</div>
 				</div>
 			</form>
+			
+			{/* Image Modal */}
+			{photos.length > 0 && (
+				<ImageModal
+					images={photos.map(photo => photo.preview)}
+					currentIndex={currentImageIndex}
+					isOpen={isImageModalOpen}
+					onClose={() => setIsImageModalOpen(false)}
+					onIndexChange={setCurrentImageIndex}
+				/>
+			)}
 		</div>
 	);
 }
