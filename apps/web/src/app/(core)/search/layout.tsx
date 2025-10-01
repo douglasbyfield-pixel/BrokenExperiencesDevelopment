@@ -1,13 +1,13 @@
 "use client";
 
-import LeftSidebar from "./features/left-sidebar";
-import RightSidebar from "./features/right-sidebar";
-import MobileNav from "./features/mobile-nav";
+import LeftSidebar from "../home/features/left-sidebar";
+import RightSidebar from "../home/features/right-sidebar";
+import MobileNav from "../home/features/mobile-nav";
 import { eden } from "@web/lib/eden";
 import { useEffect, useState } from "react";
 import { SearchProvider } from "@web/context/SearchContext";
 
-export default function HomeLayout({
+export default function SearchLayout({
 	children,
 }: {
 	children: React.ReactNode;
@@ -31,7 +31,7 @@ export default function HomeLayout({
 				setStats(statsResult?.data);
 				setTrendingCategories(trendingResult?.data);
 			} catch (error) {
-				console.error("Error fetching home layout data:", error);
+				console.error("Error fetching search layout data:", error);
 			} finally {
 				setLoading(false);
 			}
@@ -42,18 +42,20 @@ export default function HomeLayout({
 
 	return (
 		<SearchProvider onSearch={handleSearch}>
-			<div className="min-h-screen bg-white mx-24">
+			<div className="min-h-screen bg-white">
 				<MobileNav 
 					stats={stats}
 					userStats={null}
 					trendingCategories={trendingCategories}
 				/>
 				<div className="mx-auto flex max-w-screen-2xl">
-					<LeftSidebar />
+					<div className="w-80 lg:w-96 flex-shrink-0">
+						<LeftSidebar />
+					</div>
 					<main className="flex-1 min-w-0 lg:border-x lg:border-gray-200">
 						{children}
 					</main>
-					<div className="flex-shrink-0">
+					<div className="w-80 lg:w-96 flex-shrink-0">
 						<RightSidebar
 							stats={stats}
 							userStats={null}
