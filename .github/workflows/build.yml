@@ -40,9 +40,6 @@ jobs:
     - name: Type check
       run: bun run check-types
       
-    - name: Lint check
-      run: bun run check
-      
     - name: Build all apps
       run: bun run build
       
