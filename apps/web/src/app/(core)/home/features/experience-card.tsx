@@ -163,7 +163,8 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 	const handleCopyLink = async () => {
 		try {
-			const shareText = `Broken Experience: ${experience.title}\n${experience.description}\n${experience.address}`;
+			const locationText = experience.address && experience.address.trim() ? `\n📍 ${experience.address}` : '';
+			const shareText = `Broken Experience: ${experience.title}\n${experience.description}${locationText}`;
 			await navigator.clipboard.writeText(shareText);
 			alert('Experience details copied to clipboard!');
 		} catch (error) {
@@ -173,7 +174,8 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	};
 
 	const handleWhatsAppShare = () => {
-		const shareText = `Broken Experience: ${experience.title}\n\n${experience.description}\n\n📍 ${experience.address}`;
+		const locationText = experience.address && experience.address.trim() ? `\n\n📍 ${experience.address}` : '';
+		const shareText = `Broken Experience: ${experience.title}\n\n${experience.description}${locationText}`;
 		
 		// Check if we're on mobile
 		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -186,6 +188,41 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 			// Use WhatsApp Web on desktop
 			const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
 			window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+		}
+	};
+
+	const formatRelativeTime = (dateString: string) => {
+		const now = new Date();
+		const postDate = new Date(dateString);
+		const diffInMs = now.getTime() - postDate.getTime();
+		const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+		const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+		const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+		// Check if it's the same day
+		const isSameDay = now.toDateString() === postDate.toDateString();
+		
+		// Check if it's yesterday
+		const yesterday = new Date(now);
+		yesterday.setDate(yesterday.getDate() - 1);
+		const isYesterday = postDate.toDateString() === yesterday.toDateString();
+
+		if (isSameDay) {
+			if (diffInMinutes < 1) {
+				return 'Just now';
+			} else if (diffInMinutes < 60) {
+				return `${diffInMinutes}m ago`;
+			} else {
+				return `${diffInHours}h ago`;
+			}
+		} else if (isYesterday) {
+			return 'Yesterday';
+		} else {
+			// Format as "Sep 9" style
+			return postDate.toLocaleDateString('en-US', { 
+				month: 'short', 
+				day: 'numeric' 
+			});
 		}
 	};
 
@@ -222,7 +259,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 							</div>
 							<span className="text-gray-400">·</span>
 							<span className="text-gray-500 text-sm hover:underline cursor-pointer">
-								{new Date(experience.createdAt).toLocaleDateString()}
+								{formatRelativeTime(experience.createdAt)}
 							</span>
 						</div>
 					</div>
@@ -373,11 +410,12 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 					</div>
 
 					{/* Location */}
-					<div className="flex items-center justify-between text-gray-600 mb-3">
-						<div className="flex items-center gap-1.5">
-							<MapPin className="h-4 w-4 flex-shrink-0" />
-							<span className="text-sm">{experience.address}</span>
-						</div>
+					{experience.address && experience.address.trim() && (
+						<div className="flex items-center justify-between text-gray-600 mb-3">
+							<div className="flex items-center gap-1.5">
+								<MapPin className="h-4 w-4 flex-shrink-0" />
+								<span className="text-sm">{experience.address}</span>
+							</div>
 						<Popover>
 							<PopoverTrigger className="group flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all">
 								<Share className="h-4 w-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
@@ -408,7 +446,8 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								</PopoverPositioner>
 							</PopoverPortal>
 						</Popover>
-					</div>
+						</div>
+					)}
 				</div>
 			</div>
 		</article>

@@ -13,8 +13,14 @@ import {
 import type { Category } from "@web/types";
 import { MapPin, Camera, X } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import z from "zod";
+import { toast } from "sonner";
+import {
+	Tooltip,
+	TooltipPanel,
+	TooltipTrigger,
+} from "@web/components/animate-ui/components/base/tooltip";
 
 interface PhotoFile {
 	id: string;
@@ -35,8 +41,65 @@ export default function CreateExperienceCard({
 		address: string;
 	} | null>(null);
 	const [isGettingLocation, setIsGettingLocation] = useState(false);
+	const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
 	const [photos, setPhotos] = useState<PhotoFile[]>([]);
 	const [isExpanded, setIsExpanded] = useState(false);
+
+	// Request location permission on component mount
+	useEffect(() => {
+		const requestLocationPermission = () => {
+			if (navigator.geolocation) {
+				// Check if we can get the current position (this will trigger permission request)
+				navigator.geolocation.getCurrentPosition(
+					(position) => {
+						// Permission granted, get location immediately
+						const lat = position.coords.latitude.toString();
+						const lng = position.coords.longitude.toString();
+						
+						// Get address from coordinates
+						fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`)
+							.then(response => response.json())
+							.then(data => {
+								const address = data.localityInfo?.administrative?.[0]?.name || 
+											  data.localityInfo?.administrative?.[1]?.name || 
+											  data.city || 
+											  data.principalSubdivision || 
+											  'Location obtained';
+								
+								setLocation({
+									latitude: lat,
+									longitude: lng,
+									address: address
+								});
+								setLocationPermission('granted');
+							})
+							.catch(() => {
+								// If reverse geocoding fails, still set location with coordinates
+								setLocation({
+									latitude: lat,
+									longitude: lng,
+									address: 'Location obtained'
+								});
+								setLocationPermission('granted');
+							});
+					},
+					(error) => {
+						console.log('Location permission denied or error:', error);
+						setLocationPermission('denied');
+					},
+					{
+						enableHighAccuracy: true,
+						timeout: 10000,
+						maximumAge: 300000 // 5 minutes
+					}
+				);
+			} else {
+				setLocationPermission('denied');
+			}
+		};
+
+		requestLocationPermission();
+	}, []);
 
 	const handleGetLocation = () => {
 		setIsGettingLocation(true);
@@ -68,17 +131,12 @@ export default function CreateExperienceCard({
 						longitude: lng,
 						address: address
 					});
+					setLocationPermission('granted');
 					setIsGettingLocation(false);
 				},
 				(error) => {
 					console.error("Geolocation error:", error);
-					alert(`Location access denied: ${error.message}. Using default location.`);
-					// Set default location if geolocation fails
-					setLocation({
-						latitude: "0",
-						longitude: "0",
-						address: "Location not specified"
-					});
+					setLocationPermission('denied');
 					setIsGettingLocation(false);
 				},
 				{
@@ -88,13 +146,8 @@ export default function CreateExperienceCard({
 				}
 			);
 		} else {
-			alert("Geolocation is not supported by your browser. Using default location.");
-			// Geolocation not supported, use default
-			setLocation({
-				latitude: "0",
-				longitude: "0",
-				address: "Location not specified"
-			});
+			console.error("Geolocation is not supported by your browser.");
+			setLocationPermission('denied');
 			setIsGettingLocation(false);
 		}
 	};
@@ -140,12 +193,11 @@ export default function CreateExperienceCard({
 			status: "pending",
 		},
 		onSubmit: ({ value }) => {
-			// Ensure we have location data
-			const currentLocation = location || {
-			  latitude: "0",
-			  longitude: "0",
-			  address: "Location not specified"
-			};
+			// Require location data - prevent submission without coordinates
+			if (!location || !location.latitude || !location.longitude) {
+				toast.error('Please enable location access and get your current location before posting.');
+				return;
+			}
 		  
 		const submission = {
 		  categoryId: value.categoryId,
@@ -153,9 +205,9 @@ export default function CreateExperienceCard({
 		  description: value.description,
 		  priority: value.priority || "medium",
 		  status: value.status || "pending",
-		  latitude: currentLocation.latitude,
-		  longitude: currentLocation.longitude,
-		  address: currentLocation.address,
+		  latitude: location.latitude,
+		  longitude: location.longitude,
+		  address: location.address,
 		};
 			execute(submission);
 		  },
@@ -177,9 +229,12 @@ export default function CreateExperienceCard({
 			if (data && typeof data === 'object' && 'error' in data) {
 				console.error("❌ Server returned error:", data);
 				const errorData = data as any;
-				alert(`Failed: ${errorData.message || errorData.error || 'Unknown error'}`);
+				toast.error(`Failed: ${errorData.message || errorData.error || 'Unknown error'}`);
 				return;
 			}
+			
+			// Show success toast
+			toast.success('Experience posted successfully!');
 			
 			// Reset form on success
 			form.reset();
@@ -428,19 +483,34 @@ export default function CreateExperienceCard({
 						</label>
 						
 						{/* Location button */}
-						<button 
-							type="button" 
-							onClick={handleGetLocation}
-							disabled={isGettingLocation}
-							className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors disabled:opacity-50 ${
-								location 
-									? 'bg-green-50 text-green-600 hover:bg-green-100' 
-									: 'hover:bg-blue-50 text-blue-600 hover:text-blue-700'
-							}`}
-							title={location ? `Location: ${location.address}` : 'Add location'}
-						>
-							<MapPin className="h-5 w-5" />
-						</button>
+						<Tooltip>
+							<TooltipTrigger 
+								render={
+									<button 
+										type="button" 
+										onClick={handleGetLocation}
+										disabled={isGettingLocation || locationPermission === 'denied'}
+										className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors disabled:opacity-50 ${
+											location && locationPermission === 'granted'
+												? 'bg-green-50 text-green-600 hover:bg-green-100 border-2 border-green-200' 
+												: locationPermission === 'denied'
+												? 'bg-red-50 text-red-600 border-2 border-red-200 cursor-not-allowed'
+												: 'hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-2 border-blue-200'
+										}`}
+									>
+										<MapPin className="h-5 w-5" />
+									</button>
+								}
+							/>
+							<TooltipPanel>
+								{location && locationPermission === 'granted' 
+									? `Location: ${location.address}` 
+									: locationPermission === 'denied'
+									? 'Enable location permissions in your browser settings to start posting'
+									: 'Getting location...'
+								}
+							</TooltipPanel>
+						</Tooltip>
 						<form.Field name="categoryId">
 							{(field) => (
 								<>
@@ -470,14 +540,15 @@ export default function CreateExperienceCard({
 							)}
 						</form.Field>
 					</div>
+					
 					<form.Subscribe>
 						{(state) => (
 							<Button
 								type="submit"
 								className={`rounded-full bg-black font-medium text-white hover:bg-gray-800 disabled:opacity-50 ${isExpanded ? 'px-6 py-2.5 text-base' : 'px-4 lg:px-6 py-2 text-sm lg:text-base'}`}
-								disabled={!state.canSubmit || state.isSubmitting || isExecuting}
+								disabled={!state.canSubmit || state.isSubmitting || isExecuting || !location || !location.latitude || !location.longitude}
 							>
-								{state.isSubmitting || isExecuting ? "Posting..." : "Post"}
+								{state.isSubmitting || isExecuting ? "Posting..." : (!location || !location.latitude || !location.longitude) ? "Location Required" : "Post"}
 							</Button>
 						)}
 					</form.Subscribe>
