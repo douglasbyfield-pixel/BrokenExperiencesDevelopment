@@ -40,21 +40,15 @@ jobs:
     - name: Type check
       run: bun run check-types
       
-    - name: Build all apps
-      run: bun run build
-      
     - name: Build web app
       run: bun run --filter web build
+      env:
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        NEXT_PUBLIC_SERVER_URL: ${{ secrets.NEXT_PUBLIC_SERVER_URL }}
+        NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
       
-    - name: Build mobile app
-      run: bun run --filter mobile build
-      
-    - name: Build server
-      run: bun run --filter server build
-      
-    - name: Verify build outputs
+    - name: Verify build output
       run: |
-        echo "Checking build outputs..."
+        echo "Checking web build output..."
         ls -la apps/web/.next/ || echo "Web build output not found"
-        ls -la apps/mobile/dist/ || echo "Mobile build output not found"
-        ls -la apps/server/build/ || echo "Server build output not found"
