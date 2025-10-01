@@ -26,19 +26,9 @@ export default function FeedHeader({ onTabChange }: FeedHeaderProps) {
 							: "border-b border-gray-200 text-gray-600 hover:bg-gray-50"
 					}`}
 				>
-					For You
+					Experiences Near You
 				</button>
-				<button
-					type="button"
-					onClick={() => handleTabChange("communities")}
-					className={`flex-1 py-3 lg:py-4 text-center font-medium text-sm lg:text-base transition-colors ${
-						activeTab === "communities"
-							? "border-b-2 border-black font-semibold text-black"
-							: "border-b border-gray-200 text-gray-600 hover:bg-gray-50"
-					}`}
-				>
-					Communities
-				</button>
+				
 			</div>
 		</div>
 	);

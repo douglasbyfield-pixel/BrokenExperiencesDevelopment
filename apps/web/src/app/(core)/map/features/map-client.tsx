@@ -1397,7 +1397,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 							<X className="h-4 w-4" />
 						</Button>
 					</div>
-
+{/* 
 					<div className="mb-3 flex items-center gap-2">
 						<Badge
 							variant={
@@ -1423,7 +1423,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 								]?.label || "Other"}
 							</Badge>
 						)}
-					</div>
+					</div> */}
 
 					{selectedExperience.address && (
 						<p className="mb-3 flex items-center gap-1 text-gray-500 text-xs">
