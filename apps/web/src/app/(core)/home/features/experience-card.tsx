@@ -191,9 +191,9 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		}
 	};
 
-	const formatRelativeTime = (dateString: string) => {
+	const formatRelativeTime = (dateString: string | Date) => {
 		const now = new Date();
-		const postDate = new Date(dateString);
+		const postDate = typeof dateString === 'string' ? new Date(dateString) : dateString;
 		const diffInMs = now.getTime() - postDate.getTime();
 		const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
 		const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
@@ -408,6 +408,93 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 							{experience.description}
 						</p>
 					</div>
+
+					{/* Images */}
+					{(() => {
+						// Filter out placeholder images - only show real uploaded images
+						const realImages = experience.experienceImages?.filter(
+							img => img.imageUrl && !img.imageUrl.includes('placeholder')
+						) || [];
+						
+						console.log('🖼️ Experience images:', experience.experienceImages);
+						console.log('🖼️ Real images (filtered):', realImages);
+						
+						if (realImages.length === 0) return null;
+						
+						return (
+							<div className={`mb-3 rounded-2xl overflow-hidden border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow ${
+								realImages.length === 1 ? 'max-w-lg' : ''
+							}`}>
+								{realImages.length === 1 ? (
+									/* Single image - full width */
+									<img 
+										src={realImages[0].imageUrl}
+										alt="Experience"
+										className="w-full h-auto max-h-[28rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
+										loading="lazy"
+									/>
+								) : realImages.length === 2 ? (
+									/* Two images - side by side */
+									<div className="grid grid-cols-2 gap-1">
+										{realImages.map((img, idx) => (
+											<img 
+												key={idx}
+												src={img.imageUrl}
+												alt={`Experience ${idx + 1}`}
+												className="w-full h-56 object-cover cursor-pointer hover:opacity-95 transition-opacity"
+												loading="lazy"
+											/>
+										))}
+									</div>
+								) : realImages.length === 3 ? (
+									/* Three images - one large, two small */
+									<div className="grid grid-cols-2 gap-1">
+										<img 
+											src={realImages[0].imageUrl}
+											alt="Experience 1"
+											className="w-full h-full min-h-[28rem] object-cover row-span-2 cursor-pointer hover:opacity-95 transition-opacity"
+											loading="lazy"
+										/>
+										<div className="flex flex-col gap-1">
+											<img 
+												src={realImages[1].imageUrl}
+												alt="Experience 2"
+												className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
+												loading="lazy"
+											/>
+											<img 
+												src={realImages[2].imageUrl}
+												alt="Experience 3"
+												className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
+												loading="lazy"
+											/>
+										</div>
+									</div>
+								) : (
+									/* Four or more images - grid of 4 */
+									<div className="grid grid-cols-2 gap-1">
+										{realImages.slice(0, 4).map((img, idx) => (
+											<div key={idx} className="relative group">
+												<img 
+													src={img.imageUrl}
+													alt={`Experience ${idx + 1}`}
+													className="w-full h-56 object-cover cursor-pointer group-hover:opacity-95 transition-opacity"
+													loading="lazy"
+												/>
+												{idx === 3 && realImages.length > 4 && (
+													<div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center cursor-pointer group-hover:bg-opacity-75 transition-all">
+														<span className="text-white text-3xl font-bold drop-shadow-lg">
+															+{realImages.length - 4}
+														</span>
+													</div>
+												)}
+											</div>
+										))}
+									</div>
+								)}
+							</div>
+						);
+					})()}
 
 					{/* Location */}
 					{experience.address && experience.address.trim() && (
