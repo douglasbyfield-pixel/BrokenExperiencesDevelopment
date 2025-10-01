@@ -4,10 +4,11 @@ import { Avatar, AvatarFallback } from "@web/components/ui/avatar";
 import { Button } from "@web/components/ui/button";
 import { Card } from "@web/components/ui/card";
 import { cn } from "@web/lib/utils";
-import { authClient } from "@web/lib/auth-client";
+import { useAuth } from "@web/components/auth-provider";
 import type { Stats, UserStats, TrendingCategory } from "@web/types";
 import SearchInput from "./search-input";
 import { LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface RightSidebarProps {
 	className?: string;
@@ -17,6 +18,31 @@ interface RightSidebarProps {
 }
 
 export default function RightSidebar({ className, stats, userStats, trendingCategories }: RightSidebarProps) {
+	const { signOut } = useAuth();
+	const [currentPage, setCurrentPage] = useState(0);
+	const categoriesPerPage = 5;
+	
+	// Calculate visible categories
+	const visibleCategories = trendingCategories 
+		? trendingCategories.slice(currentPage * categoriesPerPage, (currentPage + 1) * categoriesPerPage)
+		: [];
+	
+	const totalPages = trendingCategories 
+		? Math.ceil(trendingCategories.length / categoriesPerPage)
+		: 0;
+	
+	// Auto-cycle through categories every 5 seconds
+	useEffect(() => {
+		if (!trendingCategories || trendingCategories.length <= categoriesPerPage) {
+			return; // Don't cycle if we have 5 or fewer categories
+		}
+		
+		const interval = setInterval(() => {
+			setCurrentPage((prev) => (prev + 1) % totalPages);
+		}, 5000); // Cycle every 5 seconds
+		
+		return () => clearInterval(interval);
+	}, [trendingCategories, totalPages, categoriesPerPage]);
 	return (
 		<aside
 			className={cn(
@@ -94,32 +120,50 @@ export default function RightSidebar({ className, stats, userStats, trendingCate
 					</Card>
 				)}
 
-				{/* Trending Categories */}
-				{trendingCategories && Array.isArray(trendingCategories) && trendingCategories.length > 0 && (
-					<Card className="border-gray-200 bg-gray-50 p-6">
-						<h3 className="font-bold text-lg text-black mb-4">Trending Categories</h3>
-						<div className="space-y-3">
-							{trendingCategories.map((category, index) => (
+			{/* Trending Categories */}
+			{trendingCategories && Array.isArray(trendingCategories) && trendingCategories.length > 0 && (
+				<Card className="border-gray-200 bg-gray-50 p-6">
+					<div className="flex items-center justify-between mb-4">
+						<h3 className="font-bold text-lg text-black">Trending Categories</h3>
+						{totalPages > 1 && (
+							<div className="flex gap-1">
+								{Array.from({ length: totalPages }).map((_, idx) => (
+									<button
+										key={idx}
+										onClick={() => setCurrentPage(idx)}
+										className={`h-1.5 rounded-full transition-all ${
+											idx === currentPage 
+												? 'w-6 bg-black' 
+												: 'w-1.5 bg-gray-300 hover:bg-gray-400'
+										}`}
+										aria-label={`View page ${idx + 1}`}
+									/>
+								))}
+							</div>
+						)}
+					</div>
+					<div className="space-y-3">
+						{visibleCategories.map((category, index) => {
+							const globalIndex = currentPage * categoriesPerPage + index;
+							return (
 								<div key={category.id} className="text-sm">
 									<div className="flex items-center justify-between">
 										<p className="font-medium text-black">#{category.name}</p>
-										<span className="text-xs text-gray-500">#{index + 1}</span>
+										<span className="text-xs text-gray-500">#{globalIndex + 1}</span>
 									</div>
 									<p className="text-gray-600">{category.count} {category.count === 1 ? 'report' : 'reports'}</p>
 								</div>
-							))}
-						</div>
-					</Card>
-				)}
+							);
+						})}
+					</div>
+				</Card>
+			)}
 
 				{/* Sign Out Button */}
 				<Card className="border-gray-200 bg-gray-50 p-4">
 					<Button
 						variant="outline"
-						onClick={async () => {
-							await authClient.signOut();
-							window.location.href = "/login";
-						}}
+						onClick={signOut}
 						className="w-full flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
 					>
 						<LogOut className="h-4 w-4" />

@@ -121,16 +121,16 @@ export default function SettingsPage() {
 
 	if (loading) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-white dark:bg-black">
-				<div className="text-black dark:text-white">Loading settings...</div>
+			<div className="flex min-h-screen items-center justify-center bg-white">
+				<div className="text-black">Loading settings...</div>
 			</div>
 		);
 	}
 
 	if (!settings) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-white dark:bg-black">
-				<div className="text-black dark:text-white">
+			<div className="flex min-h-screen items-center justify-center bg-white">
+				<div className="text-black">
 					Failed to load settings
 				</div>
 			</div>
@@ -138,7 +138,7 @@ export default function SettingsPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-white dark:bg-black">
+		<div className="min-h-screen bg-white">
 			<div className="container mx-auto max-w-4xl px-4 py-8">
 				{/* Header */}
 				<div className="mb-8 flex items-center gap-4">
@@ -146,33 +146,33 @@ export default function SettingsPage() {
 						variant="outline"
 						size="icon"
 						onClick={() => router.push("/profile")}
-						className="border-gray-300 dark:border-gray-700"
+						className="border-gray-300"
 					>
 						<ArrowLeft className="h-4 w-4" />
 					</Button>
-					<h1 className="font-bold text-3xl text-black dark:text-white">
-						Settings Title
+					<h1 className="font-bold text-3xl text-black">
+						Settings
 					</h1>
 				</div>
 
 				<div className="space-y-6">
 					{/* Notifications */}
-					<Card className="border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-black">
+					<Card className="border border-gray-200 bg-white shadow-sm">
 						<CardHeader>
 							<div className="flex items-center gap-2">
-								<Bell className="h-5 w-5 text-black dark:text-white" />
-								<CardTitle className="text-black dark:text-white">
-									Settings Notifications
+								<Bell className="h-5 w-5 text-black" />
+								<CardTitle className="text-black">
+									Notifications
 								</CardTitle>
 							</div>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="font-medium text-black dark:text-white">
+									<Label className="font-medium text-black">
 										Email Notifications
 									</Label>
-									<p className="text-gray-600 text-sm dark:text-gray-400">
+									<p className="text-gray-600 text-sm">
 										Receive notifications via email
 									</p>
 								</div>
@@ -187,10 +187,10 @@ export default function SettingsPage() {
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="font-medium text-black dark:text-white">
+									<Label className="font-medium text-black">
 										Push Notifications
 									</Label>
-									<p className="text-gray-600 text-sm dark:text-gray-400">
+									<p className="text-gray-600 text-sm">
 										Receive push notifications in browser
 									</p>
 								</div>
@@ -205,10 +205,10 @@ export default function SettingsPage() {
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="font-medium text-black dark:text-white">
+									<Label className="font-medium text-black">
 										Issue Updates
 									</Label>
-									<p className="text-gray-600 text-sm dark:text-gray-400">
+									<p className="text-gray-600 text-sm">
 										Get notified about updates to your reported issues
 									</p>
 								</div>
@@ -227,10 +227,10 @@ export default function SettingsPage() {
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="font-medium text-black dark:text-white">
+									<Label className="font-medium text-black">
 										Weekly Report
 									</Label>
-									<p className="text-gray-600 text-sm dark:text-gray-400">
+									<p className="text-gray-600 text-sm">
 										Receive weekly summary of community activity
 									</p>
 								</div>
@@ -251,11 +251,11 @@ export default function SettingsPage() {
 					</Card>
 
 					{/* Privacy */}
-					<Card className="border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-black">
+					<Card className="border border-gray-200 bg-white shadow-sm">
 						<CardHeader>
 							<div className="flex items-center gap-2">
-								<Eye className="h-5 w-5 text-black dark:text-white" />
-								<CardTitle className="text-black dark:text-white">
+								<Eye className="h-5 w-5 text-black" />
+								<CardTitle className="text-black">
 									Privacy
 								</CardTitle>
 							</div>
@@ -263,10 +263,10 @@ export default function SettingsPage() {
 						<CardContent className="space-y-4">
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="font-medium text-black dark:text-white">
+									<Label className="font-medium text-black">
 										Show Profile
 									</Label>
-									<p className="text-gray-600 text-sm dark:text-gray-400">
+									<p className="text-gray-600 text-sm">
 										Make your profile visible to other users
 									</p>
 								</div>
@@ -281,10 +281,10 @@ export default function SettingsPage() {
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="font-medium text-black dark:text-white">
+									<Label className="font-medium text-black">
 										Show Activity
 									</Label>
-									<p className="text-gray-600 text-sm dark:text-gray-400">
+									<p className="text-gray-600 text-sm">
 										Display your activity timeline publicly
 									</p>
 								</div>
@@ -299,10 +299,10 @@ export default function SettingsPage() {
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="font-medium text-black dark:text-white">
+									<Label className="font-medium text-black">
 										Show Statistics
 									</Label>
-									<p className="text-gray-600 text-sm dark:text-gray-400">
+									<p className="text-gray-600 text-sm">
 										Display your contribution statistics
 									</p>
 								</div>
@@ -319,11 +319,11 @@ export default function SettingsPage() {
 					</Card>
 
 					{/* Display */}
-					<Card className="border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-black">
+					<Card className="border border-gray-200 bg-white shadow-sm">
 						<CardHeader>
 							<div className="flex items-center gap-2">
-								<Palette className="h-5 w-5 text-black dark:text-white" />
-								<CardTitle className="text-black dark:text-white">
+								<Palette className="h-5 w-5 text-black" />
+								<CardTitle className="text-black">
 									Display
 								</CardTitle>
 							</div>
@@ -331,10 +331,10 @@ export default function SettingsPage() {
 						<CardContent className="space-y-4">
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="font-medium text-black dark:text-white">
+									<Label className="font-medium text-black">
 										Theme
 									</Label>
-									<p className="text-gray-600 text-sm dark:text-gray-400">
+									<p className="text-gray-600 text-sm">
 										Choose your preferred theme
 									</p>
 								</div>
@@ -343,7 +343,7 @@ export default function SettingsPage() {
 									onChange={(e) =>
 										updateSetting("display", "theme", e.target.value)
 									}
-									className="rounded-md border border-gray-300 bg-white px-3 py-2 text-black dark:border-gray-700 dark:bg-black dark:text-white"
+									className="rounded-md border border-gray-300 bg-white px-3 py-2 text-black"
 								>
 									<option value="light">Light</option>
 									<option value="dark">Dark</option>
@@ -352,10 +352,10 @@ export default function SettingsPage() {
 							</div>
 							<div className="flex items-center justify-between">
 								<div>
-									<Label className="font-medium text-black dark:text-white">
+									<Label className="font-medium text-black">
 										Map Style
 									</Label>
-									<p className="text-gray-600 text-sm dark:text-gray-400">
+									<p className="text-gray-600 text-sm">
 										Choose map appearance
 									</p>
 								</div>
@@ -364,7 +364,7 @@ export default function SettingsPage() {
 									onChange={(e) =>
 										updateSetting("display", "mapStyle", e.target.value)
 									}
-									className="rounded-md border border-gray-300 bg-white px-3 py-2 text-black dark:border-gray-700 dark:bg-black dark:text-white"
+									className="rounded-md border border-gray-300 bg-white px-3 py-2 text-black"
 								>
 									<option value="streets-v12">Streets</option>
 									<option value="satellite-v9">Satellite</option>
@@ -379,7 +379,7 @@ export default function SettingsPage() {
 						<Button
 							onClick={handleSaveSettings}
 							disabled={saving}
-							className="bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+							className="bg-black text-white hover:bg-gray-800"
 						>
 							<Save className="mr-2 h-4 w-4" />
 							{saving ? "Saving..." : "Save Settings"}
@@ -387,7 +387,7 @@ export default function SettingsPage() {
 					</div>
 
 					{/* Danger Zone */}
-					<Card className="border border-red-200 bg-white shadow-sm dark:border-red-800 dark:bg-black">
+					<Card className="border border-red-200 bg-white shadow-sm">
 						<CardHeader>
 							<div className="flex items-center gap-2">
 								<Trash2 className="h-5 w-5 text-red-600" />
@@ -396,7 +396,7 @@ export default function SettingsPage() {
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div>
-								<p className="mb-4 text-gray-600 text-sm dark:text-gray-400">
+								<p className="mb-4 text-gray-600 text-sm">
 									Once you delete your account, there is no going back. Please
 									be certain.
 								</p>
@@ -405,16 +405,16 @@ export default function SettingsPage() {
 									<Button
 										variant="outline"
 										onClick={() => setShowDeleteSection(true)}
-										className="border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10"
+										className="border-red-300 text-red-600 hover:bg-red-50"
 									>
 										Delete Account
 									</Button>
 								) : (
-									<div className="space-y-4 rounded-lg border border-red-200 p-4 dark:border-red-800">
+									<div className="space-y-4 rounded-lg border border-red-200 p-4">
 										<div>
 											<Label
 												htmlFor="deletePassword"
-												className="font-medium text-black dark:text-white"
+												className="font-medium text-black"
 											>
 												Enter your password to confirm
 											</Label>
@@ -424,7 +424,7 @@ export default function SettingsPage() {
 												value={deletePassword}
 												onChange={(e) => setDeletePassword(e.target.value)}
 												placeholder="Your password"
-												className="mt-2 border-red-300 bg-white text-black dark:border-red-700 dark:bg-black dark:text-white"
+												className="mt-2 border-red-300 bg-white text-black"
 											/>
 										</div>
 										<div className="flex gap-3">
@@ -434,7 +434,7 @@ export default function SettingsPage() {
 													setShowDeleteSection(false);
 													setDeletePassword("");
 												}}
-												className="border-gray-300 dark:border-gray-700"
+												className="border-gray-300"
 											>
 												Cancel
 											</Button>

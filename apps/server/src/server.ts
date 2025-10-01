@@ -3,10 +3,10 @@ import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { Elysia } from "elysia";
 import logixlysia from "logixlysia";
-import { auth } from "./lib/auth";
+// import { auth } from "./lib/auth"; // Removed - using Supabase Auth
 import { appRouter } from "./module";
 
-const corsOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001")
+const corsOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app")
 	.split(",")
 	.map(s => s.trim())
 	.filter(Boolean);
@@ -40,21 +40,50 @@ export const app = new Elysia()
 	.get("/", () => ({
 		status: "ok",
 		message: "Broken Experiences API",
-		version: "1.0.0",
+		version: "1.0.1", 
+		description: "API for reporting and managing broken experiences in digital products",
+		timestamp: new Date().toISOString(),
+		environment: process.env.NODE_ENV || "development",
 		endpoints: {
-			health: "/misc/health",
-			docs: "/swagger",
-			categories: "/category",
-			experiences: "/experience",
-			stats: "/stats",
-			auth: "/api/auth"
+			health: {
+				url: "/health",
+				description: "Health check endpoint"
+			},
+			documentation: {
+				url: "/swagger",
+				description: "Interactive API documentation"
+			},
+			categories: {
+				url: "/category",
+				description: "Manage experience categories",
+				methods: ["GET", "POST"]
+			},
+			experiences: {
+				url: "/experience", 
+				description: "Create and retrieve broken experiences",
+				methods: ["GET", "POST", "PATCH", "DELETE"]
+			},
+			statistics: {
+				url: "/stats",
+				description: "Get platform statistics and analytics",
+				methods: ["GET"]
+			},
+			authentication: {
+				url: "/api/auth",
+				description: "User authentication and authorization",
+				methods: ["GET", "POST"]
+			}
+		},
+		cors: {
+			enabled: true,
+			allowedOrigins: corsOrigins
 		}
 	}))
 	.get("/health", () => ({
 		status: "ok",
 		timestamp: new Date().toISOString()
 	}))
-	.all("/api/auth/*", ({ request }) => auth.handler(request))
+	// Removed Better Auth handler - using Supabase Auth
 	.use(appRouter);
 
 console.log("CORS allowlist:", corsOrigins);

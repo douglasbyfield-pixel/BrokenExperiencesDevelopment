@@ -1,125 +1,167 @@
 "use server";
-
 import { eden } from "@web/lib/eden";
-import { authActionClient } from "@web/lib/safe-action";
+import { authActionClient, actionClient } from "@web/lib/safe-action";
 import { z } from "zod";
 
-export const createExperienceAction = authActionClient
-	.inputSchema(
-		z.object({
-			categoryId: z.string(),
-			title: z.string().optional(),
-			description: z.string().min(1, "Please describe your experience"),
-			latitude: z.string(),
-			longitude: z.string(),
-			address: z.string(),
-		}),
-	)
-	.action(async ({ ctx: { sessionToken }, parsedInput }) => {
-		console.log("🚀 Creating experience with input:", parsedInput);
-		console.log("🔐 Session token available:", !!sessionToken);
-		console.log("🔑 Session token value:", sessionToken);
-		
-		// Ensure title meets server requirements (min 5 chars)
-		const title = parsedInput.title && parsedInput.title.length >= 5 
-			? parsedInput.title 
-			: parsedInput.description.length >= 5 
-				? parsedInput.description.substring(0, 100)
-				: "Experience Report";
+export const createExperienceAction = actionClient
+  .inputSchema(
+    z.object({
+      categoryId: z.string(),
+      title: z.string().optional(),
+      description: z.string().min(1, "Please describe your experience"),
+      latitude: z.string(),
+      longitude: z.string(),
+      address: z.string(),
+    }),
+  )
+  .action(async ({ parsedInput }) => {
+    console.log("🚀 Creating experience with input:", parsedInput);
 
-		const description = parsedInput.description;
+    // Get Supabase session for authentication
+    const { createClient } = await import("@web/lib/supabase/server");
+    const supabase = await createClient();
+    
+    // ⚠️ CRITICAL FIX: Use getUser() instead of getSession()
+    // getUser() validates the token with Supabase Auth server
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    console.log("🔐 Supabase user check:", {
+      hasUser: !!user,
+      userId: user?.id,
+      userName: user?.user_metadata?.name,
+      userEmail: user?.email,
+      fullMetadata: user?.user_metadata,
+      error: userError,
+    });
 
-		// Try direct fetch first to debug
-		const payload = {
-			categoryId: parsedInput.categoryId,
-			title: title,
-			description: description,
-			latitude: parsedInput.latitude,
-			longitude: parsedInput.longitude,
-			address: parsedInput.address,
-			status: "pending",
-			priority: "medium",
-		};
+    if (!user || userError) {
+      throw new Error("You must be logged in to create an experience");
+    }
 
-		console.log("Making direct fetch to:", `${process.env.NEXT_PUBLIC_SERVER_URL}/experience`);
-		console.log("With payload:", payload);
-		console.log("With cookie header:", sessionToken);
+    // Get the access token from the session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      throw new Error("No access token available");
+    }
 
-		const directResponse = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/experience`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'Cookie': sessionToken
-			},
-			body: JSON.stringify(payload)
-		});
+    // Ensure title meets server requirements (min 5 chars)
+    const title = parsedInput.title && parsedInput.title.length >= 5
+      ? parsedInput.title
+      : parsedInput.description.length >= 5
+      ? parsedInput.description.substring(0, 100)
+      : "Experience Report";
 
-		console.log("Direct fetch response status:", directResponse.status);
-		console.log("Direct fetch response headers:", Object.fromEntries(directResponse.headers.entries()));
-		
-		const directResponseText = await directResponse.text();
-		console.log("Direct fetch response body:", directResponseText);
+    const payload = {
+      categoryId: parsedInput.categoryId,
+      title: title,
+      description: parsedInput.description,
+      latitude: parsedInput.latitude,
+      longitude: parsedInput.longitude,
+      address: parsedInput.address,
+    };
 
-		// Also try the Eden approach
-		const response = await eden.experience.post(
-			{
-				categoryId: parsedInput.categoryId,
-				title: title,
-				description: description,
-				latitude: parsedInput.latitude,
-				longitude: parsedInput.longitude,
-				address: parsedInput.address,
-				status: "pending",
-				priority: "medium",
-				$query: {},
-				$headers: {},
-			},
-			{
-				fetch: { headers: { cookie: sessionToken } },
-			},
-		);
+    console.log("Creating experience with payload:", payload);
+    console.log("🔑 Sending Authorization header:", `Bearer ${session.access_token.substring(0, 20)}...`);
 
-		console.log("Create experience response:", response);
-		console.log("API URL being called:", `${process.env.NEXT_PUBLIC_SERVER_URL}/experience`);
-		console.log("Request payload:", {
-			categoryId: parsedInput.categoryId,
-			title: title,
-			description: description,
-			latitude: parsedInput.latitude,
-			longitude: parsedInput.longitude,
-			address: parsedInput.address,
-			status: "pending",
-			priority: "medium",
-		});
+    // Use direct fetch instead of Eden Treaty to ensure headers are sent correctly
+    const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
+    const response = await fetch(`${apiUrl}/experience`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-		if (response.error) {
-			console.error("API Error Details:", response.error);
-			throw new Error(`Failed to create experience: ${JSON.stringify(response.error)}`);
-		}
+    console.log("📡 Response status:", response.status);
+    const responseData = await response.json();
+    console.log("📡 Response data:", responseData);
 
-		return response.data;
-	});
+    if (!response.ok) {
+      throw new Error(`Failed to create experience: ${JSON.stringify(responseData)}`);
+    }
 
-export const voteOnExperienceAction = authActionClient
-	.inputSchema(
-		z.object({
-			experienceId: z.string(),
-			vote: z.boolean(),
-		}),
-	)
-	.action(async ({ ctx: { sessionToken }, parsedInput }) => {
-		const response = await eden.experience[parsedInput.experienceId].vote.post(
-			{
-				vote: parsedInput.vote,
-				$query: {},
-				$headers: {},
-			},
-			{
-				fetch: { headers: { cookie: sessionToken } },
-			},
-		);
+    return responseData;
+  });
 
-		console.log(response);
+export const voteOnExperienceAction = actionClient
+  .inputSchema(
+    z.object({
+      experienceId: z.string(),
+      vote: z.boolean(),
+    }),
+  )
+  .action(async ({ parsedInput }) => {
+    // Get Supabase session for authentication
+    const { createClient } = await import("@web/lib/supabase/server");
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
 
-		return response.data;
-	});
+    if (!session?.access_token) {
+      throw new Error("You must be logged in to vote");
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
+    const response = await fetch(`${apiUrl}/experience/${parsedInput.experienceId}/vote`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ vote: parsedInput.vote }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Failed to vote: ${JSON.stringify(errorData)}`);
+    }
+
+    return await response.json();
+  });
+
+export const deleteExperienceAction = actionClient
+  .inputSchema(
+    z.object({
+      experienceId: z.string(),
+    }),
+  )
+  .action(async ({ parsedInput }) => {
+    console.log("🗑️ Deleting experience:", parsedInput.experienceId);
+
+    // Get Supabase session for authentication
+    const { createClient } = await import("@web/lib/supabase/server");
+    const supabase = await createClient();
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (!user || userError) {
+      throw new Error("You must be logged in to delete");
+    }
+
+    // Get the access token from the session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new Error("No access token available");
+    }
+
+    // Use direct fetch to call the delete endpoint
+    const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
+    const response = await fetch(`${apiUrl}/experience/${parsedInput.experienceId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to delete experience");
+    }
+
+    const result = await response.json();
+    return result;
+  });

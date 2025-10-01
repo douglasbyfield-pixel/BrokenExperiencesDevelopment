@@ -21,7 +21,7 @@ export const ExperiencePriorityEnum = {
 export const experience = p.pgTable("experience", {
 	id: p.uuid().primaryKey().defaultRandom(),
 	reportedBy: p
-		.uuid()
+		.text()
 		.references(() => user.id, { onDelete: "cascade" })
 		.notNull(),
 	categoryId: p

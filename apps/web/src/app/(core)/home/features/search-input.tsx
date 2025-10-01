@@ -39,7 +39,7 @@ export default function SearchInput() {
 			</svg>
 			<Input
 				placeholder="Search experiences"
-				className="rounded-full border-gray-200 bg-gray-50 pl-12 pr-4 py-2 focus:bg-white focus:border-gray-300"
+				className="rounded-full border-gray-200 bg-gray-50 pl-12 pr-4 py-2 focus:bg-white focus:border-gray-300 text-black placeholder:text-gray-400"
 				value={searchTerm}
 				onChange={(e) => setSearchTerm(e.target.value)}
 				onKeyPress={handleKeyPress}

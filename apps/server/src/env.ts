@@ -12,8 +12,8 @@ export const env = createEnv({
 		BETTER_AUTH_URL: z.string(),
 		GOOGLE_CLIENT_ID: z.string().optional(),
 		GOOGLE_CLIENT_SECRET: z.string().optional(),
-		SUPABASE_URL: z.string().optional(),
-		SUPABASE_ANON_KEY: z.string().optional(),
+		SUPABASE_URL: z.string(),
+		SUPABASE_ANON_KEY: z.string(),
 	},
 	runtimeEnv: {
 		PORT: process.env.PORT,

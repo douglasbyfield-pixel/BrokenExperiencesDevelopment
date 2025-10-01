@@ -8,7 +8,7 @@ export const userProfile = p.pgTable(
 	{
 		id: p.uuid().primaryKey().defaultRandom(),
 		// Supabase auth user id (uuid as text) or any external auth identifier
-		auth_user_id: p.text().notNull().unique(),
+		auth_user_id: p.text().notNull(),
 
 		handle: p.varchar({ length: 64 }).notNull(),
 		display_name: p.varchar({ length: 120 }),

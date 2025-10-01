@@ -30,6 +30,7 @@ export const getUserStats = async (userId: string) => {
 };
 
 export const getTrendingCategories = async () => {
+	// Get more categories so frontend can cycle through them
 	const trendingCategories = await db
 		.select({
 			id: category.id,
@@ -40,7 +41,7 @@ export const getTrendingCategories = async () => {
 		.innerJoin(category, eq(experience.categoryId, category.id))
 		.groupBy(category.id, category.name)
 		.orderBy(desc(count()))
-		.limit(5);
+		.limit(20); // Increased limit for cycling
 
 	return trendingCategories;
 };
