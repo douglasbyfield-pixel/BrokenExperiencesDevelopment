@@ -59,7 +59,7 @@ export default function SignInForm({
 				}}
 				className="space-y-6"
 			>
-				<div>
+				{/* <div>
 					<form.Field name="email">
 						{(field) => (
 							<div className="space-y-2">
@@ -87,10 +87,10 @@ export default function SignInForm({
 							</div>
 						)}
 					</form.Field>
-				</div>
+				</div> */}
 
 				<div>
-					<form.Field name="password">
+					{/* <form.Field name="password">
 						{(field) => (
 							<div className="space-y-2">
 								<Label
@@ -131,20 +131,20 @@ export default function SignInForm({
 								))}
 							</div>
 						)}
-					</form.Field>
+					</form.Field> */}
 				</div>
 
 				<div className="flex items-center justify-end">
-					<button
+					{/* <button
 						type="button"
 						onClick={() => setForgotOpen(true)}
 						className="font-medium text-black text-sm underline hover:text-gray-700 bg-transparent border-none cursor-pointer"
 					>
 						Forgot password?
-					</button>
+					</button> */}
 				</div>
 
-				<form.Subscribe>
+				{/* <form.Subscribe>
 					{(state) => (
 						<Button
 							type="submit"
@@ -154,7 +154,7 @@ export default function SignInForm({
 							{state.isSubmitting ? "Signing in..." : "Sign In"}
 						</Button>
 					)}
-				</form.Subscribe>
+				</form.Subscribe> */}
 			</form>
 
 			{/* OAuth section */}
@@ -163,7 +163,7 @@ export default function SignInForm({
 					<div className="w-full border-t" />
 				</div>
 				<div className="relative flex justify-center text-xs">
-					<span className="bg-white px-2 text-gray-500">OR</span>
+					{/* <span className="bg-white px-2 text-gray-500">OR</span> */}
 				</div>
 			</div>
 

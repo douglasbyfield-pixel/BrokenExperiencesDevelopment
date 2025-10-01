@@ -1454,8 +1454,8 @@ export default function MapClient({ experiences }: MapClientProps) {
 									handleVote(selectedExperience.id);
 								}}
 							>
-								<ThumbsUp className="h-4 w-4" />
-								<span className="font-medium">{selectedExperience.upvotes}</span>
+								{/* <ThumbsUp className="h-4 w-4" /> */}
+								{/* <span className="font-medium">{selectedExperience.upvotes}</span> */}
 							</Button>
 						</div>
 

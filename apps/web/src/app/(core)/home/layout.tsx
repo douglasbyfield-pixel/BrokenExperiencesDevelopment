@@ -1,19 +1,37 @@
+"use client";
+
 import LeftSidebar from "./features/left-sidebar";
 import RightSidebar from "./features/right-sidebar";
 import { eden } from "@web/lib/eden";
+import { useEffect, useState } from "react";
 
-export default async function HomeLayout({
+export default function HomeLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
-	const [stats, trendingCategories] = await Promise.all([
-		eden.stats.get(),
-		eden.stats.trending.get()
-	]);
-	
-	// Note: userStats will now be fetched client-side in components that need it
-	// since we're using Supabase auth context
+	const [stats, setStats] = useState<any>(null);
+	const [trendingCategories, setTrendingCategories] = useState<any>(null);
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		const fetchData = async () => {
+			try {
+				const [statsResult, trendingResult] = await Promise.all([
+					eden.stats.get(),
+					eden.stats.trending.get()
+				]);
+				setStats(statsResult?.data);
+				setTrendingCategories(trendingResult?.data);
+			} catch (error) {
+				console.error("Error fetching home layout data:", error);
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchData();
+	}, []);
 
 	return (
 		<div className="min-h-screen bg-white">
@@ -23,9 +41,9 @@ export default async function HomeLayout({
 					{children}
 				</main>
 				<RightSidebar 
-					stats={stats?.data} 
+					stats={stats} 
 					userStats={null}
-					trendingCategories={trendingCategories?.data}
+					trendingCategories={trendingCategories}
 				/>
 			</div>
 		</div>

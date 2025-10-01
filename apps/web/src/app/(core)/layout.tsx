@@ -1,3 +1,33 @@
+"use client";
+
+import { useAuth } from "@web/components/auth-provider";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
 export default function CoreLayout(props: LayoutProps<"/">) {
+	const { user, isLoading } = useAuth();
+	const router = useRouter();
+
+	// Redirect unauthenticated users to login
+	useEffect(() => {
+		if (!isLoading && !user) {
+			router.push("/login");
+		}
+	}, [user, isLoading, router]);
+
+	// Show loading state while checking auth
+	if (isLoading) {
+		return (
+			<div className="flex min-h-screen items-center justify-center">
+				<div className="text-gray-600">Loading...</div>
+			</div>
+		);
+	}
+
+	// Don't render content if not authenticated
+	if (!user) {
+		return null;
+	}
+
 	return <div>{props.children}</div>;
 }

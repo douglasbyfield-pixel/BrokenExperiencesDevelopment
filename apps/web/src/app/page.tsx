@@ -1,6 +1,15 @@
 import { redirect } from "next/navigation";
+import { createClient } from "@web/lib/supabase/server";
 
-export default function RootPage() {
-	// For now, just redirect to login to avoid authentication complexity
-	redirect("/login");
+export default async function RootPage() {
+	// Check for existing session
+	const supabase = await createClient();
+	const { data: { session } } = await supabase.auth.getSession();
+
+	// If user has a session, redirect to home, otherwise to login
+	if (session) {
+		redirect("/home");
+	} else {
+		redirect("/login");
+	}
 }

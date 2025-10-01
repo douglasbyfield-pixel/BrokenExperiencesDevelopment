@@ -63,7 +63,9 @@ export const createExperienceAction = actionClient
       imageUrls: parsedInput.imageUrls || [],
     };
 
-    console.log("Creating experience with payload:", payload);
+    console.log("🚀 Creating experience with payload:", payload);
+    console.log("📸 Image URLs being sent:", parsedInput.imageUrls);
+    console.log("📸 Image URLs count:", parsedInput.imageUrls?.length || 0);
     console.log("🔑 Sending Authorization header:", `Bearer ${session.access_token.substring(0, 20)}...`);
 
     // Use direct fetch instead of Eden Treaty to ensure headers are sent correctly
@@ -80,6 +82,13 @@ export const createExperienceAction = actionClient
     console.log("📡 Response status:", response.status);
     const responseData = await response.json();
     console.log("📡 Response data:", responseData);
+    console.log("📸 Response images:", responseData?.experienceImages || responseData?.experience?.experienceImages);
+    console.log("📸 Response structure check:", {
+        hasExperienceImages: !!responseData?.experienceImages,
+        hasExperienceImage: !!responseData?.experienceImage,
+        experienceImagesType: Array.isArray(responseData?.experienceImages) ? 'array' : typeof responseData?.experienceImages,
+        experienceImagesLength: responseData?.experienceImages?.length || 0
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to create experience: ${JSON.stringify(responseData)}`);
