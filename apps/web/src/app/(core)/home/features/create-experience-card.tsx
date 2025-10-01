@@ -482,35 +482,33 @@ export default function CreateExperienceCard({
 							/>
 						</label>
 						
-						{/* Location button */}
-						<Tooltip>
-							<TooltipTrigger 
-								render={
-									<button 
-										type="button" 
-										onClick={handleGetLocation}
-										disabled={isGettingLocation || locationPermission === 'denied'}
-										className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors disabled:opacity-50 ${
-											location && locationPermission === 'granted'
-												? 'bg-green-50 text-green-600 hover:bg-green-100 border-2 border-green-200' 
-												: locationPermission === 'denied'
-												? 'bg-red-50 text-red-600 border-2 border-red-200 cursor-not-allowed'
-												: 'hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-2 border-blue-200'
-										}`}
-									>
-										<MapPin className="h-5 w-5" />
-									</button>
-								}
-							/>
-							<TooltipPanel>
-								{location && locationPermission === 'granted' 
-									? `Location: ${location.address}` 
-									: locationPermission === 'denied'
-									? 'Enable location permissions in your browser settings to start posting'
-									: 'Getting location...'
-								}
-							</TooltipPanel>
-						</Tooltip>
+						{/* Location button - hide when location is granted */}
+						{!(location && locationPermission === 'granted') && (
+							<Tooltip>
+								<TooltipTrigger 
+									render={
+										<button 
+											type="button" 
+											onClick={handleGetLocation}
+											disabled={isGettingLocation || locationPermission === 'denied'}
+											className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors disabled:opacity-50 ${
+												locationPermission === 'denied'
+													? 'bg-red-50 text-red-600 border-2 border-red-200 cursor-not-allowed'
+													: 'hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-2 border-blue-200'
+											}`}
+										>
+											<MapPin className="h-5 w-5" />
+										</button>
+									}
+								/>
+								<TooltipPanel>
+									{locationPermission === 'denied'
+										? 'Enable location permissions in your browser settings to start posting'
+										: 'Getting location...'
+									}
+								</TooltipPanel>
+							</Tooltip>
+						)}
 						<form.Field name="categoryId">
 							{(field) => (
 								<>
