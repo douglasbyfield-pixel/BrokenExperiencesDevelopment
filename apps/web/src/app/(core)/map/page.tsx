@@ -10,36 +10,43 @@ export default function MapPage() {
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		const fetchExperiences = async () => {
+		const fetchMapMarkers = async () => {
 			try {
-				// Get auth token
-				const supabase = createClient();
-				const { data: { session } } = await supabase.auth.getSession();
-				
-				// Fetch experiences with auth header if available
+				// Use the new lightweight markers endpoint
 				const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
-				const headers: HeadersInit = {
-					"Content-Type": "application/json",
-				};
 				
-				if (session?.access_token) {
-					headers["Authorization"] = `Bearer ${session.access_token}`;
+				const response = await fetch(`${apiUrl}/experience/markers`, {
+					headers: {
+						"Content-Type": "application/json",
+					},
+				});
+				
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
 				}
 				
-				const response = await fetch(`${apiUrl}/experience`, { headers });
 				const data = await response.json();
 				
-				console.log("📍 Map: Fetched experiences:", data?.length || 0);
+				console.log("📍 Map: Fetched markers:", data?.length || 0);
 				setExperiences(data || []);
 			} catch (error) {
-				console.error("Error fetching experiences for map:", error);
-				setExperiences([]);
+				console.error("Error fetching map markers:", error);
+				// Fallback to full experiences if markers endpoint fails
+				try {
+					const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
+					const response = await fetch(`${apiUrl}/experience`);
+					const data = await response.json();
+					setExperiences(data || []);
+				} catch (fallbackError) {
+					console.error("Fallback fetch also failed:", fallbackError);
+					setExperiences([]);
+				}
 			} finally {
 				setLoading(false);
 			}
 		};
 
-		fetchExperiences();
+		fetchMapMarkers();
 	}, []);
 
 	if (loading) {
