@@ -2,7 +2,7 @@ import { db } from "@server/db";
 import { experience, experienceImage, vote } from "@server/db/schema";
 import { decrement, increment } from "@server/db/utils";
 import { user, category } from "@server/db/schema";
-import { eq, ilike, or, desc } from "drizzle-orm";
+import { eq, ilike, or, desc, inArray } from "drizzle-orm";
 import type {
 	ExperienceCreate,
 	ExperienceQuery,
@@ -37,15 +37,15 @@ export const getExperiences = async (options: { query: ExperienceQuery; userId?:
 
 	// Get images separately
 	const experienceIds = experiences.map(exp => exp.id);
-	const images = await db.select().from(experienceImage).where(drizzleIn(experienceImage.experienceId, experienceIds));
+	const images = await db.select().from(experienceImage).where(inArray(experienceImage.experienceId, experienceIds));
 
 	// Get users separately
 	const userIds = [...new Set(experiences.map(exp => exp.reportedBy))];
-	const users = await db.select().from(user).where(drizzleIn(user.id, userIds));
+	const users = await db.select().from(user).where(inArray(user.id, userIds));
 
 	// Get categories separately
 	const categoryIds = [...new Set(experiences.map(exp => exp.categoryId))];
-	const categories = await db.select().from(category).where(drizzleIn(category.id, categoryIds));
+	const categories = await db.select().from(category).where(inArray(category.id, categoryIds));
 
 	// Group by experience ID
 	const imagesByExperience = new Map();
