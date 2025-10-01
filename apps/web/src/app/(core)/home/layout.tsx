@@ -42,7 +42,7 @@ export default function HomeLayout({
 
 	return (
 		<SearchProvider onSearch={handleSearch}>
-			<div className="min-h-screen bg-white mx-24">
+			<div className="min-h-screen bg-white md:mx-24 mx-0">
 				<MobileNav 
 					stats={stats}
 					userStats={null}
