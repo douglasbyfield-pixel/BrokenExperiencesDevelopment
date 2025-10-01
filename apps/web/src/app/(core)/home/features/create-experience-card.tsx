@@ -386,7 +386,7 @@ export default function CreateExperienceCard({
 										onChange={(e) => {
 											field.handleChange(e.target.value);
 										}}
-										className="w-full resize-none bg-transparent text-sm text-black placeholder:text-gray-400 focus:outline-none min-h-[32px]"
+										className="w-full resize-none bg-transparent text-lg text-black placeholder:text-gray-400 focus:outline-none min-h-[32px]"
 										rows={isExpanded ? 3 : 1}
 										maxLength={500}
 									/>
