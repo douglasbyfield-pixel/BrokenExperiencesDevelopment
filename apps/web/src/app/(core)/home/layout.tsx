@@ -48,7 +48,7 @@ export default function HomeLayout({
 					userStats={null}
 					trendingCategories={trendingCategories}
 				/>
-				<div className="mx-auto flex max-w-screen-2xl">
+				<div className="mx-auto flex max-w-screen-xl">
 					<LeftSidebar />
 					<main className="flex-1 min-w-0 lg:border-x lg:border-gray-200">
 						{children}

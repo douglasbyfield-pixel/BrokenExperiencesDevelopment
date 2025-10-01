@@ -295,14 +295,14 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	return (
 		<>
 		<article className="bg-white border-b border-gray-200 px-4 py-3 transition-colors hover:bg-gray-50/50">
-			<div className="flex gap-4">
+			<div className="flex gap-2 sm:gap-4">
 				{/* Avatar */}
-				<Avatar className="h-10 w-10">
+				<Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
 					<AvatarImage 
 						src={experience.reportedBy?.image || undefined} 
 						alt={`${displayName}'s avatar`} 
 					/>
-					<AvatarFallback className="bg-gray-200 text-gray-600 font-medium">
+					<AvatarFallback className="bg-gray-200 text-gray-600 font-medium text-xs sm:text-sm">
 						{displayName?.charAt(0)?.toUpperCase() || "U"}
 					</AvatarFallback>
 				</Avatar>
@@ -310,27 +310,27 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 				<div className="flex-1 min-w-0">
 					{/* Header: User info and category badge */}
 					<div className="flex items-start justify-between gap-2 mb-2">
-						<div className="flex items-center gap-2 flex-wrap">
-							<div className="flex items-center gap-1">
-								<span className="font-semibold text-gray-900 hover:text-gray-600 transition-colors cursor-pointer">
+						<div className="flex items-center gap-1 sm:gap-2 flex-wrap min-w-0">
+							<div className="flex items-center gap-1 min-w-0">
+								<span className="font-semibold text-gray-900 hover:text-gray-600 transition-colors cursor-pointer text-sm sm:text-base truncate">
 									{displayName}
 								</span>
-								<span className="text-gray-500 text-sm">@{username}</span>
-								<span className="text-gray-400">·</span>
-								<span className="text-gray-500 text-sm hover:text-gray-700 transition-colors cursor-pointer">
+								<span className="text-gray-500 text-xs sm:text-sm hidden sm:inline">@{username}</span>
+								<span className="text-gray-400 hidden sm:inline">·</span>
+								<span className="text-gray-500 text-xs sm:text-sm hover:text-gray-700 transition-colors cursor-pointer">
 									{formatRelativeTime(experience.createdAt)}
 								</span>
 							</div>
 						</div>
+						<span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 flex-shrink-0">
+							#{experience.category?.name || "general"}
+						</span>
 					</div>
 
-					{/* Badges Row: Category, Priority, Status */}
+					{/* Badges Row: Priority, Status */}
 					<div className="mb-3">
 						{!isEditingStatus ? (
-							<div className="flex items-center gap-2 flex-wrap">
-								<span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-									#{experience.category?.name || "general"}
-								</span>
+							<div className="flex items-center gap-1 sm:gap-2 flex-wrap">
 
 								{/* Shows priority of the experience */}
 								{/* Priority Badge
@@ -461,7 +461,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 					{/* Content */}
 					<div className="mb-3">
-						<p className="text-gray-900 text-base whitespace-pre-wrap leading-relaxed">
+						<p className="text-gray-900 text-sm sm:text-base whitespace-pre-wrap leading-relaxed break-words">
 							{experience.description}
 						</p>
 					</div>
@@ -481,9 +481,14 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 							});
 						}
 						
-						// Filter out placeholder images - only show real uploaded images
+						// Filter out placeholder images and broken links - only show real uploaded images
 						const realImages = experience.experienceImages?.filter(
-							(img: any) => img.imageUrl && img.imageUrl.trim() !== '' && !img.imageUrl.includes('placeholder')
+							(img: any) => img.imageUrl && 
+								img.imageUrl.trim() !== '' && 
+								!img.imageUrl.includes('placeholder') &&
+								!img.imageUrl.includes('null') &&
+								!img.imageUrl.includes('undefined') &&
+								img.imageUrl.startsWith('http')
 						) || [];
 						
 						console.log('🖼️ Real images (filtered):', realImages);
@@ -492,68 +497,79 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						
 						return (
 							<div className="mb-3">
-								<div className={`rounded-xl overflow-hidden ${
-									realImages.length === 1 ? 'max-w-full' : 'max-w-full'
-								}`}>
+								<div className="w-full">
 								{realImages.length === 1 ? (
-									/* Single image - full width */
-									<img 
-										src={realImages[0].imageUrl}
-										alt="Experience"
-										className="w-full h-auto max-h-[32rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
-										loading="lazy"
-										onClick={() => handleImageClick(0)}
-									/>
+									/* Single image - simple */
+									<div className="w-full bg-gray-50 rounded-lg overflow-hidden">
+										<img 
+											src={realImages[0].imageUrl}
+											alt="Experience"
+											className="w-full h-auto max-h-96 object-cover cursor-pointer hover:opacity-95 transition-opacity"
+											style={{ objectPosition: 'center 20%' }}
+											loading="lazy"
+											onClick={() => handleImageClick(0)}
+										/>
+									</div>
 								) : realImages.length === 2 ? (
 									/* Two images - side by side */
 									<div className="grid grid-cols-2 gap-1 w-full">
 										{realImages.map((img: any, idx: number) => (
-											<img 
-												key={idx}
-												src={img.imageUrl}
-												alt={`Experience ${idx + 1}`}
-												className="w-full h-56 object-cover cursor-pointer hover:opacity-95 transition-opacity"
-												loading="lazy"
-												onClick={() => handleImageClick(idx)}
-											/>
+											<div key={idx} className="bg-gray-50 rounded-lg overflow-hidden aspect-square">
+												<img 
+													src={img.imageUrl}
+													alt={`Experience ${idx + 1}`}
+													className="w-full h-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+													style={{ objectPosition: 'center 25%' }}
+													loading="lazy"
+													onClick={() => handleImageClick(idx)}
+												/>
+											</div>
 										))}
 									</div>
 								) : realImages.length === 3 ? (
-									/* Three images - one large, two small */
+									/* Three images - simple grid */
 									<div className="grid grid-cols-2 gap-1 w-full">
-										<img 
-											src={realImages[0].imageUrl}
-											alt="Experience 1"
-											className="w-full h-full min-h-[28rem] object-cover row-span-2 cursor-pointer hover:opacity-95 transition-opacity"
-											loading="lazy"
-											onClick={() => handleImageClick(0)}
-										/>
-										<div className="flex flex-col gap-1">
+										<div className="bg-gray-50 rounded-lg overflow-hidden aspect-square">
+											<img 
+												src={realImages[0].imageUrl}
+												alt="Experience 1"
+												className="w-full h-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+												style={{ objectPosition: 'center 20%' }}
+												loading="lazy"
+												onClick={() => handleImageClick(0)}
+											/>
+										</div>
+										<div className="bg-gray-50 rounded-lg overflow-hidden aspect-square">
 											<img 
 												src={realImages[1].imageUrl}
 												alt="Experience 2"
-												className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
+												className="w-full h-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+												style={{ objectPosition: 'center 25%' }}
 												loading="lazy"
 												onClick={() => handleImageClick(1)}
 											/>
+										</div>
+										<div className="bg-gray-50 rounded-lg overflow-hidden aspect-square col-span-2">
 											<img 
 												src={realImages[2].imageUrl}
 												alt="Experience 3"
-												className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
+												className="w-full h-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+												style={{ objectPosition: 'center 25%' }}
 												loading="lazy"
 												onClick={() => handleImageClick(2)}
 											/>
 										</div>
 									</div>
 								) : (
-									/* Four or more images - grid of 4 */
+									/* Four or more images - simple grid */
 									<div className="grid grid-cols-2 gap-1 w-full">
 										{realImages.slice(0, 4).map((img: any, idx: number) => (
-											<div key={idx} className="relative group">
+											<div key={idx} className="relative group bg-gray-50 rounded-lg overflow-hidden aspect-square">
 												<img 
 													src={img.imageUrl}
 													alt={`Experience ${idx + 1}`}
-													className="w-full h-56 object-cover cursor-pointer group-hover:opacity-95 transition-opacity"
+													className="w-full h-full object-cover cursor-pointer group-hover:opacity-95 transition-opacity"
+													style={{ objectPosition: 'center 25%' }}
 													loading="lazy"
 													onClick={() => handleImageClick(idx)}
 												/>

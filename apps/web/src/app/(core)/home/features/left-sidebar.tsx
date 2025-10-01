@@ -7,6 +7,7 @@ import { useAuth } from "@web/components/auth-provider";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 
 interface LeftSidebarProps {
 	className?: string;
@@ -18,10 +19,11 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
 	return (
 		<aside
 			className={cn(
-				"sticky top-0 hidden h-screen w-48 lg:w-52 xl:w-56 flex-col bg-white py-4 px-3 lg:px-4 lg:flex",
+				"sticky top-0 hidden h-screen w-60 lg:w-64 xl:w-72 flex-col bg-white py-4 px-3 lg:px-4 lg:flex",
 				className,
 			)}
 		>
+			<div className="py-4 px-3 lg:px-4">
 			<div className="space-y-4">
 				{/* Logo */}
 				<div className="mb-6 lg:mb-8 flex items-center space-x-3">
@@ -107,6 +109,7 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
 					</div>
 				</div>
 			)}
+			</div>
 		</aside>
 	);
 }
