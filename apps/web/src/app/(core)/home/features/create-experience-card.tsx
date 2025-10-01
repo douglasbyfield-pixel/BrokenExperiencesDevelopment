@@ -250,7 +250,9 @@ export default function CreateExperienceCard({
 									/>
 									{field.state.meta.errors.length > 0 && (
 										<p className="mt-1 text-sm text-red-500">
-											{String(field.state.meta.errors[0] || "Error")}
+											{typeof field.state.meta.errors[0] === 'string' 
+												? field.state.meta.errors[0] 
+												: field.state.meta.errors[0]?.message || "Error"}
 										</p>
 									)}
 									{isExpanded && (
@@ -459,7 +461,9 @@ export default function CreateExperienceCard({
 									</Select>
 									{field.state.meta.errors.length > 0 && (
 										<p className="text-sm text-red-500">
-											{String(field.state.meta.errors[0] || "Error")}
+											{typeof field.state.meta.errors[0] === 'string' 
+												? field.state.meta.errors[0] 
+												: field.state.meta.errors[0]?.message || "Error"}
 										</p>
 									)}
 								</>
