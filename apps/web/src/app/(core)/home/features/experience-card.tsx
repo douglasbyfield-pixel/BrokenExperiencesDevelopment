@@ -236,6 +236,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	});
 
 	return (
+		<>
 		<article className="border-b border-gray-200 px-4 py-4 transition-colors hover:bg-gray-50">
 			<div className="flex gap-3">
 				{/* Avatar */}
@@ -574,5 +575,6 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 				/>
 			);
 		})()}
+		</>
 	);
 }
