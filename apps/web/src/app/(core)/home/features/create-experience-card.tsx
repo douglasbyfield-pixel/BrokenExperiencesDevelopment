@@ -386,7 +386,7 @@ export default function CreateExperienceCard({
 										onChange={(e) => {
 											field.handleChange(e.target.value);
 										}}
-										className="w-full resize-none bg-transparent text-lg text-black placeholder:text-gray-400 focus:outline-none min-h-[32px]"
+										className="w-full resize-none bg-transparent text-2xl text-black placeholder:text-gray-400 focus:outline-none min-h-[32px] mb-4"
 										rows={isExpanded ? 3 : 1}
 										maxLength={500}
 									/>
@@ -546,7 +546,7 @@ export default function CreateExperienceCard({
 							<Button
 								type="button"
 								onClick={handleCancel}
-								className="rounded-full bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 px-3 py-1 text-xs h-7"
+								className="rounded-full bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 px-3 py-1 text-md"
 							>
 								Cancel
 							</Button>
@@ -555,10 +555,10 @@ export default function CreateExperienceCard({
 							{(state) => (
 								<Button
 									type="submit"
-									className="rounded-full bg-black font-medium text-white hover:bg-gray-800 disabled:opacity-50 px-4 py-1 text-xs h-7"
+									className="rounded-full bg-black font-medium text-white text-md hover:bg-gray-800 disabled:opacity-50 px-4 py-1 "
 									disabled={!state.canSubmit || state.isSubmitting || isExecuting || !location || !location.latitude || !location.longitude}
 								>
-									{state.isSubmitting || isExecuting ? "Posting..." : (!location || !location.latitude || !location.longitude) ? "Location" : "Post"}
+									{state.isSubmitting || isExecuting ? "Posting..." : "Post"}
 								</Button>
 							)}
 						</form.Subscribe>
