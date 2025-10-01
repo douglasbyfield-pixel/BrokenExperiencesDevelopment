@@ -5,9 +5,11 @@ import { useAuth } from "@web/components/auth-provider";
 import { useSearch } from "@web/context/SearchContext";
 import SearchInput from "./search-input";
 import Link from "next/link";
-import { useState } from "react";
-import { LogOut, Search, Menu, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { LogOut, Search, Menu, X, Home, Map, User, Settings } from "lucide-react";
 import type { Stats, UserStats, TrendingCategory } from "@web/types";
+import { getCategoryStyling } from "@web/lib/category-config";
+import { eden } from "@web/lib/eden";
 
 interface MobileNavProps {
 	stats?: Stats | null;
@@ -18,8 +20,27 @@ interface MobileNavProps {
 export default function MobileNav({ stats, userStats, trendingCategories }: MobileNavProps) {
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
+	const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
 	const { signOut, user } = useAuth();
 	const { onSearch, onSearchChange, onCategoryFilter } = useSearch();
+
+	// Fetch categories from database
+	useEffect(() => {
+		const fetchCategories = async () => {
+			try {
+				const result = await eden.category.get({ $query: { limit: 50, offset: 0 } });
+				if (Array.isArray(result?.data)) {
+					// Sort categories alphabetically
+					const sorted = result.data.sort((a: any, b: any) => a.name.localeCompare(b.name));
+					setCategories(sorted);
+				}
+			} catch (error) {
+				console.error('Failed to fetch categories:', error);
+			}
+		};
+		
+		fetchCategories();
+	}, []);
 
 	return (
 		<>
@@ -34,11 +55,11 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 					</button>
 					<div className="flex items-center space-x-2">
 						<div className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-black bg-white p-1">
-							<img
-								src="/images/logo.png"
-								alt="Broken Experiences"
-								className="h-full w-full object-contain"
-							/>
+					<img
+						src="/images/logo.png"
+						alt="Broken Experiences"
+						className="h-full w-full object-contain"
+					/>
 						</div>
 						<h1 className="font-bold text-lg text-black">
 							Broken<span className="text-gray-600">Experiences</span>
@@ -126,18 +147,18 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 										<p className="font-medium text-sm text-black">{user?.user_metadata?.name || user?.email}</p>
 										<p className="text-gray-500 text-xs truncate">{user?.email}</p>
 									</div>
-									<Button
-										variant="ghost"
+							<Button
+								variant="ghost"
 										size="sm"
-										onClick={async () => {
-											await signOut();
-											setIsMenuOpen(false);
-										}}
+								onClick={async () => {
+									await signOut();
+									setIsMenuOpen(false);
+								}}
 										className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50"
 										title="Sign out"
-									>
+							>
 										<LogOut className="h-4 w-4" />
-									</Button>
+							</Button>
 								</div>
 							</div>
 						)}
@@ -214,105 +235,30 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 								</div>
 							)}
 
-							{/* Map Legend / Categories */}
+							{/* Map Legend / Categories - Dynamically loaded from database */}
 							<div>
 								<h3 className="font-semibold text-black mb-3">Issue Categories</h3>
 								<div className="space-y-2">
-									{/* Infrastructure */}
-									<button 
-										onClick={() => {
-											onCategoryFilter("Infrastructure");
-											setIsSearchOpen(false);
-										}}
-										className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left"
-									>
-										<div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
-											<svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-												<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-											</svg>
-										</div>
-										<span className="text-sm text-gray-700">Infrastructure</span>
-									</button>
-									
-									{/* Safety */}
-									<button 
-										onClick={() => {
-											onCategoryFilter("Safety");
-											setIsSearchOpen(false);
-										}}
-										className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left"
-									>
-										<div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center">
-											<svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-												<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
-											</svg>
-										</div>
-										<span className="text-sm text-gray-700">Safety</span>
-									</button>
-									
-									{/* Environment */}
-									<button 
-										onClick={() => {
-											onCategoryFilter("Environment");
-											setIsSearchOpen(false);
-										}}
-										className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left"
-									>
-										<div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-											<svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-												<path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.91.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75S7 8 17 8z"/>
-											</svg>
-										</div>
-										<span className="text-sm text-gray-700">Environment</span>
-									</button>
-									
-									{/* Water & Drainage */}
-									<button 
-										onClick={() => {
-											onCategoryFilter("Water & Drainage");
-											setIsSearchOpen(false);
-										}}
-										className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left"
-									>
-										<div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
-											<svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-												<path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8z"/>
-											</svg>
-										</div>
-										<span className="text-sm text-gray-700">Water & Drainage</span>
-									</button>
-									
-									{/* Traffic */}
-									<button 
-										onClick={() => {
-											onCategoryFilter("Traffic");
-											setIsSearchOpen(false);
-										}}
-										className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left"
-									>
-										<div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
-											<svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-												<path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
-											</svg>
-										</div>
-										<span className="text-sm text-gray-700">Traffic</span>
-									</button>
-									
-									{/* Other */}
-									<button 
-										onClick={() => {
-											onCategoryFilter("Other");
-											setIsSearchOpen(false);
-										}}
-										className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left"
-									>
-										<div className="w-6 h-6 rounded-full bg-gray-500 flex items-center justify-center">
-											<svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-												<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-											</svg>
-										</div>
-										<span className="text-sm text-gray-700">Other</span>
-									</button>
+									{categories.map((category) => {
+										const styling = getCategoryStyling(category.name);
+										const IconComponent = styling.icon;
+										
+										return (
+											<button 
+												key={category.id}
+												onClick={() => {
+													onCategoryFilter(category.name);
+													setIsSearchOpen(false);
+												}}
+												className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left"
+											>
+												<div className={`w-6 h-6 rounded-full ${styling.bgColor} flex items-center justify-center`}>
+													<IconComponent className="w-4 h-4 text-white" />
+												</div>
+												<span className="text-sm text-gray-700">{category.name}</span>
+											</button>
+										);
+									})}
 								</div>
 							</div>
 
