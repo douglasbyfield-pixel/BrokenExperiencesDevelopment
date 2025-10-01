@@ -414,7 +414,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						// Log ALL image data first
 						console.log('🖼️ Experience images RAW:', experience.experienceImages);
 						if (experience.experienceImages && experience.experienceImages.length > 0) {
-							experience.experienceImages.forEach((img, idx) => {
+							experience.experienceImages.forEach((img: any, idx: number) => {
 								console.log(`Image ${idx}:`, {
 									url: img.imageUrl,
 									hasUrl: !!img.imageUrl,
@@ -426,7 +426,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						
 						// Filter out placeholder images - only show real uploaded images
 						const realImages = experience.experienceImages?.filter(
-							img => img.imageUrl && img.imageUrl.trim() !== '' && !img.imageUrl.includes('placeholder')
+							(img: any) => img.imageUrl && img.imageUrl.trim() !== '' && !img.imageUrl.includes('placeholder')
 						) || [];
 						
 						console.log('🖼️ Real images (filtered):', realImages);
@@ -448,7 +448,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								) : realImages.length === 2 ? (
 									/* Two images - side by side */
 									<div className="grid grid-cols-2 gap-1">
-										{realImages.map((img, idx) => (
+										{realImages.map((img: any, idx: number) => (
 											<img 
 												key={idx}
 												src={img.imageUrl}
@@ -485,7 +485,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								) : (
 									/* Four or more images - grid of 4 */
 									<div className="grid grid-cols-2 gap-1">
-										{realImages.slice(0, 4).map((img, idx) => (
+										{realImages.slice(0, 4).map((img: any, idx: number) => (
 											<div key={idx} className="relative group">
 												<img 
 													src={img.imageUrl}
