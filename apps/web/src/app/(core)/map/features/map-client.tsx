@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
+import { BackButton } from "@web/components/ui/back-button";
 import {
 	Card,
 	CardContent,
@@ -1011,14 +1012,12 @@ export default function MapClient({ experiences }: MapClientProps) {
 			{/* Search & Quick Actions Buttons */}
 			{!showSearchPanel && !showQuickActions && (
 				<div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-					<Button
-						size="icon"
+					<BackButton 
+						fallbackUrl="/home"
 						variant="default"
+						size="icon"
 						className="backdrop-blur-sm shadow-lg"
-						onClick={() => router.back()}
-					>
-						<ArrowLeft className="h-4 w-4 text-white" />
-					</Button>
+					/>
 					<Button
 						size="icon"
 						variant="default"
