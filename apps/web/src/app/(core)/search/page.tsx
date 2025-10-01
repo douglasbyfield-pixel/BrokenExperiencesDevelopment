@@ -1,5 +1,5 @@
 import { eden } from "@web/lib/eden";
-import Link from "next/link";
+import { BackButton } from "@web/components/ui/back-button";
 import { Suspense } from "react";
 import ExperienceCard from "../home/features/experience-card";
 
@@ -81,11 +81,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 			<div className="mx-auto max-w-2xl">
 				<div className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur">
 					<div className="flex items-center p-4">
-						<Link href="/home" className="mr-4 p-2 rounded-full hover:bg-gray-100">
-							<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-							</svg>
-						</Link>
+						<BackButton fallbackUrl="/home" className="mr-4" />
 						<h1 className="text-xl font-semibold text-black">Search Results</h1>
 					</div>
 				</div>

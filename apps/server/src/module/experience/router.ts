@@ -7,6 +7,7 @@ import {
   deleteExperience,
   getExperience,
   getExperiences,
+  getMapMarkers,
   getNearbyExperiences,
   searchExperiences,
   updateExperience,
@@ -77,6 +78,19 @@ export const experienceRouter = new Elysia({
 			detail: {
 				summary: "Search experiences",
 				description: "Search experiences by title, description, or location.",
+			},
+		},
+	)
+	.get(
+		"/markers",
+		async () => {
+			const result = await getMapMarkers();
+			return result;
+		},
+		{
+			detail: {
+				summary: "Get map markers",
+				description: "Returns lightweight markers for map display (optimized for performance).",
 			},
 		},
 	)

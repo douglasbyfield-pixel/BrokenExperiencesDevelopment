@@ -11,7 +11,7 @@ import type {
 } from "./schema";
 
 export const getExperiences = async (options: { query: ExperienceQuery; userId?: string }) => {
-	// Use simpler query without complex JSON aggregation
+	// Optimized query - only select essential fields for map loading
 	const experiences = await db.select({
 		id: experience.id,
 		reportedBy: experience.reportedBy,
@@ -25,10 +25,9 @@ export const getExperiences = async (options: { query: ExperienceQuery; userId?:
 		priority: experience.priority,
 		createdAt: experience.createdAt,
 		resolvedAt: experience.resolvedAt,
-		updatedAt: experience.updatedAt,
 		upvotes: experience.upvotes,
 		downvotes: experience.downvotes,
-	}).from(experience).orderBy(desc(experience.createdAt));
+	}).from(experience).orderBy(desc(experience.createdAt)).limit(100); // Add limit for performance
 
 	console.log('📤 Retrieved experiences count:', experiences.length);
 	if (experiences.length > 0) {
@@ -122,6 +121,23 @@ export const searchExperiences = async (searchTerm: string, userId?: string) => 
 		...exp,
 		userVote: null,
 	}));
+};
+
+export const getMapMarkers = async () => {
+	// Ultra-lightweight query for map markers only
+	const markers = await db.select({
+		id: experience.id,
+		latitude: experience.latitude,
+		longitude: experience.longitude,
+		status: experience.status,
+		priority: experience.priority,
+		title: experience.title,
+	}).from(experience)
+	.where(eq(experience.status, 'pending')) // Only show pending issues
+	.orderBy(desc(experience.createdAt))
+	.limit(50); // Limit for performance
+
+	return markers;
 };
 
 export const getNearbyExperiences = async (options: {

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@web/components/ui/button";
+import { BackButton } from "@web/components/ui/back-button";
 import {
 	Card,
 	CardContent,
@@ -10,7 +11,7 @@ import {
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { useSettings } from "@web/context/SettingsContext";
-import { ArrowLeft, Bell, Eye, Palette, Save, Trash2 } from "lucide-react";
+import { Bell, Eye, Palette, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -142,14 +143,7 @@ export default function SettingsPage() {
 			<div className="container mx-auto max-w-4xl px-4 py-8">
 				{/* Header */}
 				<div className="mb-8 flex items-center gap-4">
-					<Button
-						variant="outline"
-						size="icon"
-						onClick={() => router.push("/profile")}
-						className="border-gray-300"
-					>
-						<ArrowLeft className="h-4 w-4" />
-					</Button>
+					<BackButton fallbackUrl="/profile" />
 					<h1 className="font-bold text-3xl text-black">
 						Settings
 					</h1>

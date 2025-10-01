@@ -3,6 +3,7 @@
 import { voteOnExperienceAction, deleteExperienceAction } from "@web/action/experience";
 import type { Experience } from "@web/types";
 import { useAction } from "next-safe-action/hooks";
+import { useVoteExperience } from "@web/hooks/use-experiences";
 import {
 	Heart,
 	Link,
@@ -18,6 +19,9 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@web/components/auth-provider";
 import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
+import { ImageModal } from "@web/components/ui/image-modal";
+import { Avatar, AvatarImage, AvatarFallback } from "@web/components/ui/avatar";
+import { useShare } from "@web/hooks/use-share";
 import {
 	Popover,
 	PopoverTrigger,
@@ -78,6 +82,19 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	const [showDropdown, setShowDropdown] = useState(false);
 	const [isEditingStatus, setIsEditingStatus] = useState(false);
 	const [localPriority, setLocalPriority] = useState<string>(experience.priority);
+	const [showShareModal, setShowShareModal] = useState(false);
+	
+	const { 
+		copyToClipboard, 
+		shareToWhatsApp, 
+		shareToTwitter, 
+		shareToFacebook,
+		shareViaWebShare 
+	} = useShare();
+	
+	// Image modal state
+	const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+	const [currentImageIndex, setCurrentImageIndex] = useState(0);
 	const [localStatus, setLocalStatus] = useState<string>(experience.status);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -98,18 +115,8 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		};
 	}, [showDropdown]);
 
-	const { execute: voteOnExperience, isExecuting } = useAction(voteOnExperienceAction, {
-		onSuccess: (result) => {
-			console.log("Vote successful:", result);
-			// No need to reload - optimistic update already done
-		},
-		onError: (error) => {
-			console.error("Vote failed:", error);
-			// Revert optimistic update on error
-			setIsLiked(!isLiked);
-			setLikeCount(isLiked ? likeCount + 1 : likeCount - 1);
-		}
-	});
+	// Use TanStack Query for optimistic voting
+	const { mutate: voteOnExperience, isPending: isExecuting } = useVoteExperience();
 
 	const { execute: deleteExperience, isExecuting: isDeleting } = useAction(deleteExperienceAction, {
 		onSuccess: () => {
@@ -124,16 +131,16 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	});
 
 	const handleVote = () => {
-		// Optimistic update
-		const newLikedState = !isLiked;
-		setIsLiked(newLikedState);
-		setLikeCount(newLikedState ? likeCount + 1 : likeCount - 1);
-
-		// Send vote to backend
+		// TanStack Query handles optimistic updates automatically
 		voteOnExperience({
 			experienceId: experience.id,
-			vote: true // We only support upvotes/likes
+			vote: isLiked ? 'down' : 'up' // Toggle between up and down
 		});
+	};
+
+	const handleImageClick = (index: number) => {
+		setCurrentImageIndex(index);
+		setIsImageModalOpen(true);
 	};
 
 	const handleDelete = async () => {
@@ -161,33 +168,79 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		}
 	};
 
+	const handleShare = async () => {
+		setShowShareModal(true);
+	};
+
 	const handleCopyLink = async () => {
 		try {
-			const locationText = experience.address && experience.address.trim() ? `\n📍 ${experience.address}` : '';
-			const shareText = `Broken Experience: ${experience.title}\n${experience.description}${locationText}`;
-			await navigator.clipboard.writeText(shareText);
-			alert('Experience details copied to clipboard!');
+			// Generate shareable URL directly
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${experience.id}`;
+			
+			const success = await copyToClipboard(shareUrl);
+			if (success) {
+				alert('Share link copied to clipboard!');
+			} else {
+				alert('Failed to copy to clipboard');
+			}
 		} catch (error) {
-			console.error('Failed to copy to clipboard:', error);
-			alert('Failed to copy to clipboard');
+			console.error('Failed to copy link:', error);
+			alert('Failed to copy link');
 		}
 	};
 
-	const handleWhatsAppShare = () => {
-		const locationText = experience.address && experience.address.trim() ? `\n\n📍 ${experience.address}` : '';
-		const shareText = `Broken Experience: ${experience.title}\n\n${experience.description}${locationText}`;
-		
-		// Check if we're on mobile
-		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-		
-		if (isMobile) {
-			// Use the WhatsApp app directly on mobile
-			const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(shareText)}`;
-			window.location.href = whatsappUrl;
-		} else {
-			// Use WhatsApp Web on desktop
-			const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-			window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+	const handleWhatsAppShare = async () => {
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${experience.id}`;
+			const shareText = `Check out this experience: ${experience.title}`;
+			shareToWhatsApp(shareText, shareUrl);
+		} catch (error) {
+			console.error('Failed to share to WhatsApp:', error);
+			alert('Failed to share to WhatsApp');
+		}
+	};
+
+	const handleTwitterShare = async () => {
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${experience.id}`;
+			const shareText = `Check out this experience: ${experience.title}`;
+			shareToTwitter(shareText, shareUrl);
+		} catch (error) {
+			console.error('Failed to share to Twitter:', error);
+			alert('Failed to share to Twitter');
+		}
+	};
+
+	const handleFacebookShare = async () => {
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${experience.id}`;
+			shareToFacebook(shareUrl);
+		} catch (error) {
+			console.error('Failed to share to Facebook:', error);
+			alert('Failed to share to Facebook');
+		}
+	};
+
+	const handleNativeShare = async () => {
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${experience.id}`;
+			const success = await shareViaWebShare(
+				experience.title,
+				`Check out this experience: ${experience.title}`,
+				shareUrl
+			);
+			if (!success) {
+				// Fallback to copy link if native share fails
+				await handleCopyLink();
+			}
+		} catch (error) {
+			console.error('Failed to share natively:', error);
+			alert('Failed to share');
 		}
 	};
 
@@ -240,27 +293,34 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	});
 
 	return (
-		<article className="border-b border-gray-200 px-4 py-4 transition-colors hover:bg-gray-50">
-			<div className="flex gap-3">
+		<>
+		<article className="bg-white border-b border-gray-200 px-4 py-3 transition-colors hover:bg-gray-50/50">
+			<div className="flex gap-4">
 				{/* Avatar */}
-				<div className="h-12 w-12 rounded-full bg-gradient-to-br from-red-400 to-orange-500 flex-shrink-0 flex items-center justify-center shadow-sm">
-					<AlertTriangle className="h-6 w-6 text-white" />
-				</div>
+				<Avatar className="h-10 w-10">
+					<AvatarImage 
+						src={experience.reportedBy?.image || undefined} 
+						alt={`${displayName}'s avatar`} 
+					/>
+					<AvatarFallback className="bg-gray-200 text-gray-600 font-medium">
+						{displayName?.charAt(0)?.toUpperCase() || "U"}
+					</AvatarFallback>
+				</Avatar>
 
 				<div className="flex-1 min-w-0">
 					{/* Header: User info and category badge */}
 					<div className="flex items-start justify-between gap-2 mb-2">
 						<div className="flex items-center gap-2 flex-wrap">
 							<div className="flex items-center gap-1">
-								<span className="font-bold text-gray-900 hover:underline cursor-pointer">
+								<span className="font-semibold text-gray-900 hover:text-gray-600 transition-colors cursor-pointer">
 									{displayName}
 								</span>
 								<span className="text-gray-500 text-sm">@{username}</span>
+								<span className="text-gray-400">·</span>
+								<span className="text-gray-500 text-sm hover:text-gray-700 transition-colors cursor-pointer">
+									{formatRelativeTime(experience.createdAt)}
+								</span>
 							</div>
-							<span className="text-gray-400">·</span>
-							<span className="text-gray-500 text-sm hover:underline cursor-pointer">
-								{formatRelativeTime(experience.createdAt)}
-							</span>
 						</div>
 					</div>
 
@@ -268,9 +328,9 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 					<div className="mb-3">
 						{!isEditingStatus ? (
 							<div className="flex items-center gap-2 flex-wrap">
-								<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+								<span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
 									#{experience.category?.name || "general"}
-						</span>
+								</span>
 
 								{/* Shows priority of the experience */}
 								{/* Priority Badge
@@ -401,10 +461,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 					{/* Content */}
 					<div className="mb-3">
-						<h3 className="font-bold text-gray-900 text-lg mb-1.5 leading-tight">
-							{experience.title}
-						</h3>
-						<p className="text-gray-700 text-base whitespace-pre-wrap leading-relaxed">
+						<p className="text-gray-900 text-base whitespace-pre-wrap leading-relaxed">
 							{experience.description}
 						</p>
 					</div>
@@ -434,20 +491,22 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						if (realImages.length === 0) return null;
 						
 						return (
-							<div className={`mb-3 rounded-2xl overflow-hidden border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow ${
-								realImages.length === 1 ? 'max-w-lg' : ''
-							}`}>
+							<div className="mb-3">
+								<div className={`rounded-xl overflow-hidden ${
+									realImages.length === 1 ? 'max-w-full' : 'max-w-full'
+								}`}>
 								{realImages.length === 1 ? (
 									/* Single image - full width */
 									<img 
 										src={realImages[0].imageUrl}
 										alt="Experience"
-										className="w-full h-auto max-h-[28rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
+										className="w-full h-auto max-h-[32rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
 										loading="lazy"
+										onClick={() => handleImageClick(0)}
 									/>
 								) : realImages.length === 2 ? (
 									/* Two images - side by side */
-									<div className="grid grid-cols-2 gap-1">
+									<div className="grid grid-cols-2 gap-1 w-full">
 										{realImages.map((img: any, idx: number) => (
 											<img 
 												key={idx}
@@ -455,17 +514,19 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 												alt={`Experience ${idx + 1}`}
 												className="w-full h-56 object-cover cursor-pointer hover:opacity-95 transition-opacity"
 												loading="lazy"
+												onClick={() => handleImageClick(idx)}
 											/>
 										))}
 									</div>
 								) : realImages.length === 3 ? (
 									/* Three images - one large, two small */
-									<div className="grid grid-cols-2 gap-1">
+									<div className="grid grid-cols-2 gap-1 w-full">
 										<img 
 											src={realImages[0].imageUrl}
 											alt="Experience 1"
 											className="w-full h-full min-h-[28rem] object-cover row-span-2 cursor-pointer hover:opacity-95 transition-opacity"
 											loading="lazy"
+											onClick={() => handleImageClick(0)}
 										/>
 										<div className="flex flex-col gap-1">
 											<img 
@@ -473,18 +534,20 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 												alt="Experience 2"
 												className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
 												loading="lazy"
+												onClick={() => handleImageClick(1)}
 											/>
 											<img 
 												src={realImages[2].imageUrl}
 												alt="Experience 3"
 												className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
 												loading="lazy"
+												onClick={() => handleImageClick(2)}
 											/>
 										</div>
 									</div>
 								) : (
 									/* Four or more images - grid of 4 */
-									<div className="grid grid-cols-2 gap-1">
+									<div className="grid grid-cols-2 gap-1 w-full">
 										{realImages.slice(0, 4).map((img: any, idx: number) => (
 											<div key={idx} className="relative group">
 												<img 
@@ -492,9 +555,13 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 													alt={`Experience ${idx + 1}`}
 													className="w-full h-56 object-cover cursor-pointer group-hover:opacity-95 transition-opacity"
 													loading="lazy"
+													onClick={() => handleImageClick(idx)}
 												/>
 												{idx === 3 && realImages.length > 4 && (
-													<div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center cursor-pointer group-hover:bg-opacity-75 transition-all">
+													<div 
+														className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center cursor-pointer group-hover:bg-opacity-75 transition-all"
+														onClick={() => handleImageClick(3)}
+													>
 														<span className="text-white text-3xl font-bold drop-shadow-lg">
 															+{realImages.length - 4}
 														</span>
@@ -504,16 +571,17 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 										))}
 									</div>
 								)}
+								</div>
 							</div>
 						);
 					})()}
 
 					{/* Location */}
 					{experience.address && experience.address.trim() && (
-						<div className="flex items-center justify-between text-gray-600 mb-3">
-							<div className="flex items-center gap-1.5">
-								<MapPin className="h-4 w-4 flex-shrink-0" />
-								<span className="text-sm">{experience.address}</span>
+						<div className="flex items-center justify-between text-gray-500 mb-3">
+							<div className="flex items-center gap-2">
+								<MapPin className="h-4 w-4 flex-shrink-0 text-gray-400" />
+								<span className="text-sm font-medium">{experience.address}</span>
 							</div>
 						<Popover>
 							<PopoverTrigger className="group flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all">
@@ -522,10 +590,22 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 							<PopoverPortal>
 								<PopoverPositioner>
 									<PopoverPopup 
-										className="w-48 p-1 bg-white border border-gray-200 rounded-lg shadow-lg dark:bg-gray-900 dark:border-gray-700"
+										className="w-56 p-1 bg-white border border-gray-200 rounded-lg shadow-lg dark:bg-gray-900 dark:border-gray-700"
 										transition={{ type: 'spring', stiffness: 500, damping: 30, duration: 0.15 }}
 									>
 										<div className="flex flex-col gap-1">
+											{/* Native share (mobile) */}
+											{typeof navigator !== 'undefined' && 'share' in navigator && (
+												<button
+													onClick={handleNativeShare}
+													className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 w-full text-left text-gray-700 dark:text-gray-200"
+												>
+													<Share className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+													<span className="text-sm">Share</span>
+												</button>
+											)}
+											
+											{/* Copy link */}
 											<button
 												onClick={handleCopyLink}
 												className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 w-full text-left text-gray-700 dark:text-gray-200"
@@ -533,12 +613,36 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 												<Link className="h-4 w-4 text-gray-500 dark:text-gray-400" />
 												<span className="text-sm">Copy link</span>
 											</button>
+											
+											{/* WhatsApp */}
 											<button
 												onClick={handleWhatsAppShare}
 												className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 w-full text-left text-gray-700 dark:text-gray-200"
 											>
 												<MessageCircle className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-												<span className="text-sm">Share on WhatsApp</span>
+												<span className="text-sm">WhatsApp</span>
+											</button>
+											
+											{/* Twitter */}
+											<button
+												onClick={handleTwitterShare}
+												className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 w-full text-left text-gray-700 dark:text-gray-200"
+											>
+												<svg className="h-4 w-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+													<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+												</svg>
+												<span className="text-sm">Twitter</span>
+											</button>
+											
+											{/* Facebook */}
+											<button
+												onClick={handleFacebookShare}
+												className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 w-full text-left text-gray-700 dark:text-gray-200"
+											>
+												<svg className="h-4 w-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+													<path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+												</svg>
+												<span className="text-sm">Facebook</span>
 											</button>
 										</div>
 									</PopoverPopup>
@@ -547,8 +651,85 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						</Popover>
 						</div>
 					)}
+
+					{/* Action Buttons - Hidden */}
+					<div className="flex items-center justify-between pt-2 hidden">
+						<div className="flex items-center gap-6">
+							{/* Like Button */}
+							<button
+								onClick={handleVote}
+								disabled={isExecuting}
+								className={`flex items-center gap-2 text-sm transition-all duration-200 ${
+									isLiked 
+										? 'text-red-500' 
+										: 'text-gray-500 hover:text-gray-700'
+								}`}
+							>
+								<Heart className={`h-5 w-5 ${isLiked ? 'fill-current' : ''}`} />
+								<span>{likeCount}</span>
+							</button>
+
+							{/* Comment Button (placeholder for future) */}
+							<button className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-all duration-200">
+								<MessageCircle className="h-5 w-5" />
+								<span>Comment</span>
+							</button>
+						</div>
+
+						{/* More Options */}
+						{isOwnPost && (
+							<Popover>
+								<PopoverTrigger className="p-2 rounded-full text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-all duration-200">
+									<MoreHorizontal className="h-4 w-4" />
+								</PopoverTrigger>
+								<PopoverPortal>
+									<PopoverPositioner>
+										<PopoverPopup className="w-48 p-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+											<div className="flex flex-col gap-1">
+												<button
+													onClick={() => setIsEditingStatus(true)}
+													className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 w-full text-left text-gray-700"
+												>
+													<Edit className="h-4 w-4 text-gray-500" />
+													<span className="text-sm">Edit Status</span>
+												</button>
+												<button
+													onClick={() => deleteExperience({ experienceId: experience.id })}
+													disabled={isDeleting}
+													className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 w-full text-left text-red-600"
+												>
+													<Trash2 className="h-4 w-4" />
+													<span className="text-sm">{isDeleting ? 'Deleting...' : 'Delete'}</span>
+												</button>
+											</div>
+										</PopoverPopup>
+									</PopoverPositioner>
+								</PopoverPortal>
+							</Popover>
+						)}
+					</div>
 				</div>
 			</div>
 		</article>
+		
+		{/* Image Modal */}
+		{(() => {
+			const realImages = experience.experienceImages?.filter(
+				(img: any) => img.imageUrl && img.imageUrl.trim() !== '' && !img.imageUrl.includes('placeholder')
+			) || [];
+			
+			if (realImages.length === 0) return null;
+			
+			return (
+				<ImageModal
+					images={realImages.map((img: any) => img.imageUrl)}
+					currentIndex={currentImageIndex}
+					isOpen={isImageModalOpen}
+					onClose={() => setIsImageModalOpen(false)}
+					onIndexChange={setCurrentImageIndex}
+				/>
+			);
+		})()}
+		</>
 	);
 }

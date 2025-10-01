@@ -7,6 +7,7 @@ import { cn } from "@web/lib/utils";
 import { useAuth } from "@web/components/auth-provider";
 import type { Stats, UserStats, TrendingCategory } from "@web/types";
 import SearchInput from "./search-input";
+import { useSearch } from "@web/context/SearchContext";
 import { LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -18,6 +19,7 @@ interface RightSidebarProps {
 }
 
 export default function RightSidebar({ className, stats, userStats, trendingCategories }: RightSidebarProps) {
+	const { onSearch, onSearchChange } = useSearch();
 	const { signOut } = useAuth();
 	const [currentPage, setCurrentPage] = useState(0);
 	const categoriesPerPage = 5;
@@ -46,13 +48,13 @@ export default function RightSidebar({ className, stats, userStats, trendingCate
 	return (
 		<aside
 			className={cn(
-				"hidden sticky top-0 h-screen w-72 lg:w-80 flex-col bg-white px-3 lg:px-4 py-4 lg:flex",
+				"hidden sticky top-0 h-screen w-60 lg:w-64 xl:w-72 flex-col bg-white px-3 lg:px-4 py-4 lg:flex",
 				className,
 			)}
 		>
 			<div className="space-y-6">
 				{/* Search */}
-				<SearchInput />
+				<SearchInput onSearch={onSearch} onSearchChange={onSearchChange} />
 
 				{/* User Statistics */}
 				{userStats && (
