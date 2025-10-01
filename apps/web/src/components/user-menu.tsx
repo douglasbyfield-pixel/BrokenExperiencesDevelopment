@@ -46,17 +46,14 @@ export default function UserMenu() {
 				<DropdownMenuLabel>My Account</DropdownMenuLabel>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem>{user.email}</DropdownMenuItem>
-				<DropdownMenuItem asChild>
-					<Button
-						variant="destructive"
-						className="w-full"
-						onClick={async () => {
-							await signOut();
-							router.push("/");
-						}}
-					>
-						Sign Out
-					</Button>
+				<DropdownMenuItem
+					className="w-full"
+					onClick={async () => {
+						await signOut();
+						router.push("/");
+					}}
+				>
+					Sign Out
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
