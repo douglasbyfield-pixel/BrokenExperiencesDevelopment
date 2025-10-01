@@ -27,7 +27,8 @@ export function useExperiences(userId?: string) {
       const startTime = performance.now();
 
       try {
-        const response = await fetch('/api/experience', {
+        const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/experience`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -66,7 +67,8 @@ export function useMapMarkers() {
 
       try {
         // Try the lightweight markers endpoint first
-        const response = await fetch('/api/experience/markers', {
+        const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/experience/markers`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -76,7 +78,7 @@ export function useMapMarkers() {
         if (!response.ok) {
           console.log('⚠️ Markers endpoint failed, falling back to full experiences');
           // Fallback to full experiences endpoint
-          const fallbackResponse = await fetch('/api/experience', {
+          const fallbackResponse = await fetch(`${apiUrl}/experience`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -123,7 +125,8 @@ export function useSearchExperiences(searchTerm: string, userId?: string) {
       const startTime = performance.now();
 
       try {
-        const response = await fetch(`/api/experience/search?q=${encodeURIComponent(searchTerm)}`, {
+        const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/experience/search?q=${encodeURIComponent(searchTerm)}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -159,7 +162,8 @@ export function useVoteExperience() {
     mutationFn: async ({ experienceId, vote }: { experienceId: string; vote: 'up' | 'down' }) => {
       console.log('🗳️ Voting on experience...');
       
-      const response = await fetch(`/api/experience/${experienceId}/vote`, {
+      const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/experience/${experienceId}/vote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -191,19 +195,19 @@ export function useVoteExperience() {
 
             // Calculate new vote count
             let newUpvotes = currentUpvotes;
-            if (currentVote === 'up' && vote === 'up') {
+            if (currentVote === true && vote === 'up') {
               // Unvote up
               newUpvotes = Math.max(0, currentUpvotes - 1);
-            } else if (currentVote === 'down' && vote === 'up') {
+            } else if (currentVote === false && vote === 'up') {
               // Change from down to up
               newUpvotes = currentUpvotes + 2;
             } else if (currentVote === null && vote === 'up') {
               // New upvote
               newUpvotes = currentUpvotes + 1;
-            } else if (currentVote === 'up' && vote === 'down') {
+            } else if (currentVote === true && vote === 'down') {
               // Change from up to down
               newUpvotes = Math.max(0, currentUpvotes - 1);
-            } else if (currentVote === 'down' && vote === 'down') {
+            } else if (currentVote === false && vote === 'down') {
               // Unvote down
               newUpvotes = currentUpvotes;
             } else if (currentVote === null && vote === 'down') {
@@ -214,7 +218,7 @@ export function useVoteExperience() {
             return {
               ...exp,
               upvotes: newUpvotes,
-              userVote: currentVote === vote ? null : vote,
+              userVote: currentVote === (vote === 'up') ? null : (vote === 'up'),
             };
           }
           return exp;
@@ -247,7 +251,8 @@ export function useCreateExperience() {
     mutationFn: async (experienceData: any) => {
       console.log('📝 Creating experience...');
       
-      const response = await fetch('/api/experience', {
+      const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/experience`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
