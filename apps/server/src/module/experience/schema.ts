@@ -55,7 +55,7 @@ export const experienceCreateSchema = t.Object({
       default: ExperiencePriorityEnum.medium,
     })
   ),
-  // experience_images: t.Files(),
+  imageUrls: t.Optional(t.Array(t.String())),
 });
 
 export const experienceUpdateSchema = t.Partial(experienceCreateSchema);

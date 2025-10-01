@@ -1,8 +1,8 @@
 import { db } from "@server/db";
 import { experience, experienceImage, vote } from "@server/db/schema";
 import { decrement, increment } from "@server/db/utils";
-import { user } from "@server/db/schema";
-import { eq, ilike, or } from "drizzle-orm";
+import { user, category } from "@server/db/schema";
+import { eq, ilike, or, desc } from "drizzle-orm";
 import type {
 	ExperienceCreate,
 	ExperienceQuery,
@@ -11,10 +11,64 @@ import type {
 } from "./schema";
 
 export const getExperiences = async (options: { query: ExperienceQuery; userId?: string }) => {
-	const retrievedExperiences = await db.query.experience.findMany({
-		with: { experienceImages: true, reportedBy: true, category: true },
-		orderBy: (experience, { desc }) => [desc(experience.createdAt)],
+	// Use simpler query without complex JSON aggregation
+	const experiences = await db.select({
+		id: experience.id,
+		reportedBy: experience.reportedBy,
+		categoryId: experience.categoryId,
+		title: experience.title,
+		description: experience.description,
+		latitude: experience.latitude,
+		longitude: experience.longitude,
+		address: experience.address,
+		status: experience.status,
+		priority: experience.priority,
+		createdAt: experience.createdAt,
+		resolvedAt: experience.resolvedAt,
+		updatedAt: experience.updatedAt,
+		upvotes: experience.upvotes,
+		downvotes: experience.downvotes,
+	}).from(experience).orderBy(desc(experience.createdAt));
+
+	console.log('📤 Retrieved experiences count:', experiences.length);
+	if (experiences.length > 0) {
+		console.log('📤 First experience:', experiences[0]);
+	}
+
+	// Get images separately
+	const experienceIds = experiences.map(exp => exp.id);
+	const images = await db.select().from(experienceImage).where(drizzleIn(experienceImage.experienceId, experienceIds));
+
+	// Get users separately
+	const userIds = [...new Set(experiences.map(exp => exp.reportedBy))];
+	const users = await db.select().from(user).where(drizzleIn(user.id, userIds));
+
+	// Get categories separately
+	const categoryIds = [...new Set(experiences.map(exp => exp.categoryId))];
+	const categories = await db.select().from(category).where(drizzleIn(category.id, categoryIds));
+
+	// Group by experience ID
+	const imagesByExperience = new Map();
+	images.forEach(img => {
+		if (!imagesByExperience.has(img.experienceId)) {
+			imagesByExperience.set(img.experienceId, []);
+		}
+		imagesByExperience.get(img.experienceId).push(img);
 	});
+
+	const usersById = new Map(users.map(u => [u.id, u]));
+	const categoriesById = new Map(categories.map(c => [c.id, c]));
+
+	// Combine everything
+	const result = experiences.map(exp => ({
+		...exp,
+		experienceImages: imagesByExperience.get(exp.id) || [],
+		reportedBy: usersById.get(exp.reportedBy) || null,
+		category: categoriesById.get(exp.categoryId) || null,
+		userVote: null,
+	}));
+
+	console.log('📤 Final result preview:', result.slice(0, 2));
 
 	// If userId is provided, fetch their votes and add to experiences
 	if (options.userId) {
@@ -26,16 +80,13 @@ export const getExperiences = async (options: { query: ExperienceQuery; userId?:
 			userVotes.map(v => [v.experienceId, v.vote])
 		);
 
-		return retrievedExperiences.map(exp => ({
+		return result.map(exp => ({
 			...exp,
 			userVote: voteMap.get(exp.id) ?? null,
 		}));
 	}
 
-	return retrievedExperiences.map(exp => ({
-		...exp,
-		userVote: null,
-	}));
+	return result;
 };
 
 export const searchExperiences = async (searchTerm: string, userId?: string) => {
@@ -137,17 +188,38 @@ export const createExperience = async (options: {
 				})
 				.returning();
 
-			const [newExperienceImage] = await tx
-				.insert(experienceImage)
-				.values({
-					experienceId: newExperience.id,
-					imageUrl: "https://via.placeholder.com/150",
-				})
-				.returning();
+			// Save multiple images if provided
+			let savedImages = [];
+			console.log('📸 Processing images for experience:', newExperience.id);
+			console.log('📸 Image URLs received:', data.imageUrls);
+			
+			if (data.imageUrls && data.imageUrls.length > 0) {
+				for (const imageUrl of data.imageUrls) {
+					console.log('💾 Saving image URL:', imageUrl);
+					const [savedImage] = await tx
+						.insert(experienceImage)
+						.values({
+							experienceId: newExperience.id,
+							imageUrl: imageUrl,
+						})
+						.returning();
+					savedImages.push(savedImage);
+					console.log('✅ Image saved to DB:', savedImage.id);
+				}
+			} else {
+				console.log('⚠️ No image URLs provided');
+			}
+			// Note: No placeholder images - only save real uploaded images
+
+			console.log('📤 Returning experience with images:', {
+				experienceId: newExperience.id,
+				imageCount: savedImages.length,
+				images: savedImages.map(img => ({ id: img.id, url: img.imageUrl }))
+			});
 
 			return {
 				experience: newExperience,
-				experienceImage: newExperienceImage,
+				experienceImages: savedImages,
 			};
 		});
 

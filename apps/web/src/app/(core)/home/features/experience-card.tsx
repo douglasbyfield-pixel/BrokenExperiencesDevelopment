@@ -411,12 +411,24 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 					{/* Images */}
 					{(() => {
+						// Log ALL image data first
+						console.log('🖼️ Experience images RAW:', experience.experienceImages);
+						if (experience.experienceImages && experience.experienceImages.length > 0) {
+							experience.experienceImages.forEach((img, idx) => {
+								console.log(`Image ${idx}:`, {
+									url: img.imageUrl,
+									hasUrl: !!img.imageUrl,
+									isPlaceholder: img.imageUrl?.includes('placeholder'),
+									fullObject: img
+								});
+							});
+						}
+						
 						// Filter out placeholder images - only show real uploaded images
 						const realImages = experience.experienceImages?.filter(
-							img => img.imageUrl && !img.imageUrl.includes('placeholder')
+							img => img.imageUrl && img.imageUrl.trim() !== '' && !img.imageUrl.includes('placeholder')
 						) || [];
 						
-						console.log('🖼️ Experience images:', experience.experienceImages);
 						console.log('🖼️ Real images (filtered):', realImages);
 						
 						if (realImages.length === 0) return null;

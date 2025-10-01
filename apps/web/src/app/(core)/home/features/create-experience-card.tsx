@@ -405,9 +405,9 @@ export default function CreateExperienceCard({
 					<div className="flex items-center space-x-2">
 						{/* Photo upload button - Always visible */}
 						<label className="cursor-pointer">
-							<div className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
+							{/* <div className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
 								<Camera className="h-4 w-4" />
-							</div>
+							</div> */}
 							<input
 								type="file"
 								accept="image/*"
