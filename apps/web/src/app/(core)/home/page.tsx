@@ -40,6 +40,8 @@ export default function HomePage() {
 				]);
 
 				const experiencesData = await experiencesResponse.json();
+				console.log('📥 Fetched experiences from API:', experiencesData);
+				console.log('📥 First experience images:', experiencesData[0]?.experienceImages);
 				setExperiences(experiencesData ?? []);
 				setCategoryOptions(Array.isArray(categoryResult?.data) ? categoryResult.data : []);
 			} catch (err) {

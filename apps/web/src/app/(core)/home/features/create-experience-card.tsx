@@ -154,13 +154,19 @@ export default function CreateExperienceCard({
 
 	const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = event.target.files;
-		if (files) {
+		if (files && files.length > 0) {
+			console.log('📸 Uploading files:', files.length);
 			setIsExpanded(true); // Expand form when photo is added
+			
 			Array.from(files).forEach(file => {
 				const id = Date.now().toString() + Math.random().toString();
 				const preview = URL.createObjectURL(file);
+				console.log('Created preview:', preview);
 				setPhotos(prev => [...prev, { id, file, preview }]);
 			});
+			
+			// Reset input so same file can be selected again
+			event.target.value = '';
 		}
 	};
 
@@ -185,6 +191,18 @@ export default function CreateExperienceCard({
 		});
 	};
 
+	const handleCancel = () => {
+		// Reset form
+		form.reset();
+		// Clear photos and revoke object URLs
+		photos.forEach(photo => URL.revokeObjectURL(photo.preview));
+		setPhotos([]);
+		// Clear location
+		setLocation(null);
+		// Collapse form
+		setIsExpanded(false);
+	};
+
 	const form = useForm({
 		defaultValues: {
 			description: "",
@@ -192,25 +210,43 @@ export default function CreateExperienceCard({
 			priority: "medium",
 			status: "pending",
 		},
-		onSubmit: ({ value }) => {
+		onSubmit: async ({ value }) => {
 			// Require location data - prevent submission without coordinates
 			if (!location || !location.latitude || !location.longitude) {
 				toast.error('Please enable location access and get your current location before posting.');
 				return;
 			}
+
+			// Upload images if any
+			let imageUrls: string[] = [];
+			if (photos.length > 0) {
+				try {
+					console.log('📸 Starting image upload for', photos.length, 'files');
+					toast.info('Uploading images...');
+					const { uploadMultipleImages } = await import('@web/lib/supabase/storage');
+					imageUrls = await uploadMultipleImages(photos.map(p => p.file));
+					console.log('✅ Images uploaded successfully:', imageUrls);
+					toast.success(`${imageUrls.length} image(s) uploaded!`);
+				} catch (error) {
+					console.error('❌ Image upload failed:', error);
+					toast.error('Failed to upload images. Posting without images...');
+				}
+			}
 		  
-		const submission = {
-		  categoryId: value.categoryId,
-		  title: value.description.substring(0, 50),
-		  description: value.description,
-		  priority: value.priority || "medium",
-		  status: value.status || "pending",
-		  latitude: location.latitude,
-		  longitude: location.longitude,
-		  address: location.address,
-		};
+			const submission = {
+				categoryId: value.categoryId,
+				title: value.description.substring(0, 50),
+				description: value.description,
+				priority: value.priority || "medium",
+				status: value.status || "pending",
+				latitude: location.latitude,
+				longitude: location.longitude,
+				address: location.address,
+				imageUrls: imageUrls,
+			};
+			console.log('📤 Submitting experience with data:', submission);
 			execute(submission);
-		  },
+		},
 		validators: {
 			onSubmit: z.object({
 				description: z.string().min(5, "Please provide at least 5 characters"),
@@ -267,17 +303,17 @@ export default function CreateExperienceCard({
 	});
 
 	return (
-		<div className="border-b border-gray-200 p-3 lg:p-4 bg-white">
+		<div className="border-b border-gray-200 p-2 bg-white">
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
 					e.stopPropagation();
 					form.handleSubmit();
 				}}
-				className="space-y-3 lg:space-y-4"
+				className="space-y-2"
 			>
-				<div className="flex space-x-3">
-					<div className="h-10 w-10 lg:h-12 lg:w-12 rounded-full bg-gray-200 flex-shrink-0" />
+				<div className="flex space-x-2">
+					<div className="h-8 w-8 rounded-full bg-gray-200 flex-shrink-0" />
 					<div className="flex-1">
 						<form.Field name="description">
 							{(field) => (
@@ -285,34 +321,32 @@ export default function CreateExperienceCard({
 									<textarea
 										id={field.name}
 										name={field.name}
-										placeholder={isExpanded ? "Describe your experience in detail..." : "What's your broken experience?"}
+										placeholder={isExpanded ? "Describe your experience..." : "What's broken?"}
 										value={field.state.value}
+										onFocus={() => {
+											// Expand when user clicks/focuses on the input
+											if (!isExpanded) {
+												setIsExpanded(true);
+											}
+										}}
 										onBlur={field.handleBlur}
 										onChange={(e) => {
 											field.handleChange(e.target.value);
-											// Expand when user types
-											if (!isExpanded && e.target.value.length > 0) {
-												setIsExpanded(true);
-											}
-											// Minimize when user clears the text (and no photos)
-											if (isExpanded && e.target.value.length === 0 && photos.length === 0) {
-												setIsExpanded(false);
-											}
 										}}
-										className="w-full resize-none bg-transparent text-lg lg:text-xl text-black placeholder:text-gray-400 focus:outline-none min-h-[50px] lg:min-h-[60px]"
-										rows={isExpanded ? 4 : 2}
+										className="w-full resize-none bg-transparent text-sm text-black placeholder:text-gray-400 focus:outline-none min-h-[32px]"
+										rows={isExpanded ? 3 : 1}
 										maxLength={500}
 									/>
 									{field.state.meta.errors.length > 0 && (
-										<p className="mt-1 text-sm text-red-500">
+										<p className="mt-0.5 text-xs text-red-500">
 											{typeof field.state.meta.errors[0] === 'string' 
 												? field.state.meta.errors[0] 
 												: field.state.meta.errors[0]?.message || "Error"}
 										</p>
 									)}
 									{isExpanded && (
-										<p className="mt-1 text-xs text-gray-500">
-											{field.state.value.length}/500 characters
+										<p className="mt-0.5 text-xs text-gray-400">
+											{field.state.value.length}/500
 										</p>
 									)}
 								</>
@@ -325,24 +359,29 @@ export default function CreateExperienceCard({
 				{isExpanded && (
 					<>
 						{/* Photo upload section */}
-						<div className="ml-10 lg:ml-14 space-y-3">
+						<div className="ml-10 space-y-2">
 							{photos.length > 0 && (
-								<div className="flex gap-2 flex-wrap">
+								<div className="flex gap-2.5 flex-wrap">
 									{photos.map((photo) => (
-										<div key={photo.id} className="relative">
-											<div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+										<div key={photo.id} className="relative group">
+											<div className="w-24 h-24 rounded-xl overflow-hidden border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-gray-50 shadow-sm hover:shadow-md transition-shadow">
 												<img 
 													src={photo.preview} 
 													alt="Upload preview" 
 													className="w-full h-full object-cover"
+													loading="eager"
+													onLoad={() => console.log('✅ Image loaded:', photo.preview)}
+													onError={(e) => {
+														console.error('❌ Image preview error:', photo.preview);
+													}}
 												/>
 											</div>
 											<button
 												type="button"
 												onClick={() => removePhoto(photo.id)}
-												className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+												className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-lg transition-all hover:scale-110"
 											>
-												<X className="w-3 h-3" />
+												<X className="w-4 h-4" />
 											</button>
 										</div>
 									))}
@@ -351,10 +390,10 @@ export default function CreateExperienceCard({
 							
 							{/* Location display when captured */}
 							{location && (
-								<div className="text-sm text-gray-600 p-2 bg-gray-50 rounded-lg">
+								<div className="text-xs text-gray-600 p-1.5 bg-gray-50 rounded-md">
 									<p className="flex items-center gap-1">
-										<MapPin className="w-3 h-3" />
-										<span className="font-medium">{location.address}</span>
+										<MapPin className="w-2.5 h-2.5" />
+										<span className="font-medium truncate">{location.address}</span>
 									</p>
 								</div>
 							)}
@@ -362,116 +401,12 @@ export default function CreateExperienceCard({
 					</>
 				)}
 				
-				{/* Priority and Status Selection - Show when expanded */}
-				{isExpanded && (
-					<div className="ml-10 lg:ml-14 space-y-4 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-						{/* Category chips */}
-						<div>
-							<p className="text-xs text-gray-500 font-medium mb-2">Category</p>
-							<div className="flex flex-wrap gap-2">
-								{Array.isArray(categoryOptions) && categoryOptions.slice(0, 8).map((category: any) => (
-									<form.Subscribe key={category.id} selector={(state) => [state.values.categoryId]}>
-										{([categoryId]) => (
-											<button
-												type="button"
-												onClick={() => {
-													form.setFieldValue('categoryId', category.id);
-												}}
-												className={`px-2.5 py-1 text-xs rounded-full transition-all font-medium ${
-													categoryId === category.id
-														? 'bg-black text-white'
-														: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-												}`}
-											>
-												#{category.name}
-											</button>
-										)}
-									</form.Subscribe>
-								))}
-							</div>
-						</div>
-						
-						{/* Priority Selection */}
-						<div>
-							<p className="text-xs text-gray-500 font-medium mb-2">Priority Level</p>
-							<form.Field name="priority">
-								{(field) => (
-									<div className="flex gap-2">
-										{['low', 'medium', 'high'].map((priority) => (
-											<button
-												key={priority}
-												type="button"
-												onClick={() => field.handleChange(priority)}
-												className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
-													field.state.value === priority
-														? priority === 'high'
-															? 'bg-red-500 text-white'
-															: priority === 'medium'
-															? 'bg-amber-500 text-white'
-															: 'bg-emerald-500 text-white'
-														: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-												}`}
-											>
-												{priority.charAt(0).toUpperCase() + priority.slice(1)}
-											</button>
-										))}
-									</div>
-								)}
-							</form.Field>
-						</div>
-						
-						{/* Status Selection */}
-						<div>
-							<p className="text-xs text-gray-500 font-medium mb-2">Current Status</p>
-							<form.Field name="status">
-								{(field) => (
-									<div className="flex gap-2">
-										<button
-											type="button"
-											onClick={() => field.handleChange('pending')}
-											className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
-												field.state.value === 'pending'
-													? 'bg-red-500 text-white'
-													: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-											}`}
-										>
-											Reported
-										</button>
-										<button
-											type="button"
-											onClick={() => field.handleChange('in-progress')}
-											className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
-												field.state.value === 'in-progress'
-													? 'bg-amber-500 text-white'
-													: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-											}`}
-										>
-											In Progress
-										</button>
-										<button
-											type="button"
-											onClick={() => field.handleChange('resolved')}
-											className={`flex-1 px-3 py-2 text-xs rounded-lg transition-all font-medium ${
-												field.state.value === 'resolved'
-													? 'bg-emerald-500 text-white'
-													: 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-											}`}
-										>
-											Resolved
-										</button>
-									</div>
-								)}
-							</form.Field>
-						</div>
-					</div>
-				)}
-				
-				<div className="ml-10 lg:ml-14 flex items-center justify-between">
-					<div className="flex items-center space-x-3 lg:space-x-4">
+				<div className="ml-10 flex items-center justify-between">
+					<div className="flex items-center space-x-2">
 						{/* Photo upload button - Always visible */}
 						<label className="cursor-pointer">
-							<div className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
-								<Camera className="h-5 w-5" />
+							<div className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
+								<Camera className="h-4 w-4" />
 							</div>
 							<input
 								type="file"
@@ -491,20 +426,20 @@ export default function CreateExperienceCard({
 											type="button" 
 											onClick={handleGetLocation}
 											disabled={isGettingLocation || locationPermission === 'denied'}
-											className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors disabled:opacity-50 ${
+											className={`flex items-center justify-center w-7 h-7 rounded-full transition-colors disabled:opacity-50 ${
 												locationPermission === 'denied'
-													? 'bg-red-50 text-red-600 border-2 border-red-200 cursor-not-allowed'
-													: 'hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-2 border-blue-200'
+													? 'bg-red-50 text-red-600 border border-red-200 cursor-not-allowed'
+													: 'hover:bg-blue-50 text-blue-600 hover:text-blue-700 border border-blue-200'
 											}`}
 										>
-											<MapPin className="h-5 w-5" />
+											<MapPin className="h-4 w-4" />
 										</button>
 									}
 								/>
 								<TooltipPanel>
 									{locationPermission === 'denied'
-										? 'Enable location permissions in your browser settings to start posting'
-										: 'Getting location...'
+										? 'Enable location to post'
+										: 'Get location...'
 									}
 								</TooltipPanel>
 							</Tooltip>
@@ -516,7 +451,7 @@ export default function CreateExperienceCard({
 										value={field.state.value}
 										onValueChange={field.handleChange}
 									>
-										<SelectTrigger className={`${isExpanded ? 'w-[160px] lg:w-[200px]' : 'w-[140px] lg:w-[180px]'} border-gray-200 bg-white text-gray-700`}>
+										<SelectTrigger className="w-[120px] h-7 text-xs border-gray-200 bg-white text-gray-700">
 											<SelectValue placeholder="Category" />
 										</SelectTrigger>
 										<SelectContent>
@@ -528,7 +463,7 @@ export default function CreateExperienceCard({
 										</SelectContent>
 									</Select>
 									{field.state.meta.errors.length > 0 && (
-										<p className="text-sm text-red-500">
+										<p className="text-xs text-red-500">
 											{typeof field.state.meta.errors[0] === 'string' 
 												? field.state.meta.errors[0] 
 												: field.state.meta.errors[0]?.message || "Error"}
@@ -539,17 +474,28 @@ export default function CreateExperienceCard({
 						</form.Field>
 					</div>
 					
-					<form.Subscribe>
-						{(state) => (
+					<div className="flex items-center gap-1.5">
+						{isExpanded && (
 							<Button
-								type="submit"
-								className={`rounded-full bg-black font-medium text-white hover:bg-gray-800 disabled:opacity-50 ${isExpanded ? 'px-6 py-2.5 text-base' : 'px-4 lg:px-6 py-2 text-sm lg:text-base'}`}
-								disabled={!state.canSubmit || state.isSubmitting || isExecuting || !location || !location.latitude || !location.longitude}
+								type="button"
+								onClick={handleCancel}
+								className="rounded-full bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 px-3 py-1 text-xs h-7"
 							>
-								{state.isSubmitting || isExecuting ? "Posting..." : (!location || !location.latitude || !location.longitude) ? "Location Required" : "Post"}
+								Cancel
 							</Button>
 						)}
-					</form.Subscribe>
+						<form.Subscribe>
+							{(state) => (
+								<Button
+									type="submit"
+									className="rounded-full bg-black font-medium text-white hover:bg-gray-800 disabled:opacity-50 px-4 py-1 text-xs h-7"
+									disabled={!state.canSubmit || state.isSubmitting || isExecuting || !location || !location.latitude || !location.longitude}
+								>
+									{state.isSubmitting || isExecuting ? "Posting..." : (!location || !location.latitude || !location.longitude) ? "Location" : "Post"}
+								</Button>
+							)}
+						</form.Subscribe>
+					</div>
 				</div>
 			</form>
 		</div>

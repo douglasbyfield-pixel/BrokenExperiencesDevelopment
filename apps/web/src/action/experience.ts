@@ -12,6 +12,7 @@ export const createExperienceAction = actionClient
       latitude: z.string(),
       longitude: z.string(),
       address: z.string(),
+      imageUrls: z.array(z.string()).optional(),
     }),
   )
   .action(async ({ parsedInput }) => {
@@ -59,6 +60,7 @@ export const createExperienceAction = actionClient
       latitude: parsedInput.latitude,
       longitude: parsedInput.longitude,
       address: parsedInput.address,
+      imageUrls: parsedInput.imageUrls || [],
     };
 
     console.log("Creating experience with payload:", payload);
