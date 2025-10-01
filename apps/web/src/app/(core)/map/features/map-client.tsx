@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
@@ -16,6 +17,7 @@ import { voteOnExperienceAction } from "@web/action/experience";
 import { useAction } from "next-safe-action/hooks";
 import {
 	AlertCircle,
+	ArrowLeft,
 	Building,
 	Car,
 	CheckCircle,
@@ -155,6 +157,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const [currentRoute, setCurrentRoute] = useState<any>(null);
 	const [isNavigating, setIsNavigating] = useState(false);
 	const [navPanelMinimized, setNavPanelMinimized] = useState(false);
+	const router = useRouter();
 
 	const { execute: voteOnExperience } = useAction(voteOnExperienceAction, {
 		onSuccess: () => {
@@ -1011,6 +1014,14 @@ export default function MapClient({ experiences }: MapClientProps) {
 					<Button
 						size="icon"
 						variant="default"
+						className="backdrop-blur-sm shadow-lg"
+						onClick={() => router.back()}
+					>
+						<ArrowLeft className="h-4 w-4 text-white" />
+					</Button>
+					<Button
+						size="icon"
+						variant="default"
 						className="shadow-lg"
 						onClick={() => setShowSearchPanel(true)}
 						data-search-button
@@ -1282,7 +1293,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 									))}
 								</div>
 							</div>
-							<div>
+							{/* <div>
 								<h4 className="mb-2 font-medium text-sm">Priority</h4>
 								<div className="flex flex-wrap gap-2">
 									{Object.entries(priorityConfig).map(([priority, config]) => (
@@ -1301,7 +1312,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 										</Button>
 									))}
 								</div>
-							</div>
+							</div> */}
 						</div>
 					)}
 
