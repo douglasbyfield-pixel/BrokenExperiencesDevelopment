@@ -3,6 +3,7 @@
 import { voteOnExperienceAction, deleteExperienceAction } from "@web/action/experience";
 import type { Experience } from "@web/types";
 import { useAction } from "next-safe-action/hooks";
+import { useVoteExperience } from "@web/hooks/use-experiences";
 import {
 	Heart,
 	Link,
@@ -98,18 +99,8 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		};
 	}, [showDropdown]);
 
-	const { execute: voteOnExperience, isExecuting } = useAction(voteOnExperienceAction, {
-		onSuccess: (result) => {
-			console.log("Vote successful:", result);
-			// No need to reload - optimistic update already done
-		},
-		onError: (error) => {
-			console.error("Vote failed:", error);
-			// Revert optimistic update on error
-			setIsLiked(!isLiked);
-			setLikeCount(isLiked ? likeCount + 1 : likeCount - 1);
-		}
-	});
+	// Use TanStack Query for optimistic voting
+	const { mutate: voteOnExperience, isPending: isExecuting } = useVoteExperience();
 
 	const { execute: deleteExperience, isExecuting: isDeleting } = useAction(deleteExperienceAction, {
 		onSuccess: () => {
@@ -124,15 +115,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	});
 
 	const handleVote = () => {
-		// Optimistic update
-		const newLikedState = !isLiked;
-		setIsLiked(newLikedState);
-		setLikeCount(newLikedState ? likeCount + 1 : likeCount - 1);
-
-		// Send vote to backend
+		// TanStack Query handles optimistic updates automatically
 		voteOnExperience({
 			experienceId: experience.id,
-			vote: true // We only support upvotes/likes
+			vote: isLiked ? 'down' : 'up' // Toggle between up and down
 		});
 	};
 
