@@ -22,6 +22,7 @@ import { Button } from "@web/components/ui/button";
 import { ImageModal } from "@web/components/ui/image-modal";
 import { Avatar, AvatarImage, AvatarFallback } from "@web/components/ui/avatar";
 import { useShare } from "@web/hooks/use-share";
+import { useRouter } from "next/navigation";
 import {
 	Popover,
 	PopoverTrigger,
@@ -77,6 +78,7 @@ interface ExperienceCardProps {
 
 export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	const { user } = useAuth();
+	const router = useRouter();
 	const [isLiked, setIsLiked] = useState(experience.userVote === true);
 	const [likeCount, setLikeCount] = useState(experience.upvotes || 0);
 	const [showDropdown, setShowDropdown] = useState(false);
@@ -138,7 +140,8 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		});
 	};
 
-	const handleImageClick = (index: number) => {
+	const handleImageClick = (e: React.MouseEvent, index: number) => {
+		e.stopPropagation();
 		setCurrentImageIndex(index);
 		setIsImageModalOpen(true);
 	};
@@ -244,6 +247,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		}
 	};
 
+	const handleCardClick = () => {
+		router.push(`/shared/experience/${experience.id}`);
+	};
+
 	const formatRelativeTime = (dateString: string | Date) => {
 		const now = new Date();
 		const postDate = typeof dateString === 'string' ? new Date(dateString) : dateString;
@@ -295,7 +302,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	return (
 		<>
 		<article className="bg-white border-b border-gray-200 px-4 py-3 transition-colors hover:bg-gray-50/50">
-			<div className="flex gap-4">
+			<div 
+				className="flex gap-4 cursor-pointer"
+				onClick={handleCardClick}
+			>
 				{/* Avatar */}
 				<Avatar className="h-10 w-10">
 					<AvatarImage 
@@ -502,7 +512,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 										alt="Experience"
 										className="w-full h-auto max-h-[32rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
 										loading="lazy"
-										onClick={() => handleImageClick(0)}
+										onClick={(e) => handleImageClick(e, 0)}
 									/>
 								) : realImages.length === 2 ? (
 									/* Two images - side by side */
@@ -514,7 +524,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 												alt={`Experience ${idx + 1}`}
 												className="w-full h-56 object-cover cursor-pointer hover:opacity-95 transition-opacity"
 												loading="lazy"
-												onClick={() => handleImageClick(idx)}
+												onClick={(e) => handleImageClick(e, idx)}
 											/>
 										))}
 									</div>
@@ -526,7 +536,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 											alt="Experience 1"
 											className="w-full h-full min-h-[28rem] object-cover row-span-2 cursor-pointer hover:opacity-95 transition-opacity"
 											loading="lazy"
-											onClick={() => handleImageClick(0)}
+											onClick={(e) => handleImageClick(e, 0)}
 										/>
 										<div className="flex flex-col gap-1">
 											<img 
@@ -534,14 +544,14 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 												alt="Experience 2"
 												className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
 												loading="lazy"
-												onClick={() => handleImageClick(1)}
+												onClick={(e) => handleImageClick(e, 1)}
 											/>
 											<img 
 												src={realImages[2].imageUrl}
 												alt="Experience 3"
 												className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
 												loading="lazy"
-												onClick={() => handleImageClick(2)}
+												onClick={(e) => handleImageClick(e, 2)}
 											/>
 										</div>
 									</div>
@@ -555,12 +565,12 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 													alt={`Experience ${idx + 1}`}
 													className="w-full h-56 object-cover cursor-pointer group-hover:opacity-95 transition-opacity"
 													loading="lazy"
-													onClick={() => handleImageClick(idx)}
+													onClick={(e) => handleImageClick(e, idx)}
 												/>
 												{idx === 3 && realImages.length > 4 && (
 													<div 
 														className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center cursor-pointer group-hover:bg-opacity-75 transition-all"
-														onClick={() => handleImageClick(3)}
+														onClick={(e) => handleImageClick(e, 3)}
 													>
 														<span className="text-white text-3xl font-bold drop-shadow-lg">
 															+{realImages.length - 4}
@@ -584,7 +594,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								<span className="text-sm font-medium">{experience.address}</span>
 							</div>
 						<Popover>
-							<PopoverTrigger className="group flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all">
+							<PopoverTrigger 
+								className="group flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all"
+								onClick={(e) => e.stopPropagation()}
+							>
 								<Share className="h-4 w-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
 							</PopoverTrigger>
 							<PopoverPortal>
@@ -657,7 +670,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						<div className="flex items-center gap-6">
 							{/* Like Button */}
 							<button
-								onClick={handleVote}
+								onClick={(e) => {
+									e.stopPropagation();
+									handleVote();
+								}}
 								disabled={isExecuting}
 								className={`flex items-center gap-2 text-sm transition-all duration-200 ${
 									isLiked 
@@ -670,7 +686,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 							</button>
 
 							{/* Comment Button (placeholder for future) */}
-							<button className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-all duration-200">
+							<button 
+								onClick={(e) => e.stopPropagation()}
+								className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-all duration-200"
+							>
 								<MessageCircle className="h-5 w-5" />
 								<span>Comment</span>
 							</button>
@@ -679,7 +698,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						{/* More Options */}
 						{isOwnPost && (
 							<Popover>
-								<PopoverTrigger className="p-2 rounded-full text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-all duration-200">
+								<PopoverTrigger 
+									className="p-2 rounded-full text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-all duration-200"
+									onClick={(e) => e.stopPropagation()}
+								>
 									<MoreHorizontal className="h-4 w-4" />
 								</PopoverTrigger>
 								<PopoverPortal>

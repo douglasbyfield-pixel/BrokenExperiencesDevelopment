@@ -1,9 +1,10 @@
 "use client";
 
-import React, { use } from "react";
+import React, { use, useState } from "react";
 import { notFound } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@web/components/ui/avatar";
 import { Button } from "@web/components/ui/button";
+import { ImageModal } from "@web/components/ui/image-modal";
 import { MapPin } from "lucide-react";
 import Link from "next/link";
 import { useExperience } from "@web/hooks/use-experiences";
@@ -17,6 +18,16 @@ interface SharedExperiencePageProps {
 export default function SharedExperiencePage({ params }: SharedExperiencePageProps) {
   const { id } = use(params);
   const { data: experience, isLoading, error } = useExperience(id);
+  
+  // Image modal state
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const handleImageClick = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation();
+    setCurrentImageIndex(index);
+    setIsImageModalOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -111,36 +122,99 @@ export default function SharedExperiencePage({ params }: SharedExperiencePagePro
       </div>
       
       {/* Images */}
-      {experience.experienceImages && experience.experienceImages.length > 0 && (
-        <div className="px-4 pb-3">
-          {experience.experienceImages.length === 1 ? (
-            <div className="rounded-2xl overflow-hidden">
-              <img 
-                src={experience.experienceImages[0].imageUrl}
-                alt="Experience"
-                className="w-full h-auto max-h-[500px] object-cover"
-              />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 rounded-2xl overflow-hidden">
-              {experience.experienceImages.slice(0, 4).map((img: any, idx: number) => (
-                <div key={img.id} className="relative">
-                  <img 
-                    src={img.imageUrl}
-                    alt={`Experience ${idx + 1}`}
-                    className="w-full h-48 object-cover"
-                  />
-                  {idx === 3 && experience.experienceImages.length > 4 && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                      <span className="text-white font-semibold">+{experience.experienceImages.length - 4} more</span>
-                    </div>
-                  )}
+      {(() => {
+        // Filter out placeholder images - only show real uploaded images
+        const realImages = experience.experienceImages?.filter(
+          (img: any) => img.imageUrl && img.imageUrl.trim() !== '' && !img.imageUrl.includes('placeholder')
+        ) || [];
+        
+        if (realImages.length === 0) return null;
+        
+        return (
+          <div className="px-4 pb-3">
+            <div className={`rounded-xl overflow-hidden ${
+              realImages.length === 1 ? 'max-w-full' : 'max-w-full'
+            }`}>
+              {realImages.length === 1 ? (
+                /* Single image - full width */
+                <img 
+                  src={realImages[0].imageUrl}
+                  alt="Experience"
+                  className="w-full h-auto max-h-[32rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                  loading="lazy"
+                  onClick={(e) => handleImageClick(e, 0)}
+                />
+              ) : realImages.length === 2 ? (
+                /* Two images - side by side */
+                <div className="grid grid-cols-2 gap-1 w-full">
+                  {realImages.map((img: any, idx: number) => (
+                    <img 
+                      key={idx}
+                      src={img.imageUrl}
+                      alt={`Experience ${idx + 1}`}
+                      className="w-full h-56 object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                      loading="lazy"
+                      onClick={(e) => handleImageClick(e, idx)}
+                    />
+                  ))}
                 </div>
-              ))}
+              ) : realImages.length === 3 ? (
+                /* Three images - one large, two small */
+                <div className="grid grid-cols-2 gap-1 w-full">
+                  <img 
+                    src={realImages[0].imageUrl}
+                    alt="Experience 1"
+                    className="w-full h-full min-h-[28rem] object-cover row-span-2 cursor-pointer hover:opacity-95 transition-opacity"
+                    loading="lazy"
+                    onClick={(e) => handleImageClick(e, 0)}
+                  />
+                  <div className="flex flex-col gap-1">
+                    <img 
+                      src={realImages[1].imageUrl}
+                      alt="Experience 2"
+                      className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                      loading="lazy"
+                      onClick={(e) => handleImageClick(e, 1)}
+                    />
+                    <img 
+                      src={realImages[2].imageUrl}
+                      alt="Experience 3"
+                      className="w-full h-[13.875rem] object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                      loading="lazy"
+                      onClick={(e) => handleImageClick(e, 2)}
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Four or more images - grid of 4 */
+                <div className="grid grid-cols-2 gap-1 w-full">
+                  {realImages.slice(0, 4).map((img: any, idx: number) => (
+                    <div key={idx} className="relative group">
+                      <img 
+                        src={img.imageUrl}
+                        alt={`Experience ${idx + 1}`}
+                        className="w-full h-56 object-cover cursor-pointer group-hover:opacity-95 transition-opacity"
+                        loading="lazy"
+                        onClick={(e) => handleImageClick(e, idx)}
+                      />
+                      {idx === 3 && realImages.length > 4 && (
+                        <div 
+                          className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center cursor-pointer group-hover:bg-opacity-75 transition-all"
+                          onClick={(e) => handleImageClick(e, 3)}
+                        >
+                          <span className="text-white text-3xl font-bold drop-shadow-lg">
+                            +{realImages.length - 4}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {/* Location */}
       {experience.address && (
@@ -165,6 +239,25 @@ export default function SharedExperiencePage({ params }: SharedExperiencePagePro
           </Link>
         </div>
       </div>
+      
+      {/* Image Modal */}
+      {(() => {
+        const realImages = experience.experienceImages?.filter(
+          (img: any) => img.imageUrl && img.imageUrl.trim() !== '' && !img.imageUrl.includes('placeholder')
+        ) || [];
+        
+        if (realImages.length === 0) return null;
+        
+        return (
+          <ImageModal
+            images={realImages.map((img: any) => img.imageUrl)}
+            currentIndex={currentImageIndex}
+            isOpen={isImageModalOpen}
+            onClose={() => setIsImageModalOpen(false)}
+            onIndexChange={setCurrentImageIndex}
+          />
+        );
+      })()}
     </div>
   );
 }
