@@ -139,11 +139,12 @@ export default function RightSidebar({
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, [prevScrollTop, initialOffset]);
+
   return (
     <aside
       ref={sidebarRef}
       className={cn(
-        "hidden w-60 lg:w-64 xl:w-72 flex-col bg-white px-3 lg:px-4 py-4 lg:flex",
+        "hidden w-72 lg:w-80 flex-col bg-white lg:flex",
         className
       )}
       style={{
@@ -152,166 +153,168 @@ export default function RightSidebar({
         height: "fit-content",
       }}
     >
-      <div className="space-y-4">
-        {/* Search */}
-        <SearchInput onSearch={onSearch} onSearchChange={onSearchChange} />
+      <div className="px-3 lg:px-4 py-4">
+        <div className="space-y-6">
+          {/* Search */}
+          <SearchInput onSearch={onSearch} onSearchChange={onSearchChange} />
 
-        {/* User Statistics */}
-        {userStats && (
-          <Card className="border-gray-200 bg-gray-50 p-6">
-            <h3 className="font-bold text-lg text-black mb-4">Your Impact</h3>
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-black">
-                  {userStats.impactScore}
-                </div>
-                <p className="text-sm text-gray-600">Impact Score</p>
-              </div>
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div>
-                  <div className="text-xl font-semibold text-black">
-                    {userStats.totalReports}
+          {/* User Statistics */}
+          {userStats && (
+            <Card className="border-gray-200 bg-gray-50 p-6">
+              <h3 className="font-bold text-lg text-black mb-4">Your Impact</h3>
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-black">
+                    {userStats.impactScore}
                   </div>
-                  <p className="text-xs text-gray-600">Reports</p>
+                  <p className="text-sm text-gray-600">Impact Score</p>
                 </div>
-                <div>
-                  <div className="text-xl font-semibold text-green-600">
-                    {userStats.resolvedReports}
-                  </div>
-                  <p className="text-xs text-gray-600">Resolved</p>
-                </div>
-                <div>
-                  <div className="text-xl font-semibold text-orange-600">
-                    {userStats.inProgressReports}
-                  </div>
-                  <p className="text-xs text-gray-600">In Progress</p>
-                </div>
-              </div>
-              <div className="pt-3 border-t border-gray-200">
-                <div className="text-sm text-gray-600 mb-1">
-                  Contribution Level
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-black rounded-full transition-all"
-                      style={{
-                        width: `${Math.min((userStats.impactScore / 500) * 100, 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-600">
-                    {userStats.impactScore < 100
-                      ? "Newcomer"
-                      : userStats.impactScore < 250
-                        ? "Contributor"
-                        : userStats.impactScore < 500
-                          ? "Advocate"
-                          : "Champion"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Platform Statistics - Only show if no user stats */}
-        {!userStats && stats && (
-          <Card className="border-gray-200 bg-gray-50 p-6 shadow-none">
-            <h3 className="font-bold text-lg text-black mb-4">
-              Community Stats
-            </h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-gray-600 text-sm">Total Reports</p>
-                  <p className="font-semibold text-2xl text-black">
-                    {stats.totalExperiences || 0}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-gray-600 text-sm">Resolved</p>
-                  <p className="font-semibold text-2xl text-green-600">
-                    {stats.resolvedExperiences || 0}
-                  </p>
-                </div>
-              </div>
-              <div className="pt-4 border-t border-gray-200">
-                <p className="text-gray-600 text-sm">Active Contributors</p>
-                <p className="font-semibold text-xl text-black mt-1">
-                  {stats.activeUsers || 0}
-                </p>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Trending Categories */}
-        {trendingCategories &&
-          Array.isArray(trendingCategories) &&
-          trendingCategories.length > 0 && (
-            <Card className="border-gray-200 bg-gray-50 p-6 shadow-none">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lg text-black">
-                  Trending Categories
-                </h3>
-                {totalPages > 1 && (
-                  <div className="flex gap-1">
-                    {Array.from({ length: totalPages }).map((_, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setCurrentPage(idx)}
-                        className={`h-1.5 rounded-full transition-all ${
-                          idx === currentPage
-                            ? "w-6 bg-black"
-                            : "w-1.5 bg-gray-300 hover:bg-gray-400"
-                        }`}
-                        aria-label={`View page ${idx + 1}`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="space-y-3">
-                {visibleCategories.map((category, index) => {
-                  const globalIndex = currentPage * categoriesPerPage + index;
-                  return (
-                    <div key={category.id} className="text-sm">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium text-black">
-                          #{category.name}
-                        </p>
-                        <span className="text-xs text-gray-500">
-                          #{globalIndex + 1}
-                        </span>
-                      </div>
-                      <p className="text-gray-600">
-                        {category.count}{" "}
-                        {category.count === 1 ? "report" : "reports"}
-                      </p>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <div className="text-xl font-semibold text-black">
+                      {userStats.totalReports}
                     </div>
-                  );
-                })}
+                    <p className="text-xs text-gray-600">Reports</p>
+                  </div>
+                  <div>
+                    <div className="text-xl font-semibold text-green-600">
+                      {userStats.resolvedReports}
+                    </div>
+                    <p className="text-xs text-gray-600">Resolved</p>
+                  </div>
+                  <div>
+                    <div className="text-xl font-semibold text-orange-600">
+                      {userStats.inProgressReports}
+                    </div>
+                    <p className="text-xs text-gray-600">In Progress</p>
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-gray-200">
+                  <div className="text-sm text-gray-600 mb-1">
+                    Contribution Level
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-black rounded-full transition-all"
+                        style={{
+                          width: `${Math.min((userStats.impactScore / 500) * 100, 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-600">
+                      {userStats.impactScore < 100
+                        ? "Newcomer"
+                        : userStats.impactScore < 250
+                          ? "Contributor"
+                          : userStats.impactScore < 500
+                            ? "Advocate"
+                            : "Champion"}
+                    </span>
+                  </div>
+                </div>
               </div>
             </Card>
           )}
 
-        {/* Footer */}
-        <div className="pt-4 text-xs text-gray-500 space-y-2 flex flex-col items-center">
-          <div className="flex flex-wrap gap-2">
-            <a href="#" className="hover:underline">
-              Terms
-            </a>
-            <span>·</span>
-            <a href="#" className="hover:underline">
-              Privacy
-            </a>
-            <span>·</span>
-            <a href="#" className="hover:underline">
-              Cookie Policy
-            </a>
+          {/* Platform Statistics - Only show if no user stats */}
+          {!userStats && stats && (
+            <Card className="border-gray-200 bg-gray-50 p-6 shadow-none">
+              <h3 className="font-bold text-lg text-black mb-4">
+                Community Stats
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-gray-600 text-sm">Total Reports</p>
+                    <p className="font-semibold text-2xl text-black">
+                      {stats.totalExperiences || 0}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-gray-600 text-sm">Resolved</p>
+                    <p className="font-semibold text-2xl text-green-600">
+                      {stats.resolvedExperiences || 0}
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="text-gray-600 text-sm">Active Contributors</p>
+                  <p className="font-semibold text-xl text-black mt-1">
+                    {stats.activeUsers || 0}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Trending Categories */}
+          {trendingCategories &&
+            Array.isArray(trendingCategories) &&
+            trendingCategories.length > 0 && (
+              <Card className="border-gray-200 bg-gray-50 p-6 shadow-none">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-lg text-black">
+                    Trending Categories
+                  </h3>
+                  {totalPages > 1 && (
+                    <div className="flex gap-1">
+                      {Array.from({ length: totalPages }).map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setCurrentPage(idx)}
+                          className={`h-1.5 rounded-full transition-all ${
+                            idx === currentPage
+                              ? "w-6 bg-black"
+                              : "w-1.5 bg-gray-300 hover:bg-gray-400"
+                          }`}
+                          aria-label={`View page ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {visibleCategories.map((category, index) => {
+                    const globalIndex = currentPage * categoriesPerPage + index;
+                    return (
+                      <div key={category.id} className="text-sm">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-black">
+                            #{category.name}
+                          </p>
+                          <span className="text-xs text-gray-500">
+                            #{globalIndex + 1}
+                          </span>
+                        </div>
+                        <p className="text-gray-600">
+                          {category.count}{" "}
+                          {category.count === 1 ? "report" : "reports"}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+
+          {/* Footer */}
+          <div className="pt-4 text-xs text-gray-500 space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <a href="#" className="hover:underline">
+                Terms
+              </a>
+              <span>·</span>
+              <a href="#" className="hover:underline">
+                Privacy
+              </a>
+              <span>·</span>
+              <a href="#" className="hover:underline">
+                Cookie Policy
+              </a>
+            </div>
+            <p>© 2025 Broken Experiences</p>
           </div>
-          <p>© 2025 Broken Experiences</p>
         </div>
       </div>
     </aside>

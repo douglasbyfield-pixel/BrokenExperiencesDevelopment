@@ -356,7 +356,7 @@ export default function CreateExperienceCard({
 	});
 
 	return (
-		<div className="border-b border-gray-200 p-2 pt-8 pb-4 bg-white">
+		<div className="border-b border-gray-200 p-4 bg-white">
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
@@ -365,7 +365,7 @@ export default function CreateExperienceCard({
 				}}
 				className="space-y-2"
 			>
-				<div className="flex space-x-2">
+				<div className="flex space-x-3">
 					<div className="h-8 w-8 rounded-full bg-gray-200 flex-shrink-0" />
 					<div className="flex-1">
 						<form.Field name="description">
@@ -386,7 +386,7 @@ export default function CreateExperienceCard({
 										onChange={(e) => {
 											field.handleChange(e.target.value);
 										}}
-										className="w-full resize-none bg-transparent text-2xl text-black placeholder:text-gray-400 focus:outline-none min-h-[32px] mb-4"
+										className="w-full resize-none bg-transparent text-sm sm:text-base text-black placeholder:text-gray-400 focus:outline-none min-h-[32px] break-words"
 										rows={isExpanded ? 3 : 1}
 										maxLength={500}
 									/>
@@ -457,7 +457,7 @@ export default function CreateExperienceCard({
 					</>
 				)}
 				
-				<div className="flex items-center justify-between">
+				<div className="ml-6 flex items-center justify-between">
 					<div className="flex items-center space-x-2">
 						{/* Photo upload button - Always visible */}
 						<label className="cursor-pointer">
@@ -518,7 +518,7 @@ export default function CreateExperienceCard({
 										value={field.state.value}
 										onValueChange={field.handleChange}
 									>
-										<SelectTrigger className="w-[120px] h-7 text-xs border-gray-200 bg-white text-gray-700">
+										<SelectTrigger className="w-[90px] h-7 text-xs border-gray-200 bg-white text-gray-700">
 											<SelectValue placeholder="Category" />
 										</SelectTrigger>
 										<SelectContent>

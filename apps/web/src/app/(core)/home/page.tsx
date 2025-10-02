@@ -136,7 +136,7 @@ export default function HomePage() {
 	const displayExperiences = filterExperiences(baseExperiences, searchTerm, selectedCategory);
 
 	return (
-		<div className="min-h-screen">
+		<div>
 			<FeedHeader onTabChange={handleTabChange} />
 			<div className="px-4 lg:px-6">
 				<CreateExperienceCard categoryOptions={categoryOptions} />

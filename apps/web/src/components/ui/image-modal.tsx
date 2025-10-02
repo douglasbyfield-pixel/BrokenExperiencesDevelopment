@@ -123,7 +123,7 @@ export function ImageModal({
       />
       
       {/* Modal Content */}
-      <div className="relative z-10 w-full h-full flex items-center justify-center p-4">
+      <div className="relative z-10 w-full h-full flex items-center justify-center p-8">
         {/* Close Button */}
         <Button
           variant="ghost"
@@ -157,12 +157,13 @@ export function ImageModal({
           </Button>
         )}
 
-        {/* Image */}
-        <div className="relative max-w-full max-h-full">
+        {/* Image Container */}
+        <div className="relative flex items-center justify-center w-full h-full">
           <img
             src={currentImage}
             alt={`Image ${currentIndex + 1}`}
-            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg shadow-2xl"
+            style={{ maxHeight: 'calc(100vh - 8rem)' }}
             onLoad={() => setIsLoading(false)}
             onError={() => setIsLoading(false)}
           />
