@@ -3,6 +3,7 @@ import { experience, experienceImage, vote } from "@server/db/schema";
 import { decrement, increment } from "@server/db/utils";
 import { user, category } from "@server/db/schema";
 import { eq, ilike, or, desc, inArray } from "drizzle-orm";
+import { sendNewIssueNotification } from "@server/lib/email";
 import type {
 	ExperienceCreate,
 	ExperienceQuery,
@@ -149,7 +150,7 @@ export const getNearbyExperiences = async (options: {
 
 export const createExperience = async (options: {
 	userId: string;
-	userData: { id: string; email: string; name: string; emailVerified: boolean };
+	userData: { id: string; email: string; name: string; image?: string; emailVerified: boolean };
 	data: ExperienceCreate;
 }) => {
 	console.log("📝 createExperience called with:", {
@@ -172,18 +173,22 @@ export const createExperience = async (options: {
 					id: options.userData.id,
 					name: options.userData.name,
 					email: options.userData.email,
+					image: options.userData.image,
 					emailVerified: options.userData.emailVerified,
 				}).onConflictDoNothing();
 			} else {
 				// Update user info to keep it in sync with Supabase auth
 				console.log("✅ User exists, updating with latest data:", {
 					oldName: existingUser.name,
-					newName: options.userData.name
+					newName: options.userData.name,
+					oldImage: existingUser.image,
+					newImage: options.userData.image
 				});
 				await tx.update(user)
 					.set({
 						name: options.userData.name,
 						email: options.userData.email,
+						image: options.userData.image,
 						emailVerified: options.userData.emailVerified,
 					})
 					.where(eq(user.id, options.userId));
@@ -238,6 +243,34 @@ export const createExperience = async (options: {
 				experienceImages: savedImages,
 			};
 		});
+
+		// Send email notification only if user has email notifications enabled
+		try {
+			const { SettingsService } = await import("@server/module/settings/service");
+			const userSettings = await SettingsService.getUserSettings(options.userId);
+			
+			// Only send email if user has email notifications enabled
+			if (userSettings.notifications.email) {
+				sendNewIssueNotification({
+					id: createdExperience.experience.id,
+					title: createdExperience.experience.title,
+					description: createdExperience.experience.description,
+					address: createdExperience.experience.address || undefined,
+					reportedBy: {
+						name: options.userData.name,
+						email: options.userData.email
+					}
+				}).catch(error => {
+					console.error('Failed to send email notification:', error);
+					// Don't fail the request if email fails
+				});
+			} else {
+				console.log('📧 Email notification skipped - user has disabled email notifications');
+			}
+		} catch (error) {
+			console.error('Failed to check user notification settings:', error);
+			// Don't fail the request if settings check fails
+		}
 
 		return createdExperience;
 	} catch (error) {
