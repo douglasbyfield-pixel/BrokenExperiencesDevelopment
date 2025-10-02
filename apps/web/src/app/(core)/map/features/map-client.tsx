@@ -13,9 +13,17 @@ import {
 	CardTitle,
 } from "@web/components/ui/card";
 import { Input } from "@web/components/ui/input";
+import {
+	Popover,
+	PopoverTrigger,
+	PopoverPortal,
+	PopoverPositioner,
+	PopoverPopup,
+} from "@web/components/animate-ui/primitives/base/popover";
 import type { Experience } from "@web/types";
 import { voteOnExperienceAction } from "@web/action/experience";
 import { useAction } from "next-safe-action/hooks";
+import { useShare } from "@web/hooks/use-share";
 import { getCategoryStyling, CATEGORY_STYLING } from "@web/lib/category-config";
 import {
 	AlertCircle,
@@ -28,20 +36,26 @@ import {
 	Clock,
 	Compass,
 	Construction,
+	Copy,
 	Droplets,
+	Facebook,
 	Filter,
 	Info,
+	Link,
 	Lightbulb,
 	MapPin,
+	MessageCircle,
 	Navigation,
 	Route,
 	Search,
+	Share,
 	Share2,
 	Shield,
 	ThumbsUp,
 	Timer,
 	Trash2,
 	TreePine,
+	Twitter,
 	X,
 	Zap,
 } from "lucide-react";
@@ -160,7 +174,16 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const [currentRoute, setCurrentRoute] = useState<any>(null);
 	const [isNavigating, setIsNavigating] = useState(false);
 	const [navPanelMinimized, setNavPanelMinimized] = useState(false);
+	const [clusters, setClusters] = useState<Array<{
+		id: string;
+		lat: number;
+		lng: number;
+		experiences: Experience[];
+		count: number;
+	}>>([]);
+	const [selectedCluster, setSelectedCluster] = useState<Experience[] | null>(null);
 	const router = useRouter();
+	const { copyToClipboard, shareToWhatsApp, shareToTwitter, shareToFacebook, shareViaWebShare } = useShare();
 
 	// Fetch categories from database
 	useEffect(() => {
@@ -320,6 +343,86 @@ export default function MapClient({ experiences }: MapClientProps) {
 			experienceId: experienceId,
 			vote: true
 		});
+	};
+
+	// Share handlers
+	const handleNativeShare = async () => {
+		if (!selectedExperience) return;
+		
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
+			const shareText = `Check out this issue: ${selectedExperience.title}`;
+			
+			const success = await shareViaWebShare(shareText, shareText, shareUrl);
+			if (!success) {
+				// Fallback to copy to clipboard
+				await handleCopyLink();
+			}
+		} catch (error) {
+			console.error('Failed to share natively:', error);
+			alert('Failed to share');
+		}
+	};
+
+	const handleCopyLink = async () => {
+		if (!selectedExperience) return;
+		
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
+			
+			const success = await copyToClipboard(shareUrl);
+			if (success) {
+				alert('Share link copied to clipboard!');
+			} else {
+				alert('Failed to copy to clipboard');
+			}
+		} catch (error) {
+			console.error('Failed to copy link:', error);
+			alert('Failed to copy link');
+		}
+	};
+
+	const handleWhatsAppShare = async () => {
+		if (!selectedExperience) return;
+		
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
+			const shareText = `Check out this issue: ${selectedExperience.title}`;
+			shareToWhatsApp(shareText, shareUrl);
+		} catch (error) {
+			console.error('Failed to share to WhatsApp:', error);
+			alert('Failed to share to WhatsApp');
+		}
+	};
+
+	const handleTwitterShare = async () => {
+		if (!selectedExperience) return;
+		
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
+			const shareText = `Check out this issue: ${selectedExperience.title}`;
+			shareToTwitter(shareText, shareUrl);
+		} catch (error) {
+			console.error('Failed to share to Twitter:', error);
+			alert('Failed to share to Twitter');
+		}
+	};
+
+	const handleFacebookShare = async () => {
+		if (!selectedExperience) return;
+		
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
+			shareToFacebook(shareUrl);
+		} catch (error) {
+			console.error('Failed to share to Facebook:', error);
+			alert('Failed to share to Facebook');
+		}
 	};
 
 	const getDirections = async (
@@ -796,107 +899,241 @@ export default function MapClient({ experiences }: MapClientProps) {
 		return R * c; // Distance in km
 	};
 
+	// Clustering function to group nearby markers
+	const createClusters = (experiences: Experience[], currentZoom: number = 15) => {
+		if (!experiences.length) return [];
+		
+		// Only cluster when zoomed out - show individual markers when zoomed in
+		if (currentZoom >= 14) {
+			// Zoomed in enough - show individual markers
+			return experiences.map((experience) => ({
+				id: `individual-${experience.id}`,
+				lat: Number(experience.latitude),
+				lng: Number(experience.longitude),
+				experiences: [experience],
+				count: 1
+			}));
+		}
+		
+		// Zoomed out - create clusters
+		const clusterDistance = currentZoom > 12 ? 0.15 : currentZoom > 10 ? 0.3 : 0.5; // km
+		
+		const clusters: Array<{
+			id: string;
+			lat: number;
+			lng: number;
+			experiences: Experience[];
+			count: number;
+		}> = [];
+		
+		const processedExperiences = new Set<string>();
+		
+		experiences.forEach((experience, index) => {
+			if (processedExperiences.has(experience.id)) return;
+			
+			const lat = Number(experience.latitude);
+			const lng = Number(experience.longitude);
+			
+			if (isNaN(lat) || isNaN(lng)) return;
+			
+			// Find nearby experiences
+			const nearbyExperiences = experiences.filter((otherExp, otherIndex) => {
+				if (processedExperiences.has(otherExp.id) || otherIndex === index) return false;
+				
+				const otherLat = Number(otherExp.latitude);
+				const otherLng = Number(otherExp.longitude);
+				
+				if (isNaN(otherLat) || isNaN(otherLng)) return false;
+				
+				const distance = getDistance(lat, lng, otherLat, otherLng);
+				return distance <= clusterDistance;
+			});
+			
+			// Create cluster with this experience and nearby ones
+			const clusterExperiences = [experience, ...nearbyExperiences];
+			
+			// Mark all experiences in this cluster as processed
+			clusterExperiences.forEach(exp => processedExperiences.add(exp.id));
+			
+			// Calculate cluster center (average position)
+			const centerLat = clusterExperiences.reduce((sum, exp) => sum + Number(exp.latitude), 0) / clusterExperiences.length;
+			const centerLng = clusterExperiences.reduce((sum, exp) => sum + Number(exp.longitude), 0) / clusterExperiences.length;
+			
+			clusters.push({
+				id: `cluster-${index}`,
+				lat: centerLat,
+				lng: centerLng,
+				experiences: clusterExperiences,
+				count: clusterExperiences.length
+			});
+		});
+		
+		return clusters;
+	};
+
 	// Create markers when map loads and we have issues
 	useEffect(() => {
 		if (!map || !mapLoaded || !filteredExperiences.length) return;
 
 		console.log(
-			"🎯 Creating markers for",
+			"🎯 Creating clustered markers for",
 			filteredExperiences.length,
 			"filtered issues",
 		);
 
+		// Get current zoom level for clustering
+		const currentZoom = map.getZoom();
+		
+		// Create clusters
+		const newClusters = createClusters(filteredExperiences, currentZoom);
+		setClusters(newClusters);
+
 		// Remove existing markers
-		const existingMarkers = document.querySelectorAll(".custom-marker");
+		const existingMarkers = document.querySelectorAll(".custom-marker, .cluster-marker");
 		existingMarkers.forEach((marker) => marker.remove());
 
 		// Dynamically import mapboxgl for markers
 		import("mapbox-gl").then(({ default: mapboxgl }) => {
-			// Create markers for each issue
-			filteredExperiences.forEach((experience) => {
-				// Debug: Log each experience being processed
-				console.log("🎯 Creating marker for experience:", {
-					id: experience.id,
-					title: experience.title,
-					latitude: experience.latitude,
-					longitude: experience.longitude,
-					priority: experience.priority,
-					categoryId: experience.categoryId
-				});
-				
-				// Validate coordinates
-				const lat = Number(experience.latitude);
-				const lng = Number(experience.longitude);
-				
-				if (isNaN(lat) || isNaN(lng)) {
-					console.warn("⚠️ Skipping marker for invalid coordinates:", {
-						id: experience.id,
-						title: experience.title,
-						latitude: experience.latitude,
-						longitude: experience.longitude
-					});
-					return;
-				}
-				
-				const priority = priorityConfig[experience.priority];
-				// Map experience titles to EXACT categories from categoryConfig legend
-				const getCategoryFromTitle = (title: string, description: string) => {
-					const text = (title + " " + description).toLowerCase();
+			// Create markers for each cluster
+			newClusters.forEach((cluster) => {
+				if (cluster.count === 1) {
+					// Single marker - show individual experience
+					const experience = cluster.experiences[0];
 					
-					// Match EXACTLY to categoryConfig keys
-					if (text.includes('streetlight') || text.includes('light') || text.includes('lighting')) return 'lighting';
-					if (text.includes('pothole') || text.includes('road') || text.includes('street') || text.includes('pavement')) return 'roads';
-					if (text.includes('traffic') || text.includes('sign') || text.includes('signal')) return 'traffic';
-					if (text.includes('water') || text.includes('burst') || text.includes('flooding') || text.includes('flood') || text.includes('pipe')) return 'water';
-					if (text.includes('garbage') || text.includes('trash') || text.includes('waste') || text.includes('collection')) return 'sanitation';
-					if (text.includes('tree') || text.includes('fallen') || text.includes('environment') || text.includes('nature')) return 'environment';
-					if (text.includes('sidewalk') || text.includes('building') || text.includes('structure') || text.includes('construction')) return 'infrastructure';
-					if (text.includes('utility') || text.includes('power') || text.includes('electric') || text.includes('cable')) return 'utilities';
-					if (text.includes('safety') || text.includes('dangerous') || text.includes('hazard') || text.includes('security')) return 'safety';
+					console.log("🎯 Creating single marker for:", experience.title);
 					
-					return 'other';
-				};
-				
-				// Get category styling from centralized config using actual database category
-				const categoryName = experience.category?.name || 'Other';
-				const categoryStyling = getCategoryStyling(categoryName);
-
-				// Get the correct SVG path from the centralized config
-				const getIconSVGPath = () => {
-					return categoryStyling.svgPath;
-				};
-
-				const markerEl = document.createElement("div");
-				markerEl.className = "custom-marker";
-				markerEl.innerHTML = `
-					<div class="relative drop-shadow-lg">
-						<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
-							 style="background-color: ${categoryStyling.color}; z-index: ${priority.zIndex};">
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-								${getIconSVGPath()}
-							</svg>
+					const categoryName = experience.category?.name || 'Other';
+					const categoryStyling = getCategoryStyling(categoryName);
+					
+					const markerEl = document.createElement("div");
+					markerEl.className = "custom-marker";
+					markerEl.innerHTML = `
+						<div class="relative drop-shadow-lg">
+							<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
+								 style="background-color: ${categoryStyling.color};">
+								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+									${categoryStyling.svgPath}
+								</svg>
+							</div>
 						</div>
-						<div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow-lg" 
-							 style="background-color: ${priority.color};"></div>
-						<div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-6 h-6 rounded-full border-2 opacity-50"
-							 style="border-color: ${priority.color}; animation: pulse 2s infinite;"></div>
-					</div>
-				`;
+					`;
 
-				markerEl.addEventListener("click", (e) => {
-					e.stopPropagation();
-					setSelectedExperience(experience);
-					console.log("📍 Issue selected:", experience.title);
-				});
-				new mapboxgl.Marker(markerEl)
-					.setLngLat([lng, lat])
-					.addTo(map);
+					markerEl.addEventListener("click", (e) => {
+						e.stopPropagation();
+						setSelectedExperience(experience);
+						console.log("📍 Single issue selected:", experience.title);
+					});
 					
-				console.log("✅ Created marker at coordinates:", [lng, lat]);
+					new mapboxgl.Marker(markerEl)
+						.setLngLat([cluster.lng, cluster.lat])
+						.addTo(map);
+				} else {
+					// Cluster marker - simple design matching original style
+					console.log("🎯 Creating cluster marker for", cluster.count, "issues");
+					
+					const markerEl = document.createElement("div");
+					markerEl.className = "cluster-marker";
+					markerEl.innerHTML = `
+						<div class="relative drop-shadow-lg">
+							<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
+								 style="background-color: #374151;">
+								<div class="text-white font-bold text-sm">${cluster.count}</div>
+							</div>
+						</div>
+					`;
+
+					markerEl.addEventListener("click", (e) => {
+						e.stopPropagation();
+						setSelectedCluster(cluster.experiences);
+						console.log("📍 Cluster selected:", cluster.count, "issues");
+					});
+					
+					new mapboxgl.Marker(markerEl)
+						.setLngLat([cluster.lng, cluster.lat])
+						.addTo(map);
+				}
 			});
 
-			console.log("✅ Zoom-responsive markers created successfully");
+			console.log("✅ Clustered markers created successfully");
 		});
+
+		// Listen for zoom changes to update clustering
+		if (map) {
+			const handleZoomEnd = () => {
+				const currentZoom = map.getZoom();
+				console.log("🔍 Zoom changed to:", currentZoom, "- updating clusters");
+				
+				// Recreate clusters with new zoom level
+				const updatedClusters = createClusters(filteredExperiences, currentZoom);
+				setClusters(updatedClusters);
+				
+				// Remove existing markers
+				const existingMarkers = document.querySelectorAll(".custom-marker, .cluster-marker");
+				existingMarkers.forEach((marker) => marker.remove());
+				
+				// Recreate markers with new clusters
+				import("mapbox-gl").then(({ default: mapboxgl }) => {
+					updatedClusters.forEach((cluster) => {
+						if (cluster.count === 1) {
+							const experience = cluster.experiences[0];
+							const categoryName = experience.category?.name || 'Other';
+							const categoryStyling = getCategoryStyling(categoryName);
+							
+							const markerEl = document.createElement("div");
+							markerEl.className = "custom-marker";
+							markerEl.innerHTML = `
+								<div class="relative drop-shadow-lg">
+									<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
+										 style="background-color: ${categoryStyling.color};">
+										<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+											${categoryStyling.svgPath}
+										</svg>
+									</div>
+								</div>
+							`;
+
+							markerEl.addEventListener("click", (e) => {
+								e.stopPropagation();
+								setSelectedExperience(experience);
+							});
+							
+							new mapboxgl.Marker(markerEl)
+								.setLngLat([cluster.lng, cluster.lat])
+								.addTo(map);
+						} else {
+							const markerEl = document.createElement("div");
+							markerEl.className = "cluster-marker";
+							markerEl.innerHTML = `
+								<div class="relative drop-shadow-lg">
+									<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
+										 style="background-color: #374151;">
+										<div class="text-white font-bold text-sm">${cluster.count}</div>
+									</div>
+								</div>
+							`;
+
+							markerEl.addEventListener("click", (e) => {
+								e.stopPropagation();
+								setSelectedCluster(cluster.experiences);
+							});
+							
+							new mapboxgl.Marker(markerEl)
+								.setLngLat([cluster.lng, cluster.lat])
+								.addTo(map);
+						}
+					});
+				});
+			};
+
+			map.on('zoomend', handleZoomEnd);
+
+			// Cleanup
+			return () => {
+				if (map) {
+					map.off('zoomend', handleZoomEnd);
+				}
+			};
+		}
 	}, [map, mapLoaded, filteredExperiences]);
 
 	// Real-time location tracking with high accuracy
@@ -994,7 +1231,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 	return (
 		<div
-			className={`mobile-map-page h-screen w-full md:fixed md:inset-0 ${showSearchPanel ? "search-visible" : ""}`}
+			className={`mobile-map-page h-screen w-full fixed inset-0 ${showSearchPanel ? "search-visible" : ""}`}
 		>
 			{/* Loading Overlay */}
 			{!mapLoaded && (
@@ -1390,6 +1627,60 @@ export default function MapClient({ experiences }: MapClientProps) {
 				</div>
 			)}
 
+			{/* Cluster Modal */}
+			{selectedCluster && (
+				<div className="absolute right-4 bottom-4 left-4 z-20 mx-auto max-w-md rounded-lg bg-white p-4 shadow-lg dark:bg-gray-900">
+					<div className="mb-3 flex items-center justify-between">
+						<h3 className="font-semibold text-lg">{selectedCluster.length} Issues in this area</h3>
+						<Button
+							size="icon"
+							variant="ghost"
+							onClick={() => setSelectedCluster(null)}
+							className="shrink-0"
+						>
+							<X className="h-4 w-4" />
+						</Button>
+					</div>
+
+					<div className="max-h-64 overflow-y-auto space-y-2">
+						{selectedCluster.map((experience) => {
+							const categoryName = experience.category?.name || 'Other';
+							const categoryStyling = getCategoryStyling(categoryName);
+							const IconComponent = categoryStyling.icon;
+							
+							return (
+								<div
+									key={experience.id}
+									className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+									onClick={() => {
+										setSelectedExperience(experience);
+										setSelectedCluster(null);
+										if (map) {
+											map.flyTo({
+												center: [Number(experience.longitude), Number(experience.latitude)],
+												zoom: 17,
+												duration: 1000,
+											});
+										}
+									}}
+								>
+									<div 
+										className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+										style={{ backgroundColor: categoryStyling.color }}
+									>
+										<IconComponent className="w-4 h-4 text-white" />
+									</div>
+									<div className="flex-1 min-w-0">
+										<h4 className="font-medium text-sm truncate">{experience.title}</h4>
+										<p className="text-gray-600 dark:text-gray-400 text-xs truncate">{experience.description}</p>
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				</div>
+			)}
+
 			{/* Issue Details Panel */}
 			{selectedExperience && (
 				<div className="absolute right-4 bottom-4 left-4 z-20 mx-auto max-w-md rounded-lg bg-white p-4 shadow-lg dark:bg-gray-900">
@@ -1483,13 +1774,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 							<Button
 								size="sm"
 								variant="outline"
-								onClick={() => {
-									if (selectedExperience) {
-										// Copy issue location to clipboard
-										const shareText = `Check out this issue: ${selectedExperience.title} at ${Number(selectedExperience.latitude)},${Number(selectedExperience.longitude)}`;
-										navigator.clipboard.writeText(shareText);
-									}
-								}}
+								onClick={handleCopyLink}
 							>
 								<Share2 className="mr-1 h-3 w-3" />
 								Share
@@ -1624,33 +1909,31 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 			<style jsx>{`
 				.mobile-map-page {
-					position: relative;
+					position: fixed;
+					top: 0;
+					left: 0;
+					right: 0;
+					bottom: 0;
+					z-index: 1000;
+					width: 100vw;
+					height: 100vh;
+					overflow: hidden;
 				}
 
-				@media (max-width: 768px) {
-					.mobile-map-page {
-						position: fixed;
-						top: 0;
-						left: 0;
-						right: 0;
-						bottom: 0;
-						z-index: 1000;
-					}
-
-					.mobile-map-page.search-visible {
-						/* Adjust when search panel is visible on mobile */
-					}
+				.mobile-map-page.search-visible {
+					/* Adjust when search panel is visible */
 				}
 
-				.custom-marker {
+				.custom-marker, .cluster-marker {
 					cursor: pointer;
 					transition: transform 0.2s ease;
 				}
 
-				.custom-marker:hover {
+				.custom-marker:hover, .cluster-marker:hover {
 					transform: scale(1.1);
 					z-index: 1000;
 				}
+
 
 				/* Mapbox popup styling */
 				.mapboxgl-popup-content {
