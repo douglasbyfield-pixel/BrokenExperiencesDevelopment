@@ -126,6 +126,48 @@ export function useMapMarkers() {
   });
 }
 
+// Fetch single experience by ID
+export function useExperience(id: string) {
+  return useQuery({
+    queryKey: experienceKeys.detail(id),
+    queryFn: async (): Promise<Experience | null> => {
+      if (!id) return null;
+
+      console.log('🔍 Fetching single experience with TanStack Query...');
+      const startTime = performance.now();
+
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/experience`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch experiences: ${response.statusText}`);
+        }
+
+        const experiences = await response.json();
+        const experience = experiences.find((exp: Experience) => exp.id === id);
+        
+        const endTime = performance.now();
+        console.log(`✅ Single experience fetched in ${(endTime - startTime).toFixed(2)}ms`);
+        
+        return experience || null;
+      } catch (error) {
+        console.error('❌ Error fetching single experience:', error);
+        throw error;
+      }
+    },
+    enabled: !!id,
+    // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
 // Search experiences
 export function useSearchExperiences(searchTerm: string, userId?: string) {
   return useQuery({
