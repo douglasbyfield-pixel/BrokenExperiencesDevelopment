@@ -131,7 +131,10 @@ export default function ProfilePage() {
 					<CardContent className="p-6">
 						<div className="flex items-center space-x-4">
 							<Avatar className="h-16 w-16">
-								<AvatarImage src={user.user_metadata?.avatar_url || undefined} alt={user.user_metadata?.name || user.email} />
+								<AvatarImage 
+									src={user.user_metadata?.avatar_url || user.user_metadata?.picture || undefined} 
+									alt={user.user_metadata?.name || user.email} 
+								/>
 								<AvatarFallback className="bg-gray-200 text-gray-700 text-xl">
 									{getInitials(user.user_metadata?.name || user.email || 'User')}
 								</AvatarFallback>

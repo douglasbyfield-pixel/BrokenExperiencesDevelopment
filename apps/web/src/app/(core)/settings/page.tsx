@@ -11,6 +11,7 @@ import {
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { useSettings } from "@web/context/SettingsContext";
+import { useAuth } from "@web/components/auth-provider";
 import { Bell, Eye, Palette, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -21,26 +22,23 @@ interface UserSettings {
 		email: boolean;
 		push: boolean;
 		issueUpdates: boolean;
-		weeklyReport: boolean;
 	};
 	privacy: {
 		showProfile: boolean;
 		showActivity: boolean;
-		showStats: boolean;
 	};
 	display: {
 		theme: "light" | "dark" | "system";
-		language: string;
 		mapStyle: string;
 	};
 }
 
 export default function SettingsPage() {
 	const { settings, updateSettings, loading } = useSettings();
+	const { user, session } = useAuth();
 	const [saving, setSaving] = useState(false);
 	const [deletePassword, setDeletePassword] = useState("");
 	const [showDeleteSection, setShowDeleteSection] = useState(false);
-	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 	const router = useRouter();
 
 	const handleSaveSettings = async () => {
@@ -48,7 +46,6 @@ export default function SettingsPage() {
 		try {
 			// Settings are already updated via context
 			toast.success("Settings saved successfully!");
-			setHasUnsavedChanges(false);
 		} catch (error) {
 			console.error("Failed to save settings:", error);
 			toast.error("Failed to save settings");
@@ -58,8 +55,13 @@ export default function SettingsPage() {
 	};
 
 	const handleDeleteAccount = async () => {
+		if (!user || !session) {
+			toast.error("You must be logged in to delete your account");
+			return;
+		}
+
 		if (!deletePassword.trim()) {
-			alert("Please enter your password to delete your account");
+			toast.error("Please enter your password to delete your account");
 			return;
 		}
 
@@ -73,6 +75,7 @@ export default function SettingsPage() {
 				{
 					method: "DELETE",
 					headers: {
+						'Authorization': `Bearer ${session.access_token}`,
 						"Content-Type": "application/json",
 					},
 					body: JSON.stringify({ confirmPassword: deletePassword }),
@@ -80,14 +83,15 @@ export default function SettingsPage() {
 			);
 
 			if (response.ok) {
-				alert("Account deleted successfully");
+				toast.success("Account deleted successfully");
 				router.push("/login");
 			} else {
-				alert("Failed to delete account. Please check your password.");
+				const errorData = await response.json().catch(() => ({}));
+				toast.error(errorData.message || "Failed to delete account. Please check your password.");
 			}
 		} catch (error) {
 			console.error("Failed to delete account:", error);
-			alert("An error occurred while deleting your account");
+			toast.error("An error occurred while deleting your account");
 		}
 	};
 
@@ -108,17 +112,22 @@ export default function SettingsPage() {
 		await updateSettings(newSettings);
 
 		// Show immediate feedback for certain settings
-		if (section === "display") {
-			if (key === "theme") {
-				toast.success(`Settings Theme changed to ${value}`);
-			}
+		if (section === "display" && key === "theme") {
+			toast.success(`Theme changed to ${value}`);
+		} else if (typeof value === "boolean") {
 			const setting = key.replace(/([A-Z])/g, " $1").toLowerCase();
 			toast.success(`${setting} ${value ? "enabled" : "disabled"}`);
 		} else {
 			const setting = key.replace(/([A-Z])/g, " $1").toLowerCase();
-			toast.success(`${setting} ${value ? "enabled" : "disabled"}`);
+			toast.success(`${setting} updated`);
 		}
 	};
+
+	// Redirect to login if not authenticated
+	if (!user) {
+		router.push('/login');
+		return null;
+	}
 
 	if (loading) {
 		return (
@@ -139,18 +148,21 @@ export default function SettingsPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-white">
-			<div className="container mx-auto max-w-4xl px-4 py-8">
-				{/* Header */}
-				<div className="mb-8 flex items-center gap-4">
-					<BackButton fallbackUrl="/profile" />
-					<h1 className="font-bold text-3xl text-black">
-						Settings
-					</h1>
+		<>
+			{/* Header */}
+			<div className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur">
+				<div className="flex items-center p-3 sm:p-4">
+					<BackButton fallbackUrl="/home" className="mr-3 sm:mr-4" />
+					<h1 className="text-lg sm:text-xl font-semibold text-gray-900">Settings</h1>
 				</div>
+			</div>
+
+			{/* Content */}
+			<div className="bg-white">
+				<div className="container mx-auto max-w-4xl px-4 py-6">
 
 				<div className="space-y-6">
-					{/* Notifications */}
+					{/* Push Notifications */}
 					<Card className="border border-gray-200 bg-white shadow-sm">
 						<CardHeader>
 							<div className="flex items-center gap-2">
@@ -164,28 +176,10 @@ export default function SettingsPage() {
 							<div className="flex items-center justify-between">
 								<div>
 									<Label className="font-medium text-black">
-										Email Notifications
-									</Label>
-									<p className="text-gray-600 text-sm">
-										Receive notifications via email
-									</p>
-								</div>
-								<input
-									type="checkbox"
-									checked={settings.notifications.email}
-									onChange={(e) =>
-										updateSetting("notifications", "email", e.target.checked)
-									}
-									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-							</div>
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="font-medium text-black">
 										Push Notifications
 									</Label>
 									<p className="text-gray-600 text-sm">
-										Receive push notifications in browser
+										Receive push notifications about new reports in your area
 									</p>
 								</div>
 								<input
@@ -197,188 +191,8 @@ export default function SettingsPage() {
 									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
 							</div>
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="font-medium text-black">
-										Issue Updates
-									</Label>
-									<p className="text-gray-600 text-sm">
-										Get notified about updates to your reported issues
-									</p>
-								</div>
-								<input
-									type="checkbox"
-									checked={settings.notifications.issueUpdates}
-									onChange={(e) =>
-										updateSetting(
-											"notifications",
-											"issueUpdates",
-											e.target.checked,
-										)
-									}
-									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-							</div>
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="font-medium text-black">
-										Weekly Report
-									</Label>
-									<p className="text-gray-600 text-sm">
-										Receive weekly summary of community activity
-									</p>
-								</div>
-								<input
-									type="checkbox"
-									checked={settings.notifications.weeklyReport}
-									onChange={(e) =>
-										updateSetting(
-											"notifications",
-											"weeklyReport",
-											e.target.checked,
-										)
-									}
-									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-							</div>
 						</CardContent>
 					</Card>
-
-					{/* Privacy */}
-					<Card className="border border-gray-200 bg-white shadow-sm">
-						<CardHeader>
-							<div className="flex items-center gap-2">
-								<Eye className="h-5 w-5 text-black" />
-								<CardTitle className="text-black">
-									Privacy
-								</CardTitle>
-							</div>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="font-medium text-black">
-										Show Profile
-									</Label>
-									<p className="text-gray-600 text-sm">
-										Make your profile visible to other users
-									</p>
-								</div>
-								<input
-									type="checkbox"
-									checked={settings.privacy.showProfile}
-									onChange={(e) =>
-										updateSetting("privacy", "showProfile", e.target.checked)
-									}
-									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-							</div>
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="font-medium text-black">
-										Show Activity
-									</Label>
-									<p className="text-gray-600 text-sm">
-										Display your activity timeline publicly
-									</p>
-								</div>
-								<input
-									type="checkbox"
-									checked={settings.privacy.showActivity}
-									onChange={(e) =>
-										updateSetting("privacy", "showActivity", e.target.checked)
-									}
-									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-							</div>
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="font-medium text-black">
-										Show Statistics
-									</Label>
-									<p className="text-gray-600 text-sm">
-										Display your contribution statistics
-									</p>
-								</div>
-								<input
-									type="checkbox"
-									checked={settings.privacy.showStats}
-									onChange={(e) =>
-										updateSetting("privacy", "showStats", e.target.checked)
-									}
-									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-							</div>
-						</CardContent>
-					</Card>
-
-					{/* Display */}
-					<Card className="border border-gray-200 bg-white shadow-sm">
-						<CardHeader>
-							<div className="flex items-center gap-2">
-								<Palette className="h-5 w-5 text-black" />
-								<CardTitle className="text-black">
-									Display
-								</CardTitle>
-							</div>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="font-medium text-black">
-										Theme
-									</Label>
-									<p className="text-gray-600 text-sm">
-										Choose your preferred theme
-									</p>
-								</div>
-								<select
-									value={settings.display.theme}
-									onChange={(e) =>
-										updateSetting("display", "theme", e.target.value)
-									}
-									className="rounded-md border border-gray-300 bg-white px-3 py-2 text-black"
-								>
-									<option value="light">Light</option>
-									<option value="dark">Dark</option>
-									<option value="system">System</option>
-								</select>
-							</div>
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="font-medium text-black">
-										Map Style
-									</Label>
-									<p className="text-gray-600 text-sm">
-										Choose map appearance
-									</p>
-								</div>
-								<select
-									value={settings.display.mapStyle}
-									onChange={(e) =>
-										updateSetting("display", "mapStyle", e.target.value)
-									}
-									className="rounded-md border border-gray-300 bg-white px-3 py-2 text-black"
-								>
-									<option value="streets-v12">Streets</option>
-									<option value="satellite-v9">Satellite</option>
-									<option value="outdoors-v12">Outdoors</option>
-								</select>
-							</div>
-						</CardContent>
-					</Card>
-
-					{/* Save Button */}
-					<div className="flex justify-end">
-						<Button
-							onClick={handleSaveSettings}
-							disabled={saving}
-							className="bg-black text-white hover:bg-gray-800"
-						>
-							<Save className="mr-2 h-4 w-4" />
-							{saving ? "Saving..." : "Save Settings"}
-						</Button>
-					</div>
 
 					{/* Danger Zone */}
 					<Card className="border border-red-200 bg-white shadow-sm">
@@ -447,5 +261,6 @@ export default function SettingsPage() {
 				</div>
 			</div>
 		</div>
+		</>
 	);
 }
