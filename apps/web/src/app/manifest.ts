@@ -2,14 +2,23 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
 	return {
-		name: "broken-experiences",
-		short_name: "broken-experiences",
-		description: "my pwa app",
+		name: "Broken Experiences",
+		short_name: "BrokenExp",
+		description: "Report and track broken digital experiences in your city",
 		start_url: "/home",
 		display: "standalone",
 		background_color: "#ffffff",
-		theme_color: "#000000",
+		theme_color: "#ef4444",
+		orientation: "portrait",
+		scope: "/",
+		categories: ["productivity", "utilities", "lifestyle"],
 		icons: [
+			{
+				src: "/images/logo.png",
+				sizes: "512x512",
+				type: "image/png",
+				purpose: "maskable"
+			},
 			{
 				src: "/favicon/web-app-manifest-192x192.png",
 				sizes: "192x192",

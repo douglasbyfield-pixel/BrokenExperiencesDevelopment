@@ -25,6 +25,9 @@ interface UserSettings {
 		theme: "light" | "dark" | "system";
 		mapStyle: string;
 	};
+	app: {
+		pwaInstallPromptSeen: boolean;
+	};
 }
 
 interface SettingsContextType {
@@ -47,6 +50,9 @@ const defaultSettings: UserSettings = {
 	display: {
 		theme: "light",
 		mapStyle: "satellite-v9",
+	},
+	app: {
+		pwaInstallPromptSeen: false,
 	},
 };
 
@@ -156,6 +162,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 			display: {
 				...settings.display,
 				...(newSettings.display || {}),
+			},
+			app: {
+				...settings.app,
+				...(newSettings.app || {}),
 			},
 		};
 

@@ -6,10 +6,11 @@ import { useSearch } from "@web/context/SearchContext";
 import SearchInput from "./search-input";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { LogOut, Search, Menu, X, Home, Map, User, Settings } from "lucide-react";
+import { LogOut, Search, Menu, X, Home, Map, User, Settings, Download } from "lucide-react";
 import type { Stats, UserStats, TrendingCategory } from "@web/types";
 import { getCategoryStyling } from "@web/lib/category-config";
 import { eden } from "@web/lib/eden";
+import { triggerPWAInstall, canInstallPWA } from "@web/components/add-to-home-screen";
 
 interface MobileNavProps {
 	stats?: Stats | null;
@@ -21,8 +22,17 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+	const [canInstall, setCanInstall] = useState(false);
 	const { signOut, user } = useAuth();
 	const { onSearch, onSearchChange, onCategoryFilter } = useSearch();
+
+	// Check if PWA can be installed
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setCanInstall(canInstallPWA());
+		}, 1000);
+		return () => clearInterval(interval);
+	}, []);
 
 	// Fetch categories from database
 	useEffect(() => {
@@ -53,18 +63,27 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 					>
 						<Menu className="w-6 h-6" />
 					</button>
-					<div className="flex items-center space-x-2">
-						<div className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-black bg-white p-1">
-					<img
-						src="/images/logo.png"
-						alt="Broken Experiences"
-						className="h-full w-full object-contain"
-					/>
+					<button 
+						onClick={canInstall ? triggerPWAInstall : undefined}
+						className={`flex items-center space-x-2 ${canInstall ? 'cursor-pointer group' : 'cursor-default'}`}
+						title={canInstall ? "Install App" : ""}
+					>
+						<div className={`flex h-8 w-8 items-center justify-center rounded-lg border-2 border-black bg-white p-1 relative ${canInstall ? 'group-hover:scale-110 transition-transform' : ''}`}>
+							<img
+								src="/images/logo.png"
+								alt="Broken Experiences"
+								className="h-full w-full object-contain"
+							/>
+							{canInstall && (
+								<div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-black text-white flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity">
+									<Download className="w-2 h-2" />
+								</div>
+							)}
 						</div>
 						<h1 className="font-bold text-lg text-black">
 							Broken<span className="text-gray-600">Experiences</span>
 						</h1>
-					</div>
+					</button>
 					<button
 						onClick={() => setIsSearchOpen(!isSearchOpen)}
 						className="p-2 rounded-lg hover:bg-gray-100"
