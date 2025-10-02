@@ -123,10 +123,11 @@ export const experienceRouter = new Elysia({
 			  };
 			}
 		
-			const userData: { id: string; email: string; name: string; emailVerified: boolean } = {
+			const userData: { id: string; email: string; name: string; image?: string; emailVerified: boolean } = {
 				id: user.id,
 				email: user.email,
 				name: user.name,
+				image: user.image,
 				emailVerified: user.emailVerified
 			};
 			
