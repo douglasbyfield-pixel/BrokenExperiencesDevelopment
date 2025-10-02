@@ -16,6 +16,7 @@ import { Input } from "@web/components/ui/input";
 import type { Experience } from "@web/types";
 import { voteOnExperienceAction } from "@web/action/experience";
 import { useAction } from "next-safe-action/hooks";
+import { getCategoryStyling, CATEGORY_STYLING } from "@web/lib/category-config";
 import {
 	AlertCircle,
 	ArrowLeft,
@@ -131,6 +132,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const [mapLoaded, setMapLoaded] = useState(false);
 	const [filteredExperiences, setFilteredExperiences] = useState<Experience[]>(experiences);
 	const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
+	const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
 	const [userLocation, setUserLocation] = useState<{
 		lat: number;
 		lng: number;
@@ -159,6 +161,24 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const [isNavigating, setIsNavigating] = useState(false);
 	const [navPanelMinimized, setNavPanelMinimized] = useState(false);
 	const router = useRouter();
+
+	// Fetch categories from database
+	useEffect(() => {
+		const fetchCategories = async () => {
+			try {
+				const { eden } = await import("@web/lib/eden");
+				const result = await eden.category.get({ $query: { limit: 50, offset: 0 } });
+				if (Array.isArray(result?.data)) {
+					const sorted = result.data.sort((a: any, b: any) => a.name.localeCompare(b.name));
+					setCategories(sorted);
+				}
+			} catch (error) {
+				console.error('Failed to fetch categories:', error);
+			}
+		};
+		
+		fetchCategories();
+	}, []);
 
 	const { execute: voteOnExperience } = useAction(voteOnExperienceAction, {
 		onSuccess: () => {
@@ -837,33 +857,13 @@ export default function MapClient({ experiences }: MapClientProps) {
 					return 'other';
 				};
 				
-				const categoryKey = getCategoryFromTitle(experience.title || '', experience.description || '');
-				const category = categoryConfig[categoryKey as keyof typeof categoryConfig] || categoryConfig.other;
+				// Get category styling from centralized config using actual database category
+				const categoryName = experience.category?.name || 'Other';
+				const categoryStyling = getCategoryStyling(categoryName);
 
-				const getIconSVG = (categoryId: string) => {
-					const iconSVGs: Record<string, string> = {
-						infrastructure:
-							'<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
-						traffic:
-							'<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18.7 8.3c-.2-.5-.8-.8-1.3-.8h-10.8c-.5 0-1.1.3-1.3.8L3.5 11.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
-						lighting:
-							'<path d="M15 14c.2-1 1.2-1 2.5-1s2.3 0 2.5 1c-.2 1-1.2 1-2.5 1s-2.3 0-2.5-1z"/><path d="M9 21c0 .6.4 1 1 1h4c.6 0 1-.4 1-1v-1H9v1z"/><path d="M12 2C8.1 2 5 5.1 5 9c0 2.4 1.2 4.5 3 5.7V17c0 .6.4 1 1 1h6c.6 0 1-.4 1-1v-2.3c1.8-1.2 3-3.3 3-5.7 0-3.9-3.1-7-7-7z"/>',
-						environment:
-							'<path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 2l4 5.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7H17z"/>',
-						sanitation:
-							'<path d="M3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6H3z"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-6 5v6m4-6v6"/>',
-						utilities: '<polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>',
-						"digital aids": '<polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>',
-						water:
-							'<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
-						roads:
-							'<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
-						safety:
-							'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 .9-.99l7-1a1 1 0 0 1 .2 0l7 1A1 1 0 0 1 20 6Z"/><path d="m9 12 2 2 4-4"/>',
-						other:
-							'<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
-					};
-					return iconSVGs[categoryId] || iconSVGs.other;
+				// Get the correct SVG path from the centralized config
+				const getIconSVGPath = () => {
+					return categoryStyling.svgPath;
 				};
 
 				const markerEl = document.createElement("div");
@@ -871,9 +871,9 @@ export default function MapClient({ experiences }: MapClientProps) {
 				markerEl.innerHTML = `
 					<div class="relative drop-shadow-lg">
 						<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
-							 style="background-color: ${category.color}; z-index: ${priority.zIndex};">
+							 style="background-color: ${categoryStyling.color}; z-index: ${priority.zIndex};">
 							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-								${getIconSVG(categoryKey || "other")}
+								${getIconSVGPath()}
 							</svg>
 						</div>
 						<div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow-lg" 
@@ -1320,19 +1320,23 @@ export default function MapClient({ experiences }: MapClientProps) {
 						<div className="mb-4 space-y-2">
 							<h4 className="font-medium text-sm">Map Legend</h4>
 							<div className="grid grid-cols-2 gap-2 text-xs">
-								{Object.entries(categoryConfig).map(([category, config]) => (
-									<div key={category} className="flex items-center gap-2">
-										<div
-											className="flex h-4 w-4 items-center justify-center rounded-full"
-											style={{ backgroundColor: config.color }}
-										>
-											<config.icon className="h-2 w-2 text-white" />
+								{categories.map((category) => {
+									const styling = getCategoryStyling(category.name);
+									const IconComponent = styling.icon;
+									return (
+										<div key={category.id} className="flex items-center gap-2">
+											<div
+												className="flex h-4 w-4 items-center justify-center rounded-full"
+												style={{ backgroundColor: styling.color }}
+											>
+												<IconComponent className="h-2 w-2 text-white" />
+											</div>
+											<span className="text-gray-600 dark:text-gray-400">
+												{category.name}
+											</span>
 										</div>
-										<span className="text-gray-600 dark:text-gray-400">
-											{config.label}
-										</span>
-									</div>
-								))}
+									);
+								})}
 							</div>
 						</div>
 					)}
@@ -1426,11 +1430,9 @@ export default function MapClient({ experiences }: MapClientProps) {
 						>
 							{statusConfig[selectedExperience.status].label}
 						</Badge>
-						{selectedExperience.categoryId && (
+						{selectedExperience.category && (
 							<Badge variant="secondary">
-								{categoryConfig[
-									selectedExperience.categoryId as keyof typeof categoryConfig
-								]?.label || "Other"}
+								{selectedExperience.category.name || "Other"}
 							</Badge>
 						)}
 					</div> */}

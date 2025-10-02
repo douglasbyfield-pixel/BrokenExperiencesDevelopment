@@ -5,24 +5,13 @@ import { eden } from "@web/lib/eden";
 import { BackButton } from "@web/components/ui/back-button";
 import { Search, Settings, MapPin, TrendingUp, Clock, Calendar } from "lucide-react";
 import ExperienceCard from "../home/features/experience-card";
+import type { Experience } from "@web/types";
 
 interface SearchPageProps {
 	searchParams: Promise<{ q?: string }>;
 }
 
 type TabType = "nearby" | "trending" | "new" | "old";
-
-interface Experience {
-	id: string;
-	title: string;
-	description: string;
-	address: string;
-	createdAt: string;
-	imageUrls?: string[];
-	category?: {
-		name: string;
-	};
-}
 
 function SearchBar() {
 	return (
@@ -199,26 +188,8 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
 		setLoading(true);
 		try {
 			// This would be replaced with actual API calls based on the tab
-			// For now, using mock data
-			const mockExperiences: Experience[] = [
-				{
-					id: "1",
-					title: "Pothole on Main Street",
-					description: "Large pothole causing traffic issues",
-					address: "123 Main Street, Downtown",
-					createdAt: new Date().toISOString(),
-					category: { name: "Infrastructure" }
-				},
-				{
-					id: "2", 
-					title: "Broken Streetlight",
-					description: "Streetlight not working for 3 days",
-					address: "456 Oak Avenue, Midtown",
-					createdAt: new Date().toISOString(),
-					category: { name: "Utilities" }
-				}
-			];
-			setExperiences(mockExperiences);
+			// For now, return empty array since we don't have proper mock data
+			setExperiences([]);
 		} catch (error) {
 			console.error("Error fetching experiences:", error);
 			setExperiences([]);
