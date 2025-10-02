@@ -48,7 +48,7 @@ export default function SearchLayout({
 					userStats={null}
 					trendingCategories={trendingCategories}
 				/>
-				<div className="mx-auto flex max-w-screen-2xl">
+				<div className="mx-auto flex max-w-screen-xl">
 					<div className="w-80 lg:w-96 flex-shrink-0">
 						<LeftSidebar />
 					</div>

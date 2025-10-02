@@ -78,23 +78,78 @@ export default function CreateExperienceCard({
             const lat = position.coords.latitude.toString();
             const lng = position.coords.longitude.toString();
 
-            // Get address from coordinates
+            // Get address from coordinates using OpenStreetMap Nominatim for street-level precision
             fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+              {
+                headers: {
+                  'User-Agent': 'BrokenExperiences/1.0 (https://brokenexperiences.com)'
+                }
+              }
             )
               .then((response) => response.json())
               .then((data) => {
-                const address =
-                  data.localityInfo?.administrative?.[0]?.name ||
-                  data.localityInfo?.administrative?.[1]?.name ||
-                  data.city ||
-                  data.principalSubdivision ||
-                  "Location obtained";
+                console.log("🌍 OpenStreetMap Nominatim API response:", JSON.stringify(data, null, 2));
+                
+                // Extract detailed address components from Nominatim
+                const address = data.address || {};
+                const components: string[] = [];
+                
+                // Build address from most specific to least specific
+                if (address.house_number && address.road) {
+                  components.push(`${address.house_number} ${address.road}`);
+                } else if (address.road) {
+                  components.push(address.road);
+                }
+                
+                // Add neighborhood/suburb/district
+                if (address.neighbourhood) {
+                  components.push(address.neighbourhood);
+                } else if (address.suburb) {
+                  components.push(address.suburb);
+                } else if (address.district) {
+                  components.push(address.district);
+                }
+                
+                // Add city/town/village
+                if (address.city) {
+                  components.push(address.city);
+                } else if (address.town) {
+                  components.push(address.town);
+                } else if (address.village) {
+                  components.push(address.village);
+                }
+                
+                // Add parish/county/state (for Jamaica context)
+                if (address.county && !components.includes(address.county)) {
+                  components.push(address.county);
+                } else if (address.state && !components.includes(address.state)) {
+                  components.push(address.state);
+                }
+                
+                // Create final address string
+                let finalAddress = components.length > 0 
+                  ? components.slice(0, 3).join(", ") // Limit to 3 most specific components
+                  : data.display_name?.split(',').slice(0, 3).join(", ") || null;
+                
+                // Fallback to coordinate-based description if no detailed address
+                if (!finalAddress || finalAddress.includes('Jamaica') && components.length === 0) {
+                  const latRounded = parseFloat(lat).toFixed(4);
+                  const lngRounded = parseFloat(lng).toFixed(4);
+                  finalAddress = `Location at ${latRounded}°N, ${lngRounded}°W`;
+                }
+
+                console.log("📍 Nominatim address parsing:", { 
+                  addressComponents: address,
+                  extractedComponents: components,
+                  finalAddress: finalAddress,
+                  displayName: data.display_name
+                });
 
                 setLocation({
                   latitude: lat,
                   longitude: lng,
-                  address: address,
+                  address: finalAddress,
                 });
                 setLocationPermission("granted");
               })
@@ -140,23 +195,78 @@ export default function CreateExperienceCard({
 
           console.log("📍 Got location:", { lat, lng });
 
-          // Get address from coordinates
+          // Get address from coordinates using OpenStreetMap Nominatim for street-level precision
           fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            {
+              headers: {
+                'User-Agent': 'BrokenExperiences/1.0 (https://brokenexperiences.com)'
+              }
+            }
           )
             .then((response) => response.json())
             .then((data) => {
-              const address =
-                data.localityInfo?.administrative?.[0]?.name ||
-                data.localityInfo?.administrative?.[1]?.name ||
-                data.city ||
-                data.principalSubdivision ||
-                "Location obtained";
+              console.log("🌍 Manual - OpenStreetMap Nominatim API response:", JSON.stringify(data, null, 2));
+              
+              // Extract detailed address components from Nominatim
+              const address = data.address || {};
+              const components: string[] = [];
+              
+              // Build address from most specific to least specific
+              if (address.house_number && address.road) {
+                components.push(`${address.house_number} ${address.road}`);
+              } else if (address.road) {
+                components.push(address.road);
+              }
+              
+              // Add neighborhood/suburb/district
+              if (address.neighbourhood) {
+                components.push(address.neighbourhood);
+              } else if (address.suburb) {
+                components.push(address.suburb);
+              } else if (address.district) {
+                components.push(address.district);
+              }
+              
+              // Add city/town/village
+              if (address.city) {
+                components.push(address.city);
+              } else if (address.town) {
+                components.push(address.town);
+              } else if (address.village) {
+                components.push(address.village);
+              }
+              
+              // Add parish/county/state (for Jamaica context)
+              if (address.county && !components.includes(address.county)) {
+                components.push(address.county);
+              } else if (address.state && !components.includes(address.state)) {
+                components.push(address.state);
+              }
+              
+              // Create final address string
+              let finalAddress = components.length > 0 
+                ? components.slice(0, 3).join(", ") // Limit to 3 most specific components
+                : data.display_name?.split(',').slice(0, 3).join(", ") || null;
+              
+              // Fallback to coordinate-based description if no detailed address
+              if (!finalAddress || finalAddress.includes('Jamaica') && components.length === 0) {
+                const latRounded = parseFloat(lat).toFixed(4);
+                const lngRounded = parseFloat(lng).toFixed(4);
+                finalAddress = `Location at ${latRounded}°N, ${lngRounded}°W`;
+              }
+
+              console.log("📍 Manual - Nominatim address parsing:", { 
+                addressComponents: address,
+                extractedComponents: components,
+                finalAddress: finalAddress,
+                displayName: data.display_name
+              });
 
               setLocation({
                 latitude: lat,
                 longitude: lng,
-                address: address,
+                address: finalAddress,
               });
               setLocationPermission("granted");
               setIsGettingLocation(false);

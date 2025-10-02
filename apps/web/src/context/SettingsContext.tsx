@@ -7,6 +7,8 @@ import {
 	useEffect,
 	useState,
 } from "react";
+import { useAuth } from "@web/components/auth-provider";
+import { useTheme } from "next-themes";
 
 interface UserSettings {
 	notifications: {
@@ -18,11 +20,9 @@ interface UserSettings {
 	privacy: {
 		showProfile: boolean;
 		showActivity: boolean;
-		showStats: boolean;
 	};
 	display: {
 		theme: "light" | "dark" | "system";
-		language: string;
 		mapStyle: string;
 	};
 }
@@ -30,7 +30,6 @@ interface UserSettings {
 interface SettingsContextType {
 	settings: UserSettings | null;
 	updateSettings: (newSettings: Partial<UserSettings>) => Promise<void>;
-	applyTheme: (theme: "light" | "dark" | "system") => void;
 	loading: boolean;
 }
 
@@ -39,16 +38,14 @@ const defaultSettings: UserSettings = {
 		email: true,
 		push: true,
 		issueUpdates: true,
-		weeklyReport: false,
+		weeklyReport: true,
 	},
 	privacy: {
 		showProfile: true,
 		showActivity: true,
-		showStats: true,
 	},
 	display: {
 		theme: "light",
-		language: "en",
 		mapStyle: "satellite-v9",
 	},
 };
@@ -60,44 +57,68 @@ const SettingsContext = createContext<SettingsContextType | undefined>(
 export function SettingsProvider({ children }: { children: ReactNode }) {
 	const [settings, setSettings] = useState<UserSettings | null>(null);
 	const [loading, setLoading] = useState(true);
+	const { user, session } = useAuth();
+	const { setTheme } = useTheme();
 
-	// Load settings on mount
+	// Load settings when user changes
 	useEffect(() => {
-		loadSettings();
-	}, []);
+		if (user) {
+			loadSettings();
+		} else {
+			// User logged out, clear settings
+			setSettings(null);
+			setLoading(false);
+		}
+	}, [user]);
 
-	// Apply theme and language when settings change
+	// Apply theme when settings change using next-themes
 	useEffect(() => {
 		if (settings?.display.theme) {
-			applyTheme(settings.display.theme);
+			setTheme(settings.display.theme);
 		}
-	}, [settings?.display.theme]);
+	}, [settings?.display.theme, setTheme]);
 
 	const loadSettings = async () => {
+		if (!user || !session) {
+			setLoading(false);
+			return;
+		}
+
 		try {
 			// Check if we're in the browser
 			if (typeof window !== "undefined") {
 				// Try to load from localStorage first
-				const savedSettings = localStorage.getItem("userSettings");
+				const savedSettings = localStorage.getItem(`userSettings_${user.id}`);
 				if (savedSettings) {
 					const parsed = JSON.parse(savedSettings);
 					setSettings(parsed);
-					applyTheme(parsed.display.theme);
+					setTheme(parsed.display.theme);
 				} else {
 					setSettings(defaultSettings);
-					applyTheme(defaultSettings.display.theme);
+					setTheme(defaultSettings.display.theme);
 				}
 
-				// Try to fetch from API
+				// Try to fetch from API with authentication
 				if (process.env.NEXT_PUBLIC_SERVER_URL) {
 					const response = await fetch(
 						`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`,
+						{
+							headers: {
+								'Authorization': `Bearer ${session.access_token}`,
+								'Content-Type': 'application/json',
+							},
+						}
 					);
 					if (response.ok) {
 						const data = await response.json();
 						setSettings(data);
-						localStorage.setItem("userSettings", JSON.stringify(data));
-						applyTheme(data.display.theme);
+						localStorage.setItem(`userSettings_${user.id}`, JSON.stringify(data));
+						setTheme(data.display.theme);
+					} else if (response.status === 404) {
+						// No settings found, use defaults and create them
+						setSettings(defaultSettings);
+						setTheme(defaultSettings.display.theme);
+						await updateSettings(defaultSettings);
 					}
 				}
 			} else {
@@ -111,7 +132,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 				setSettings(defaultSettings);
 				// Only apply theme if we're in the browser
 				if (typeof window !== "undefined") {
-					applyTheme(defaultSettings.display.theme);
+					setTheme(defaultSettings.display.theme);
 				}
 			}
 		} finally {
@@ -120,7 +141,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 	};
 
 	const updateSettings = async (newSettings: Partial<UserSettings>) => {
-		if (!settings) return;
+		if (!settings || !user || !session) return;
 
 		// Deep merge the settings
 		const updatedSettings: UserSettings = {
@@ -143,56 +164,38 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
 		// Save to localStorage (browser only)
 		if (typeof window !== "undefined") {
-			localStorage.setItem("userSettings", JSON.stringify(updatedSettings));
+			localStorage.setItem(`userSettings_${user.id}`, JSON.stringify(updatedSettings));
 		}
 
-		// Apply theme if it changed
+		// Apply theme if it changed using next-themes
 		if (newSettings.display?.theme) {
-			applyTheme(newSettings.display.theme);
+			setTheme(newSettings.display.theme);
 		}
 
-		// Send to API (browser only)
+		// Send to API with authentication (browser only)
 		if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_SERVER_URL) {
 			try {
-				await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`, {
+				const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`, {
 					method: "PATCH",
 					headers: {
+						'Authorization': `Bearer ${session.access_token}`,
 						"Content-Type": "application/json",
 					},
 					body: JSON.stringify(newSettings),
 				});
+				
+				if (!response.ok) {
+					console.error("Failed to save settings to API:", response.statusText);
+				}
 			} catch (error) {
 				console.error("Failed to save settings to API:", error);
 			}
 		}
 	};
 
-	const applyTheme = (theme: "light" | "dark" | "system") => {
-		// Only apply theme changes in the browser
-		if (typeof window === "undefined") return;
-
-		const root = document.documentElement;
-
-		if (theme === "system") {
-			// Use system preference
-			const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-				.matches
-				? "dark"
-				: "light";
-			root.classList.toggle("dark", systemTheme === "dark");
-		} else {
-			// Use explicit theme
-			root.classList.toggle("dark", theme === "dark");
-		}
-
-		// Store the theme preference
-		localStorage.setItem("theme", theme);
-	};
-
 	const value: SettingsContextType = {
 		settings,
 		updateSettings,
-		applyTheme,
 		loading,
 	};
 
