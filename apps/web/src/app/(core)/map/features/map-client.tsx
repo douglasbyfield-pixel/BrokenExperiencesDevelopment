@@ -305,8 +305,8 @@ export default function MapClient({ experiences }: MapClientProps) {
 			const searchLower = debouncedSearchQuery.toLowerCase();
 			filtered = filtered.filter(
 				(experience) =>
-					experience.title.toLowerCase().includes(searchLower) ||
-					experience.description.toLowerCase().includes(searchLower) ||
+					experience.title?.toLowerCase().includes(searchLower) ||
+					experience.description?.toLowerCase().includes(searchLower) ||
 					(experience.address && experience.address.toLowerCase().includes(searchLower)),
 			);
 		}
@@ -1487,15 +1487,6 @@ export default function MapClient({ experiences }: MapClientProps) {
 					<div className="mb-3 flex flex-wrap gap-2">
 						<Button
 							size="sm"
-							variant={showFilters ? "default" : "outline"}
-							onClick={() => setShowFilters(!showFilters)}
-							className="text-xs"
-						>
-							<Filter className="mr-1 h-3 w-3" />
-							Filters
-						</Button>
-						<Button
-							size="sm"
 							variant={showLegend ? "default" : "outline"}
 							onClick={() => setShowLegend(!showLegend)}
 							className="text-xs"
@@ -1603,23 +1594,6 @@ export default function MapClient({ experiences }: MapClientProps) {
 									<p className="truncate text-gray-600 text-xs dark:text-gray-400">
 										{experience.description}
 									</p>
-									<div className="mt-1 flex items-center gap-2">
-										<Badge
-											variant={
-												experience.priority === "high"
-													? "destructive"
-													: experience.priority === "medium"
-														? "default"
-														: "secondary"
-											}
-											className="text-xs"
-										>
-											{experience.priority}
-										</Badge>
-										<span className="text-gray-500 text-xs">
-											👍 {experience.upvotes}
-										</span>
-									</div>
 								</div>
 							))}
 						</div>
