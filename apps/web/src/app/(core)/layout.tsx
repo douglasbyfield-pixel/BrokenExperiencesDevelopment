@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@web/components/auth-provider";
+import { AddToHomeScreen } from "@web/components/add-to-home-screen";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -29,5 +30,10 @@ export default function CoreLayout(props: LayoutProps<"/">) {
 		return null;
 	}
 
-	return <div>{props.children}</div>;
+	return (
+		<div>
+			{props.children}
+			<AddToHomeScreen />
+		</div>
+	);
 }
