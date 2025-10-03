@@ -17,6 +17,11 @@ export const userProfile = p.pgTable(
 
 		role: userRoleEnum("role").notNull().default("reporter"),
 
+		// Gamification fields
+		level: p.integer("level").notNull().default(1),
+		total_experience: p.integer("total_experience").notNull().default(0),
+		experience_to_next_level: p.integer("experience_to_next_level").notNull().default(100),
+
 		created_at: p.timestamp().notNull().defaultNow(),
 		updated_at: p.timestamp().notNull().defaultNow(),
 	},
@@ -27,3 +32,6 @@ export const userProfile = p.pgTable(
 			.on(t.auth_user_id),
 	}),
 );
+
+export type UserProfile = typeof userProfile.$inferSelect;
+export type NewUserProfile = typeof userProfile.$inferInsert;

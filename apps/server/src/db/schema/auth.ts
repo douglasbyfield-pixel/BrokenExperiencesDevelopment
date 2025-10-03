@@ -8,7 +8,9 @@ export const user = p.pgTable("user", {
 	image: p.text(),
 	createdAt: p.timestamp().notNull().defaultNow(),
 	updatedAt: p.timestamp().notNull().defaultNow(),
-});
+}, (table) => ({
+	userIdIdx: p.index("idx_user_id").on(table.id),
+}));
 
 export const session = p.pgTable("session", {
 	id: p.text().primaryKey(),

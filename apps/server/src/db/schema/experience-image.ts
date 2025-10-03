@@ -10,7 +10,9 @@ export const experienceImage = p.pgTable("experience_image", {
 	imageUrl: p.text().notNull(),
 	createdAt: p.timestamp().notNull().defaultNow(),
 	updatedAt: p.timestamp().notNull().defaultNow(),
-});
+}, (table) => ({
+	experienceIdIdx: p.index("idx_experience_image_experience_id").on(table.experienceId),
+}));
 
 export const experienceImageRelations = relations(
 	experienceImage,

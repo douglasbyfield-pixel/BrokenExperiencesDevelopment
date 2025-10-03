@@ -15,7 +15,7 @@ export const report = pgTable("report", {
 	id: uuid().primaryKey().defaultRandom(),
 	
 	/** User who submitted the report */
-	reportedBy: uuid().references(() => user.id, { onDelete: "cascade" }),
+	reportedBy: text().references(() => user.id, { onDelete: "cascade" }),
 	
 	/** Detailed description of the broken experience */
 	description: text().notNull(),
@@ -88,7 +88,7 @@ export const reportVerification = pgTable("report_verification", {
 		.references(() => report.id, { onDelete: "cascade" }),
 	
 	/** User who attempted the verification */
-	verifiedBy: uuid().references(() => user.id, { onDelete: "cascade" }),
+	verifiedBy: text().references(() => user.id, { onDelete: "cascade" }),
 	
 	/** Status of the verification (verified, rejected, pending) */
 	verificationStatus: varchar().notNull().$type<"verified" | "rejected" | "pending">().default("pending"),
