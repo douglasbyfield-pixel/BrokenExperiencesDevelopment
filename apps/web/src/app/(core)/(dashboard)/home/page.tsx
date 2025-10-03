@@ -1,0 +1,203 @@
+"use client";
+
+import { eden } from "@web/lib/eden";
+import { createClient } from "@web/lib/supabase/client";
+import { useEffect, useState } from "react";
+import CreateExperienceCard from "./features/create-experience-card";
+import Feed from "./features/feed";
+import FeedHeader from "./features/feed-header";
+import { useExperiences } from "@web/hooks/use-experiences";
+import { useQuery } from "@tanstack/react-query";
+import { useSearch } from "@web/context/SearchContext";
+
+export default function HomePage() {
+	const [activeTab, setActiveTab] = useState<"for-you" | "communities">("for-you");
+	const [searchTerm, setSearchTerm] = useState("");
+	const [isSearching, setIsSearching] = useState(false);
+	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+	const { setSearchHandler, setSearchChangeHandler, setCategoryFilterHandler } = useSearch();
+
+	const { 
+		data: experiences = [], 
+		isLoading: experiencesLoading, 
+		error: experiencesError 
+	} = useExperiences();
+
+
+	// Use TanStack Query for categories
+	const { 
+		data: categoryOptions = [], 
+		isLoading: categoriesLoading 
+	} = useQuery({
+		queryKey: ['categories'],
+		queryFn: async () => {
+			console.log('📂 Fetching categories with TanStack Query...');
+			const result = await eden.category.get({ $query: { limit: 50, offset: 0 } });
+			return Array.isArray(result?.data) ? result.data : [];
+		},
+		staleTime: 10 * 60 * 1000, // Cache categories for 10 minutes
+		gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
+	});
+
+	const loading = experiencesLoading || categoriesLoading;
+	const error = experiencesError ? "Something went wrong. Please try refreshing the page." : null;
+
+	const handleTabChange = (tab: "for-you" | "communities") => {
+		setActiveTab(tab);
+	};
+
+	// Client-side search filtering function
+	const filterExperiences = (experiences: any[], searchTerm: string, categoryFilter?: string | null) => {
+		let filtered = experiences;
+		
+		// Apply category filter first
+		if (categoryFilter) {
+			filtered = filtered.filter(experience => 
+				experience.category?.name?.toLowerCase() === categoryFilter.toLowerCase()
+			);
+		}
+		
+		// Then apply search filter
+		if (!searchTerm.trim()) return filtered;
+		
+		const term = searchTerm.toLowerCase();
+		return filtered.filter(experience => {
+			// Search in title
+			if (experience.title?.toLowerCase().includes(term)) return true;
+			
+			// Search in description
+			if (experience.description?.toLowerCase().includes(term)) return true;
+			
+			// Search in category name
+			if (experience.category?.name?.toLowerCase().includes(term)) return true;
+			
+			// Search in address
+			if (experience.address?.toLowerCase().includes(term)) return true;
+			
+			// Search in user name
+			if (experience.reportedBy?.name?.toLowerCase().includes(term)) return true;
+			
+			return false;
+		});
+	};
+
+	const handleSearchChange = (term: string) => {
+		setSearchTerm(term);
+		setIsSearching(term.length > 0);
+	};
+
+	const clearSearch = () => {
+		setSearchTerm("");
+		setIsSearching(false);
+	};
+
+	const handleCategoryFilter = (categoryName: string) => {
+		setSelectedCategory(categoryName);
+		// Clear search when filtering by category
+		setSearchTerm("");
+		setIsSearching(false);
+	};
+
+	const clearCategoryFilter = () => {
+		setSelectedCategory(null);
+	};
+
+	// Set the search handlers when component mounts
+	useEffect(() => {
+		setSearchHandler(handleSearchChange);
+		setSearchChangeHandler(handleSearchChange);
+		setCategoryFilterHandler(handleCategoryFilter);
+	}, [setSearchHandler, setSearchChangeHandler, setCategoryFilterHandler]);
+
+	if (loading) {
+		return (
+			<div className="min-h-screen bg-white flex items-center justify-center">
+				<div className="text-black">Loading...</div>
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="min-h-screen bg-white flex items-center justify-center">
+				<div className="text-center">
+					<h2 className="text-xl font-semibold text-black mb-2">Something went wrong</h2>
+					<p className="text-gray-600">{error}</p>
+				</div>
+			</div>
+		);
+	}
+
+	// Determine which experiences to show
+	const baseExperiences = activeTab === "communities" 
+		? experiences.filter(exp => exp.category?.name !== "Personal") // Example filter for communities
+		: experiences;
+
+	const displayExperiences = filterExperiences(baseExperiences, searchTerm, selectedCategory);
+
+	return (
+		<div>
+			<FeedHeader onTabChange={handleTabChange} />
+			<div className="px-4 lg:px-6">
+				<CreateExperienceCard categoryOptions={categoryOptions} />
+				<div className="border-t border-gray-200">
+					{searchTerm ? (
+						<div>
+							{/* Search Results Header */}
+							<div className="p-4 border-b border-gray-200 bg-gray-50">
+								<div className="flex items-center justify-between">
+									<div>
+										<h3 className="text-lg font-semibold text-black">Search Results</h3>
+										<p className="text-sm text-gray-600">
+											{displayExperiences.length === 0 ? `No experiences found for "${searchTerm}"` :
+											 `Found ${displayExperiences.length} experience${displayExperiences.length === 1 ? '' : 's'} for "${searchTerm}"`}
+										</p>
+									</div>
+									<button
+										onClick={clearSearch}
+										className="text-sm text-gray-500 hover:text-gray-700 underline"
+									>
+										Clear search
+									</button>
+								</div>
+							</div>
+							{/* Search Results */}
+							<Feed experiences={displayExperiences} />
+						</div>
+					) : selectedCategory ? (
+						<div>
+							{/* Category Filter Results Header */}
+							<div className="p-4 border-b border-gray-200 bg-gray-50">
+								<div className="flex items-center justify-between">
+									<div>
+										<h3 className="text-lg font-semibold text-black">Category: {selectedCategory}</h3>
+										<p className="text-sm text-gray-600">
+											{displayExperiences.length === 0 ? `No experiences found in "${selectedCategory}"` :
+											 `Found ${displayExperiences.length} experience${displayExperiences.length === 1 ? '' : 's'} in "${selectedCategory}"`}
+										</p>
+									</div>
+									<button
+										onClick={clearCategoryFilter}
+										className="text-sm text-gray-500 hover:text-gray-700 underline"
+									>
+										Clear filter
+									</button>
+								</div>
+							</div>
+							{/* Category Filter Results */}
+							<Feed experiences={displayExperiences} />
+						</div>
+					) : activeTab === "communities" ? (
+						<div className="p-8 text-center">
+							<h3 className="text-lg font-semibold text-black mb-2">Communities</h3>
+							<p className="text-gray-600 mb-4">Discover experiences from your local communities</p>
+							<Feed experiences={displayExperiences} />
+						</div>
+					) : (
+						<Feed experiences={displayExperiences} />
+					)}
+				</div>
+			</div>
+		</div>
+	);
+}
