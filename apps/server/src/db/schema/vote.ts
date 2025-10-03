@@ -10,4 +10,7 @@ export const vote = p.pgTable("vote", {
 	userId: p.text().references(() => user.id, { onDelete: "cascade" }),
 	vote: p.boolean().notNull(),
 	createdAt: p.timestamp().notNull().defaultNow(),
-});
+}, (table) => ({
+	experienceIdIdx: p.index("idx_vote_experience_id").on(table.experienceId),
+	userIdIdx: p.index("idx_vote_user_id").on(table.userId),
+}));

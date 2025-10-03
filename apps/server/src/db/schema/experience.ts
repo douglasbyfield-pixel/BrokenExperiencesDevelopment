@@ -48,7 +48,19 @@ export const experience = p.pgTable("experience", {
 	updatedAt: p.timestamp().notNull().defaultNow(),
 	upvotes: p.integer().notNull().default(0),
 	downvotes: p.integer().notNull().default(0),
-});
+}, (table) => ({
+	// Performance indexes
+	categoryIdIdx: p.index("idx_experience_category_id").on(table.categoryId),
+	reportedByIdx: p.index("idx_experience_reported_by").on(table.reportedBy),
+	statusIdx: p.index("idx_experience_status").on(table.status),
+	priorityIdx: p.index("idx_experience_priority").on(table.priority),
+	createdAtIdx: p.index("idx_experience_created_at").on(table.createdAt),
+	// Location indexes for spatial queries
+	latitudeIdx: p.index("idx_experience_latitude").on(table.latitude),
+	longitudeIdx: p.index("idx_experience_longitude").on(table.longitude),
+	// Composite location index for spatial queries
+	locationIdx: p.index("idx_experience_location").on(table.latitude, table.longitude),
+}));
 
 export const experienceRelations = relations(experience, ({ one, many }) => ({
 	reportedBy: one(user, {
