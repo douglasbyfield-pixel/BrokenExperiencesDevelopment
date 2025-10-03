@@ -8,6 +8,7 @@ import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
+import { usePathname } from "next/navigation";
 
 interface LeftSidebarProps {
   className?: string;
@@ -125,16 +126,17 @@ const navigationItems: NavItem[] = [
 
 export default function LeftSidebar({ className }: LeftSidebarProps) {
   const { user, signOut } = useAuth();
+  const pathname = usePathname();
 
   return (
     <aside
       className={cn(
-        "hidden w-60 lg:w-64 xl:w-72 flex-col bg-white lg:flex sticky top-0 self-start max-h-screen overflow-y-auto",
+        "hidden w-60 lg:w-64 xl:w-72 flex-col bg-white lg:flex h-full overflow-y-auto",
         className
       )}
     >
-      <div className="py-4 px-3 lg:px-4">
-        <div className="space-y-4">
+      <div className="flex flex-col h-full">
+        <div className="py-4 px-3 lg:px-4">
           {/* Logo */}
           <div className="mb-6 lg:mb-8 flex items-center space-x-3">
             <div className="flex h-10 w-10 lg:h-12 lg:w-12 items-center justify-center rounded-xl border-2 border-black bg-white p-1.5">
@@ -154,22 +156,30 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
 
           {/* Navigation */}
           <nav className="flex flex-col gap-1">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
-              >
-                {item.icon}
-                <span className="font-medium">{item.label}</span>
-              </Link>
-            ))}
+            {navigationItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-3 text-black transition-colors",
+                    isActive 
+                      ? "bg-gray-100 font-semibold" 
+                      : "hover:bg-gray-100"
+                  )}
+                >
+                  {item.icon}
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
-        {/* User Profile */}
+        {/* User Profile - moved to bottom */}
         {user && (
-          <div className="mt-auto pt-4 border-t border-gray-200">
+          <div className="mt-auto p-3 lg:p-4 border-t border-gray-200">
             <div className="flex items-center space-x-3 rounded-lg p-2 hover:bg-gray-100">
               <Avatar className="h-10 w-10">
                 <AvatarImage
