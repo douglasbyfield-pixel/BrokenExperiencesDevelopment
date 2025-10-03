@@ -1,8 +1,8 @@
 "use client";
 
-import LeftSidebar from "../(core)/home/features/left-sidebar";
-import RightSidebar from "../(core)/home/features/right-sidebar";
-import MobileNav from "../(core)/home/features/mobile-nav";
+import LeftSidebar from "../(core)/(dashboard)/home/features/left-sidebar";
+import RightSidebar from "../(core)/(dashboard)/home/features/right-sidebar";
+import MobileNav from "../(core)/(dashboard)/home/features/mobile-nav";
 import { eden } from "@web/lib/eden";
 import { useEffect, useState } from "react";
 import { SearchProvider } from "@web/context/SearchContext";
