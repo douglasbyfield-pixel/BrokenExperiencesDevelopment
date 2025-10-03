@@ -4,6 +4,7 @@ import { decrement, increment } from "@server/db/utils";
 import { user, category } from "@server/db/schema";
 import { eq, ilike, or, desc, inArray } from "drizzle-orm";
 import { sendNewIssueNotification } from "@server/lib/email";
+import { ScoringService } from "@server/module/scoring/service";
 import type {
 	ExperienceCreate,
 	ExperienceQuery,
@@ -243,6 +244,19 @@ export const createExperience = async (options: {
 				experienceImages: savedImages,
 			};
 		});
+
+		// Award points for adding experience
+		try {
+			await ScoringService.awardPoints({
+				userId: options.userId,
+				activityType: "add_experience",
+				experienceId: createdExperience.experience.id,
+			});
+			console.log('🎯 Awarded points for adding experience');
+		} catch (error) {
+			console.error('Failed to award points for adding experience:', error);
+			// Don't fail the request if scoring fails
+		}
 
 		// Send email notification only if user has email notifications enabled
 		try {

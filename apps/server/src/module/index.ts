@@ -5,6 +5,7 @@ import { reportRouter } from "./report/router";
 import { miscRouter } from "./misc/router";
 import { statsRouter } from "./stats/router";
 import { settingsRouter } from "./settings/router";
+import { scoringRouter } from "./scoring/router";
 
 export const appRouter = new Elysia()
 	.use(categoryRouter)
@@ -12,4 +13,5 @@ export const appRouter = new Elysia()
 	.use(reportRouter)
 	.use(miscRouter)
 	.use(statsRouter)
-	.use(settingsRouter);
+	.use(settingsRouter)
+	.use(scoringRouter);
