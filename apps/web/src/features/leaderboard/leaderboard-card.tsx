@@ -44,15 +44,15 @@ export function LeaderboardCard({ users, category, showActivityBreakdown = false
   const Icon = currentCategory?.icon || Trophy;
 
   return (
-    <Card>
+    <Card className="shadow-none">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Icon className="h-5 w-5" />
           {currentCategory?.name} Leaderboard
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
+      <CardContent className="p-0">
+        <div className="max-h-96 overflow-y-auto space-y-4 p-6">
           {users.map((user, index) => (
             <div
               key={user.id}
