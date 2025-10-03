@@ -40,6 +40,26 @@ export const userProfile = pgTable("user_profile", {
 	updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const activityPoints = pgTable("activity_points", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	userId: uuid("user_id").notNull().unique(),
+	experiencesAdded: integer("experiences_added").default(0),
+	experiencesFixed: integer("experiences_fixed").default(0),
+	experiencesVerified: integer("experiences_verified").default(0),
+	experiencesSponsored: integer("experiences_sponsored").default(0),
+	totalPoints: integer("total_points").default(0),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Activity point values
+export const ACTIVITY_POINTS = {
+	ADD_EXPERIENCE: 10,
+	FIX_EXPERIENCE: 20,
+	VERIFY_EXPERIENCE: 15,
+	SPONSOR_EXPERIENCE: 30,
+} as const;
+
 // Zod schemas for validation
 export const insertUserAchievementsSchema = createInsertSchema(userAchievements);
 export const selectUserAchievementsSchema = createSelectSchema(userAchievements);
@@ -47,6 +67,8 @@ export const insertAchievementsSchema = createInsertSchema(achievements);
 export const selectAchievementsSchema = createSelectSchema(achievements);
 export const insertUserProfileSchema = createInsertSchema(userProfile);
 export const selectUserProfileSchema = createSelectSchema(userProfile);
+export const insertActivityPointsSchema = createInsertSchema(activityPoints);
+export const selectActivityPointsSchema = createSelectSchema(activityPoints);
 
 export type UserAchievement = typeof userAchievements.$inferSelect;
 export type NewUserAchievement = typeof userAchievements.$inferInsert;
@@ -54,3 +76,5 @@ export type Achievement = typeof achievements.$inferSelect;
 export type NewAchievement = typeof achievements.$inferInsert;
 export type UserProfile = typeof userProfile.$inferSelect;
 export type NewUserProfile = typeof userProfile.$inferInsert;
+export type ActivityPoint = typeof activityPoints.$inferSelect;
+export type NewActivityPoint = typeof activityPoints.$inferInsert;
