@@ -30,7 +30,7 @@ export function UserProgressBanner({
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
-              Your Leaderboard Position
+              Your Leaderboard Position!
             </h3>
             <p className="text-sm text-gray-600">
               {userName}, you're currently ranked{" "}
