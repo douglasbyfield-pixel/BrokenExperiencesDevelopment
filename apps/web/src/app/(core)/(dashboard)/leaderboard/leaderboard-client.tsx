@@ -35,7 +35,7 @@ type CategoryId = typeof categories[number]["id"];
 export function LeaderboardClient() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryId>("overall");
 
-  const currentData = mockLeaderboardData[selectedCategory];
+  const currentData = mockLeaderboardData[selectedCategory as keyof typeof mockLeaderboardData];
   const displayedUsers = currentData.slice(0, 10); // Show only first 10 users
 
   // Mock user data - this will be replaced with actual user data from auth
