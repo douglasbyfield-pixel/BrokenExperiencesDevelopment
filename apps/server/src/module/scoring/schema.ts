@@ -10,8 +10,8 @@ export const getUserScoreSchema = z.object({
 });
 
 export const getLeaderboardSchema = z.object({
-	limit: z.number().min(1).max(100).default(10),
-	offset: z.number().min(0).default(0),
+	limit: z.coerce.number().min(1).max(100).default(10),
+	offset: z.coerce.number().min(0).default(0),
 });
 
 export type AwardPointsInput = z.infer<typeof awardPointsSchema>;

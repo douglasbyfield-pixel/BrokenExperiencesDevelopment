@@ -1,5 +1,5 @@
 import { db } from "@server/db";
-import { activityPoints, userProfile, ACTIVITY_POINTS } from "@server/db/schema";
+import { activityPoints, ACTIVITY_POINTS } from "@server/db/schema";
 import { eq } from "drizzle-orm";
 import { increment } from "@server/db/utils";
 import type { AwardPointsInput } from "./schema";
@@ -38,23 +38,6 @@ export class ScoringService {
 					})
 					.where(eq(activityPoints.userId, input.userId));
 			}
-
-			// Update user profile with the points for this activity
-			await tx
-				.insert(userProfile)
-				.values({
-					userId: input.userId,
-					totalPoints: points, // For new users, set initial points
-					currentLevelPoints: points,
-				})
-				.onConflictDoUpdate({
-					target: userProfile.userId,
-					set: {
-						totalPoints: increment(userProfile.totalPoints, points), // Add points to existing total
-						currentLevelPoints: increment(userProfile.currentLevelPoints, points), // Add to level progress
-						updatedAt: new Date(),
-					},
-				});
 
 			return { 
 				success: true, 
