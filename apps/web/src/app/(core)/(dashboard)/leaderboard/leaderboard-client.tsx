@@ -7,21 +7,6 @@ import { useState, useEffect } from "react";
 import { useLeaderboard, useUserRankStats } from "@web/hooks/use-leaderboard";
 import { createClient } from "@web/lib/supabase/client";
 
-// Mock data fallback
-const generateMockUsers = (count: number) => {
-  const names = ["Sarah Johnson", "Mike Chen", "Emma Davis", "Alex Rodriguez", "Lisa Wang"];
-  return Array.from({ length: count }, (_, i) => ({
-    id: `user-${i + 1}`,
-    name: names[i % names.length],
-    avatar: "",
-    totalPoints: 1500 - (i * 100),
-    level: Math.max(1, Math.floor((1500 - (i * 100)) / 100)),
-    experiencesAdded: Math.floor(Math.random() * 50) + 10,
-    experiencesFixed: Math.floor(Math.random() * 20) + 5,
-    experiencesVerified: Math.floor(Math.random() * 15) + 3,
-    experiencesSponsored: Math.floor(Math.random() * 10) + 1,
-  }));
-};
 
 
 
@@ -47,10 +32,7 @@ export function LeaderboardClient() {
     fetchUserName();
   }, []);
 
-  // Fallback to mock data if API is not available
-  const displayData = leaderboardData.length > 0 ? leaderboardData : generateMockUsers(10);
-  
-  if (loading && leaderboardData.length === 0) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
@@ -58,8 +40,18 @@ export function LeaderboardClient() {
     );
   }
 
-  if (error && leaderboardData.length === 0) {
-    console.warn('Leaderboard API not available, using mock data');
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-500">Failed to load leaderboard: {error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-4 px-4 py-2 bg-violet-600 text-white rounded hover:bg-violet-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -70,21 +62,21 @@ export function LeaderboardClient() {
         onCategoryChange={setSelectedCategory}
       />
 
-      {/* User Progress Banner - only show for overall category */}
-      {selectedCategory === "overall" && (rankStats || !rankLoading) && (
+      {/* User Progress Banner - only show for overall category and when we have rank data */}
+      {selectedCategory === "overall" && rankStats && !rankLoading && (
         <UserProgressBanner
-          userRank={rankStats?.rank || 1}
-          totalUsers={rankStats?.totalUsers || 100}
-          currentPoints={rankStats?.currentPoints || 0}
-          nextLevelPoints={rankStats?.nextLevelPoints || 100}
-          currentLevel={rankStats?.currentLevel || 1}
+          userRank={rankStats.rank}
+          totalUsers={rankStats.totalUsers}
+          currentPoints={rankStats.currentPoints}
+          nextLevelPoints={rankStats.nextLevelPoints}
+          currentLevel={rankStats.currentLevel}
           userName={userName || "User"}
         />
       )}
 
       {/* Leaderboard */}
       <LeaderboardCard
-        users={displayData}
+        users={leaderboardData}
         category={selectedCategory}
       />
     </div>
