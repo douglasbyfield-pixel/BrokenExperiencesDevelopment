@@ -3,18 +3,19 @@
 import { CategorySelector } from "@web/features/leaderboard/category-selector";
 import { categories, LeaderboardCard } from "@web/features/leaderboard/leaderboard-card";
 import { UserProgressBanner } from "@web/features/leaderboard/user-progress-banner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLeaderboard, useUserRankStats } from "@web/hooks/use-leaderboard";
+import { createClient } from "@web/lib/supabase/client";
 
-
-// Mock data for now - this will be replaced with API calls
-const generateMockUsers = (count: number, basePoints: number = 1000) => {
-  const names = ["Sarah Johnson", "Mike Chen", "Emma Davis", "Alex Rodriguez", "Lisa Wang", "John Smith", "Maria Garcia", "David Lee", "Anna Wilson", "Chris Brown", "Jessica Taylor", "Michael Johnson", "Sarah Williams", "Robert Jones", "Jennifer Davis", "William Miller", "Linda Garcia", "James Wilson", "Patricia Anderson", "Charles Thomas"];
+// Mock data fallback
+const generateMockUsers = (count: number) => {
+  const names = ["Sarah Johnson", "Mike Chen", "Emma Davis", "Alex Rodriguez", "Lisa Wang"];
   return Array.from({ length: count }, (_, i) => ({
-    id: (i + 1).toString(),
-    name: names[i % names.length] + (i >= names.length ? ` ${Math.floor(i / names.length) + 1}` : ""),
+    id: `user-${i + 1}`,
+    name: names[i % names.length],
     avatar: "",
-    totalPoints: basePoints - (i * 10),
-    level: Math.max(1, Math.floor((basePoints - (i * 10)) / 100)),
+    totalPoints: 1500 - (i * 100),
+    level: Math.max(1, Math.floor((1500 - (i * 100)) / 100)),
     experiencesAdded: Math.floor(Math.random() * 50) + 10,
     experiencesFixed: Math.floor(Math.random() * 20) + 5,
     experiencesVerified: Math.floor(Math.random() * 15) + 3,
@@ -22,31 +23,44 @@ const generateMockUsers = (count: number, basePoints: number = 1000) => {
   }));
 };
 
-const mockLeaderboardData = {
-  overall: generateMockUsers(100, 1500),
-  experiencesAdded: generateMockUsers(100, 1000).map(user => ({ ...user, count: user.experiencesAdded, totalPoints: user.experiencesAdded * 10 })),
-  experiencesFixed: generateMockUsers(100, 1000).map(user => ({ ...user, count: user.experiencesFixed, totalPoints: user.experiencesFixed * 20 })),
-  experiencesVerified: generateMockUsers(100, 1000).map(user => ({ ...user, count: user.experiencesVerified, totalPoints: user.experiencesVerified * 15 })),
-  experiencesSponsored: generateMockUsers(100, 1000).map(user => ({ ...user, count: user.experiencesSponsored, totalPoints: user.experiencesSponsored * 30 })),
-};
+
 
 type CategoryId = typeof categories[number]["id"];
 
 export function LeaderboardClient() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryId>("overall");
+  const [userName, setUserName] = useState<string>("");
+  
+  const { leaderboardData, loading, error } = useLeaderboard(selectedCategory, 10, 0);
+  const { rankStats, loading: rankLoading } = useUserRankStats();
+  
+  useEffect(() => {
+    const fetchUserName = async () => {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.user_metadata?.name) {
+        setUserName(session.user.user_metadata.name);
+      } else if (session?.user?.email) {
+        setUserName(session.user.email.split('@')[0]);
+      }
+    };
+    fetchUserName();
+  }, []);
 
-  const currentData = mockLeaderboardData[selectedCategory as keyof typeof mockLeaderboardData];
-  const displayedUsers = currentData.slice(0, 10); // Show only first 10 users
+  // Fallback to mock data if API is not available
+  const displayData = leaderboardData.length > 0 ? leaderboardData : generateMockUsers(10);
+  
+  if (loading && leaderboardData.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+      </div>
+    );
+  }
 
-  // Mock user data - this will be replaced with actual user data from auth
-  const mockUserData = {
-    rank: 3,
-    totalUsers: 100,
-    currentPoints: 1100,
-    nextLevelPoints: 1200,
-    currentLevel: 11,
-    userName: "Emma Davis"
-  };
+  if (error && leaderboardData.length === 0) {
+    console.warn('Leaderboard API not available, using mock data');
+  }
 
   return (
     <div className="space-y-6">
@@ -57,20 +71,20 @@ export function LeaderboardClient() {
       />
 
       {/* User Progress Banner - only show for overall category */}
-      {selectedCategory === "overall" && (
+      {selectedCategory === "overall" && (rankStats || !rankLoading) && (
         <UserProgressBanner
-          userRank={mockUserData.rank}
-          totalUsers={mockUserData.totalUsers}
-          currentPoints={mockUserData.currentPoints}
-          nextLevelPoints={mockUserData.nextLevelPoints}
-          currentLevel={mockUserData.currentLevel}
-          userName={mockUserData.userName}
+          userRank={rankStats?.rank || 1}
+          totalUsers={rankStats?.totalUsers || 100}
+          currentPoints={rankStats?.currentPoints || 0}
+          nextLevelPoints={rankStats?.nextLevelPoints || 100}
+          currentLevel={rankStats?.currentLevel || 1}
+          userName={userName || "User"}
         />
       )}
 
       {/* Leaderboard */}
       <LeaderboardCard
-        users={displayedUsers}
+        users={displayData}
         category={selectedCategory}
       />
     </div>
