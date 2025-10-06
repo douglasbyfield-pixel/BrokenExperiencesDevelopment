@@ -183,7 +183,7 @@ export default function SignInForm({
 				</Button>
 			</div>
 
-			<div className="mt-8 border-gray-200 border-t pt-6">
+			{/* <div className="mt-8 border-gray-200 border-t pt-6">
 				<div className="text-center">
 					<span className="text-gray-600">Don't have an account? </span>
 					<button
@@ -193,7 +193,7 @@ export default function SignInForm({
 						Sign up
 					</button>
 				</div>
-			</div>
+			</div> */}
 
 			{/* Forgot Password Modal */}
 			<ForgotPasswordDialog open={forgotOpen} onOpenChange={setForgotOpen} />
