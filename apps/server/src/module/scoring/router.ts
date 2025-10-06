@@ -91,36 +91,45 @@ export const scoringRouter = new Elysia({ prefix: "/scoring" })
 				const { desc, sql } = await import("drizzle-orm");
 				const { activityPoints, userProfile } = await import("@server/db/schema");
 				
-				// Join with user_profile to get real names and avatars
-				const leaderboard = await db
-					.select({
-						userId: activityPoints.userId,
-						totalPoints: activityPoints.totalPoints,
-						experiencesAdded: activityPoints.experiencesAdded,
-						experiencesFixed: activityPoints.experiencesFixed,
-						experiencesVerified: activityPoints.experiencesVerified,
-						experiencesSponsored: activityPoints.experiencesSponsored,
-						displayName: userProfile.display_name,
-						handle: userProfile.handle,
-						avatarUrl: userProfile.avatar_url,
-					})
-					.from(activityPoints)
-					.leftJoin(userProfile, sql`${activityPoints.userId}::text = ${userProfile.auth_user_id}`)
-					.orderBy(desc(activityPoints.totalPoints))
-					.limit(query.limit || 10)
-					.offset(query.offset || 0);
+				// Use raw SQL to join with both user_profile and auth.users for fallback names
+				const leaderboardResult = await db.execute(sql`
+					SELECT 
+						ap.user_id,
+						ap.total_points,
+						ap.experiences_added,
+						ap.experiences_fixed,
+						ap.experiences_verified,
+						ap.experiences_sponsored,
+						COALESCE(
+							up.display_name, 
+							up.handle, 
+							au.raw_user_meta_data->>'full_name',
+							au.raw_user_meta_data->>'name',
+							SPLIT_PART(au.email, '@', 1),
+							'Anonymous User'
+						) as name,
+						COALESCE(up.avatar_url, au.raw_user_meta_data->>'avatar_url', au.raw_user_meta_data->>'picture') as avatar
+					FROM activity_points ap
+					LEFT JOIN user_profile up ON ap.user_id::text = up.auth_user_id
+					LEFT JOIN auth.users au ON ap.user_id = au.id
+					ORDER BY ap.total_points DESC
+					LIMIT ${query.limit || 10}
+					OFFSET ${query.offset || 0}
+				`);
+				
+				const leaderboard = leaderboardResult.rows as any[];
 				
 				// Format the data for frontend
 				const formattedLeaderboard = leaderboard.map((row, index) => ({
-					id: row.userId || `user-${index}`,
-					name: row.displayName || row.handle || `User ${index + 1}`,
-					avatar: row.avatarUrl || undefined,
-					totalPoints: row.totalPoints || 0,
-					level: Math.floor((row.totalPoints || 0) / 100) + 1,
-					experiencesAdded: row.experiencesAdded || 0,
-					experiencesFixed: row.experiencesFixed || 0,
-					experiencesVerified: row.experiencesVerified || 0,
-					experiencesSponsored: row.experiencesSponsored || 0,
+					id: row.user_id || `user-${index}`,
+					name: row.name || `User ${index + 1}`,
+					avatar: row.avatar || undefined,
+					totalPoints: row.total_points || 0,
+					level: Math.floor((row.total_points || 0) / 100) + 1,
+					experiencesAdded: row.experiences_added || 0,
+					experiencesFixed: row.experiences_fixed || 0,
+					experiencesVerified: row.experiences_verified || 0,
+					experiencesSponsored: row.experiences_sponsored || 0,
 				}));
 				
 				set.status = 200;
@@ -149,73 +158,82 @@ export const scoringRouter = new Elysia({ prefix: "/scoring" })
 				const { activityPoints, userProfile } = await import("@server/db/schema");
 				
 				// Determine ordering based on category
-				let orderByField;
+				let orderByField = 'ap.total_points';
 				switch (params.category) {
 					case 'experiencesAdded':
-						orderByField = activityPoints.experiencesAdded;
+						orderByField = 'ap.experiences_added';
 						break;
 					case 'experiencesFixed':
-						orderByField = activityPoints.experiencesFixed;
+						orderByField = 'ap.experiences_fixed';
 						break;
 					case 'experiencesVerified':
-						orderByField = activityPoints.experiencesVerified;
+						orderByField = 'ap.experiences_verified';
 						break;
 					case 'experiencesSponsored':
-						orderByField = activityPoints.experiencesSponsored;
+						orderByField = 'ap.experiences_sponsored';
 						break;
 					default:
-						orderByField = activityPoints.totalPoints;
+						orderByField = 'ap.total_points';
 				}
 				
-				// Join with user_profile to get real names and avatars
-				const leaderboard = await db
-					.select({
-						userId: activityPoints.userId,
-						totalPoints: activityPoints.totalPoints,
-						experiencesAdded: activityPoints.experiencesAdded,
-						experiencesFixed: activityPoints.experiencesFixed,
-						experiencesVerified: activityPoints.experiencesVerified,
-						experiencesSponsored: activityPoints.experiencesSponsored,
-						displayName: userProfile.display_name,
-						handle: userProfile.handle,
-						avatarUrl: userProfile.avatar_url,
-					})
-					.from(activityPoints)
-					.leftJoin(userProfile, sql`${activityPoints.userId}::text = ${userProfile.auth_user_id}`)
-					.orderBy(desc(orderByField))
-					.limit(query.limit || 10)
-					.offset(query.offset || 0);
+				// Use raw SQL to join with both user_profile and auth.users for fallback names
+				const leaderboardResult = await db.execute(sql`
+					SELECT 
+						ap.user_id,
+						ap.total_points,
+						ap.experiences_added,
+						ap.experiences_fixed,
+						ap.experiences_verified,
+						ap.experiences_sponsored,
+						COALESCE(
+							up.display_name, 
+							up.handle, 
+							au.raw_user_meta_data->>'full_name',
+							au.raw_user_meta_data->>'name',
+							SPLIT_PART(au.email, '@', 1),
+							'Anonymous User'
+						) as name,
+						COALESCE(up.avatar_url, au.raw_user_meta_data->>'avatar_url', au.raw_user_meta_data->>'picture') as avatar
+					FROM activity_points ap
+					LEFT JOIN user_profile up ON ap.user_id::text = up.auth_user_id
+					LEFT JOIN auth.users au ON ap.user_id = au.id
+					ORDER BY ${sql.raw(orderByField)} DESC
+					LIMIT ${query.limit || 10}
+					OFFSET ${query.offset || 0}
+				`);
+				
+				const leaderboard = leaderboardResult.rows as any[];
 				
 				// Format with category-specific count
 				const formattedLeaderboard = leaderboard.map((row, index) => {
 					let count = 0;
 					switch (params.category) {
 						case 'experiencesAdded':
-							count = row.experiencesAdded || 0;
+							count = row.experiences_added || 0;
 							break;
 						case 'experiencesFixed':
-							count = row.experiencesFixed || 0;
+							count = row.experiences_fixed || 0;
 							break;
 						case 'experiencesVerified':
-							count = row.experiencesVerified || 0;
+							count = row.experiences_verified || 0;
 							break;
 						case 'experiencesSponsored':
-							count = row.experiencesSponsored || 0;
+							count = row.experiences_sponsored || 0;
 							break;
 						default:
-							count = row.totalPoints || 0;
+							count = row.total_points || 0;
 					}
 					
 					return {
-						id: row.userId || `user-${index}`,
-						name: row.displayName || row.handle || `User ${index + 1}`,
-						avatar: row.avatarUrl || undefined,
-						totalPoints: row.totalPoints || 0,
-						level: Math.floor((row.totalPoints || 0) / 100) + 1,
-						experiencesAdded: row.experiencesAdded || 0,
-						experiencesFixed: row.experiencesFixed || 0,
-						experiencesVerified: row.experiencesVerified || 0,
-						experiencesSponsored: row.experiencesSponsored || 0,
+						id: row.user_id || `user-${index}`,
+						name: row.name || `User ${index + 1}`,
+						avatar: row.avatar || undefined,
+						totalPoints: row.total_points || 0,
+						level: Math.floor((row.total_points || 0) / 100) + 1,
+						experiencesAdded: row.experiences_added || 0,
+						experiencesFixed: row.experiences_fixed || 0,
+						experiencesVerified: row.experiences_verified || 0,
+						experiencesSponsored: row.experiences_sponsored || 0,
 						count,
 					};
 				});
