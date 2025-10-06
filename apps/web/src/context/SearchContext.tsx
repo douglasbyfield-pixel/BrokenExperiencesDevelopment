@@ -16,8 +16,8 @@ const SearchContext = createContext<SearchContextType | undefined>(undefined);
 
 export function SearchProvider({ children, onSearch }: { children: ReactNode; onSearch: (searchTerm: string) => void }) {
 	const [searchHandler, setSearchHandler] = useState<(searchTerm: string) => void>(onSearch);
-	const [searchChangeHandler, setSearchChangeHandler] = useState<(searchTerm: string) => void>(() => {});
-	const [categoryFilterHandler, setCategoryFilterHandler] = useState<(categoryName: string) => void>(() => {});
+	const [searchChangeHandler, setSearchChangeHandler] = useState<(searchTerm: string) => void>(() => () => {});
+	const [categoryFilterHandler, setCategoryFilterHandler] = useState<(categoryName: string) => void>(() => () => {});
 
 	const handleSearch = useCallback((searchTerm: string) => {
 		searchHandler(searchTerm);

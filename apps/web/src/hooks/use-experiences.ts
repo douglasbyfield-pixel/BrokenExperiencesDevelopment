@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@web/lib/supabase/client";
 import type { Experience } from "@web/types";
+import { awardPoints } from './use-leaderboard';
 
 // Query keys for consistent caching
 export const experienceKeys = {
@@ -343,6 +344,15 @@ export function useCreateExperience() {
     },
     onSuccess: async (newExperience) => {
       console.log('✅ Experience created, invalidating cache and refetching...');
+      
+      // Award points for adding an experience
+      try {
+        await awardPoints('add_experience', newExperience.id);
+        console.log('🎯 Points awarded for creating experience');
+      } catch (error) {
+        console.error('Failed to award points:', error);
+      }
+      
       // Invalidate and refetch experiences immediately
       await queryClient.invalidateQueries({ 
         queryKey: experienceKeys.all,

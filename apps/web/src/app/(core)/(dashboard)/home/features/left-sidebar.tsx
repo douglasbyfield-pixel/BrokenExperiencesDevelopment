@@ -180,7 +180,7 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={item.href as any}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-3 text-black transition-colors",
                     isActive 
