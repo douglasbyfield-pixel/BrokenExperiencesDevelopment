@@ -6,7 +6,7 @@ import logixlysia from "logixlysia";
 // import { auth } from "./lib/auth"; // Removed - using Supabase Auth
 import { appRouter } from "./module";
 
-const corsOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app")
+const corsOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app,https://brokenexperiences-dev.vercel.app")
 	.split(",")
 	.map(s => s.trim())
 	.filter(Boolean);
