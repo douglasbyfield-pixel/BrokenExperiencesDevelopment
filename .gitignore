@@ -175,4 +175,7 @@ playwright-report/
 # Alchemy
 .alchemy
 
-.sql
+.sql*.backup
+*.bak*
+.env.local.backup
+.env.local.bak*
