@@ -86,10 +86,14 @@ export const scoringRouter = new Elysia({ prefix: "/scoring" })
 		"/leaderboard",
 		async ({ query, set }) => {
 			try {
+				console.log("Leaderboard request - query params:", query);
+				
 				// Get leaderboard from activity points table with user info
 				const { db } = await import("@server/db");
 				const { desc } = await import("drizzle-orm");
 				const { activityPoints } = await import("@server/db/schema");
+				
+				console.log("Database imports successful");
 				
 				// Simplified query - just get activity points for now
 				const leaderboard = await db.query.activityPoints.findMany({
@@ -97,6 +101,8 @@ export const scoringRouter = new Elysia({ prefix: "/scoring" })
 					limit: query.limit || 10,
 					offset: query.offset || 0,
 				});
+				
+				console.log("Leaderboard query result:", leaderboard);
 				
 				// Format the data for frontend
 				const formattedLeaderboard = leaderboard.map((row, index) => ({
@@ -117,6 +123,19 @@ export const scoringRouter = new Elysia({ prefix: "/scoring" })
 					data: formattedLeaderboard,
 				};
 			} catch (error) {
+				console.error("Leaderboard error:", error);
+				
+				// Check if it's a database table missing error
+				if (error instanceof Error && (error.message.includes('relation "activity_points" does not exist') || error.message.includes('from "activity_points"'))) {
+					console.warn("activity_points table not found. Returning empty leaderboard.");
+					set.status = 200;
+					return {
+						success: true,
+						data: [],
+						warning: "The leaderboard table is not yet set up. Please run LEADERBOARD_SQL_SETUP.sql to enable the leaderboard."
+					};
+				}
+				
 				set.status = 500;
 				return {
 					success: false,
@@ -202,6 +221,19 @@ export const scoringRouter = new Elysia({ prefix: "/scoring" })
 					data: formattedLeaderboard,
 				};
 			} catch (error) {
+				console.error("Category leaderboard error:", error);
+				
+				// Check if it's a database table missing error
+				if (error instanceof Error && (error.message.includes('relation "activity_points" does not exist') || error.message.includes('from "activity_points"'))) {
+					console.warn("activity_points table not found. Returning empty leaderboard.");
+					set.status = 200;
+					return {
+						success: true,
+						data: [],
+						warning: "The leaderboard table is not yet set up. Please run LEADERBOARD_SQL_SETUP.sql to enable the leaderboard."
+					};
+				}
+				
 				set.status = 500;
 				return {
 					success: false,
@@ -259,6 +291,25 @@ export const scoringRouter = new Elysia({ prefix: "/scoring" })
 					},
 				};
 			} catch (error) {
+				console.error("User rank error:", error);
+				
+				// Check if it's a database table missing error
+				if (error instanceof Error && (error.message.includes('relation "activity_points" does not exist') || error.message.includes('from "activity_points"'))) {
+					console.warn("activity_points table not found. Returning default rank.");
+					set.status = 200;
+					return {
+						success: true,
+						data: {
+							rank: 1,
+							totalUsers: 1,
+							currentPoints: 0,
+							nextLevelPoints: 100,
+							currentLevel: 1,
+						},
+						warning: "The leaderboard table is not yet set up. Please run LEADERBOARD_SQL_SETUP.sql to enable the leaderboard."
+					};
+				}
+				
 				set.status = 500;
 				return {
 					success: false,
