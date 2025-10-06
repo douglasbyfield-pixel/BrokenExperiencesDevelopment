@@ -5,7 +5,7 @@ import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { SettingsService } from "@server/module/settings/service";
 
-const trustedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app")
+const trustedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app,https://brokenexperiences-dev.vercel.app")
 	.split(",")
 	.map(s => s.trim())
 	.filter(Boolean);
