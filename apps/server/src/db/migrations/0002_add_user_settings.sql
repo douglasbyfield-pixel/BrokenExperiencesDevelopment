@@ -15,6 +15,4 @@ CREATE TABLE IF NOT EXISTS "user_settings" (
 	"updated_at" timestamp DEFAULT now(),
 	CONSTRAINT "user_settings_user_id_unique" UNIQUE("user_id")
 );--> statement-breakpoint
-ALTER TABLE "user_settings" ADD CONSTRAINT "user_settin
-
-gs_theme_check" CHECK ("theme" IN ('light', 'dark', 'system'));--> statement-breakpoint
+ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_theme_check" CHECK ("theme" IN ('light', 'dark', 'system'));--> statement-breakpoint
