@@ -8,6 +8,9 @@ export default function Header() {
 		{ to: "/home", label: "Home" },
 		{ to: "/map", label: "Map" },
 		{ to: "/profile", label: "Profile" },
+		{ to: "/leaderboard", label: "Leaderboard" },
+		{ to: "/achievements", label: "Achievements" },
+		{ to: "/settings", label: "Settings" },
 	] as const;
 
 	return (

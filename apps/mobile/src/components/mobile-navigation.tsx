@@ -1,12 +1,14 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { Home, Map, Plus, User } from 'lucide-react'
+import { Home, Map, User, Trophy, Award, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigationItems = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Map', href: '/map', icon: Map },
-  { name: 'Report', href: '/report', icon: Plus },
   { name: 'Profile', href: '/profile', icon: User },
+  { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
+  { name: 'Achievements', href: '/achievements', icon: Award },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 export function MobileNavigation() {

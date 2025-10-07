@@ -325,6 +325,8 @@ export default function CreateExperienceCard({
       preview: URL.createObjectURL(file)
     }));
     setPhotos(prev => [...prev, ...newPhotos]);
+    // Expand the form when photos are added so they're visible immediately
+    setIsExpanded(true);
   };
 
   const removePhoto = (id: string) => {
@@ -344,6 +346,8 @@ export default function CreateExperienceCard({
       preview: URL.createObjectURL(file)
     };
     setPhotos(prev => [...prev, newPhoto]);
+    // Expand the form when photos are captured so they're visible immediately
+    setIsExpanded(true);
   };
 
   const form = useForm({
