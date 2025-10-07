@@ -1,0 +1,32 @@
+# Code Owners
+# These owners will be automatically requested for review when someone opens a pull request.
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo
+* @douglasbyfield-pixel
+
+# Server/Backend code
+/apps/server/ @douglasbyfield-pixel
+
+# Web frontend
+/apps/web/ @douglasbyfield-pixel
+
+# Mobile app
+/apps/mobile/ @douglasbyfield-pixel
+
+# Database migrations and schemas
+/apps/server/src/db/ @douglasbyfield-pixel
+
+# CI/CD and deployment configs
+/.github/ @douglasbyfield-pixel
+/vercel.json @douglasbyfield-pixel
+/apps/server/docker-compose.yml @douglasbyfield-pixel
+
+# Documentation
+*.md @douglasbyfield-pixel
+/docs/ @douglasbyfield-pixel
+
+# Environment and configuration files (require extra attention)
+.env* @douglasbyfield-pixel
+*.config.* @douglasbyfield-pixel
+
