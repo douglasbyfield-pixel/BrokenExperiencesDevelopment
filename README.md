@@ -70,3 +70,4 @@ broken-experiences/
 - `bun db:studio`: Open database studio UI
 - `bun check`: Run Biome formatting and linting
 - `cd frontend && bun generate-pwa-assets`: Generate PWA assets
+# Auto-deployment test - Mon Oct  6 20:37:21 EST 2025
