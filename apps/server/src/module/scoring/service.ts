@@ -1,6 +1,6 @@
 import { db } from "@server/db";
 import { activityPoints, ACTIVITY_POINTS, user } from "@server/db/schema";
-import { eq, desc, inArray, count, gt } from "drizzle-orm";
+import { eq, desc, inArray, count, gt, sql } from "drizzle-orm";
 import { increment } from "@server/db/utils";
 import type { AwardPointsInput } from "./schema";
 
@@ -115,44 +115,75 @@ export class ScoringService {
    * Get leaderboard data with user information
    */
   static async getLeaderboard(limit: number = 10, offset: number = 0) {
-    // Get activity points data
-    const leaderboard = await db.query.activityPoints.findMany({
-      orderBy: desc(activityPoints.totalPoints),
-      limit: limit * 2, // Get more records to account for filtering
-      offset,
-    });
+    try {
+      // Use the leaderboard_display view that properly joins with Supabase Auth users
+      const result = await db.execute(sql`
+        SELECT 
+          user_id,
+          name,
+          avatar,
+          total_points,
+          level,
+          experiences_added,
+          experiences_fixed,
+          experiences_verified,
+          experiences_sponsored,
+          rank,
+          total_users
+        FROM public.leaderboard_display 
+        WHERE total_points > 0
+        ORDER BY total_points DESC, user_id
+        LIMIT ${limit} OFFSET ${offset}
+      `);
 
-    // Get user details separately
-    const userIds = leaderboard.map((row) => row.userId).filter(Boolean);
-    const users = await db.select().from(user).where(inArray(user.id, userIds));
-
-    // Create user map for quick lookup
-    const usersById = new Map(users.map((u) => [u.id, u]));
-
-     // Filter out users without proper user records and users with 0 points (unranked)
-     const validLeaderboard = leaderboard
-       .filter((row) => {
-         const userData = usersById.get(row.userId);
-         return userData && (userData.name || userData.email) && (row.totalPoints || 0) > 0; // Must have name/email AND points > 0
-       })
-      .slice(0, limit) // Apply the original limit after filtering
-      .map((row, index) => {
-        const userData = usersById.get(row.userId);
-        return {
-          id: row.userId,
-          name:
-            userData?.name || userData?.email?.split("@")[0] || "Unknown User",
-          avatar: userData?.image || undefined,
-          totalPoints: row.totalPoints || 0,
-          level: Math.floor((row.totalPoints || 0) / 100) + 1,
-          experiencesAdded: row.experiencesAdded || 0,
-          experiencesFixed: row.experiencesFixed || 0,
-          experiencesVerified: row.experiencesVerified || 0,
-          experiencesSponsored: row.experiencesSponsored || 0,
-        };
+      return result.map((row: any) => ({
+        id: row.user_id,
+        name: row.name || "Anonymous User",
+        avatar: row.avatar || undefined,
+        totalPoints: row.total_points || 0,
+        level: row.level || 1,
+        experiencesAdded: row.experiences_added || 0,
+        experiencesFixed: row.experiences_fixed || 0,
+        experiencesVerified: row.experiences_verified || 0,
+        experiencesSponsored: row.experiences_sponsored || 0,
+      }));
+    } catch (error) {
+      console.error('Error fetching leaderboard from view:', error);
+      
+      // Fallback to original method if view doesn't exist
+      const leaderboard = await db.query.activityPoints.findMany({
+        orderBy: desc(activityPoints.totalPoints),
+        limit: limit * 2,
+        offset,
       });
 
-    return validLeaderboard;
+      const userIds = leaderboard.map((row) => row.userId).filter(Boolean);
+      const users = await db.select().from(user).where(inArray(user.id, userIds));
+      const usersById = new Map(users.map((u) => [u.id, u]));
+
+      const validLeaderboard = leaderboard
+        .filter((row) => {
+          const userData = usersById.get(row.userId);
+          return userData && (userData.name || userData.email) && (row.totalPoints || 0) > 0;
+        })
+        .slice(0, limit)
+        .map((row) => {
+          const userData = usersById.get(row.userId);
+          return {
+            id: row.userId,
+            name: userData?.name || userData?.email?.split("@")[0] || "Unknown User",
+            avatar: userData?.image || undefined,
+            totalPoints: row.totalPoints || 0,
+            level: Math.floor((row.totalPoints || 0) / 100) + 1,
+            experiencesAdded: row.experiencesAdded || 0,
+            experiencesFixed: row.experiencesFixed || 0,
+            experiencesVerified: row.experiencesVerified || 0,
+            experiencesSponsored: row.experiencesSponsored || 0,
+          };
+        });
+
+      return validLeaderboard;
+    }
   }
 
   /**
@@ -163,82 +194,136 @@ export class ScoringService {
     limit: number = 10,
     offset: number = 0
   ) {
-    // Determine ordering based on category
-    let orderByField;
-    switch (category) {
-      case "experiencesAdded":
-        orderByField = activityPoints.experiencesAdded;
-        break;
-      case "experiencesFixed":
-        orderByField = activityPoints.experiencesFixed;
-        break;
-      case "experiencesVerified":
-        orderByField = activityPoints.experiencesVerified;
-        break;
-      case "experiencesSponsored":
-        orderByField = activityPoints.experiencesSponsored;
-        break;
-      default:
-        orderByField = activityPoints.totalPoints;
-    }
+    try {
+      // Determine ordering and count field based on category
+      let orderByClause;
+      let countField;
+      switch (category) {
+        case "experiencesAdded":
+          orderByClause = "experiences_added DESC, user_id";
+          countField = "experiences_added";
+          break;
+        case "experiencesFixed":
+          orderByClause = "experiences_fixed DESC, user_id";
+          countField = "experiences_fixed";
+          break;
+        case "experiencesVerified":
+          orderByClause = "experiences_verified DESC, user_id";
+          countField = "experiences_verified";
+          break;
+        case "experiencesSponsored":
+          orderByClause = "experiences_sponsored DESC, user_id";
+          countField = "experiences_sponsored";
+          break;
+        default:
+          orderByClause = "total_points DESC, user_id";
+          countField = "total_points";
+      }
 
-    // Get activity points data
-    const leaderboard = await db.query.activityPoints.findMany({
-      orderBy: desc(orderByField),
-      limit: limit * 2, // Get more records to account for filtering
-      offset,
-    });
+      // Use the leaderboard_display view that properly joins with Supabase Auth users
+      const result = await db.execute(sql`
+        SELECT 
+          user_id,
+          name,
+          avatar,
+          total_points,
+          level,
+          experiences_added,
+          experiences_fixed,
+          experiences_verified,
+          experiences_sponsored,
+          ${sql.raw(countField)} as count
+        FROM public.leaderboard_display 
+        WHERE total_points > 0
+        ORDER BY ${sql.raw(orderByClause)}
+        LIMIT ${limit} OFFSET ${offset}
+      `);
 
-    // Get user details separately
-    const userIds = leaderboard.map((row) => row.userId).filter(Boolean);
-    const users = await db.select().from(user).where(inArray(user.id, userIds));
+      return result.map((row: any) => ({
+        id: row.user_id,
+        name: row.name || "Anonymous User",
+        avatar: row.avatar || undefined,
+        totalPoints: row.total_points || 0,
+        level: row.level || 1,
+        experiencesAdded: row.experiences_added || 0,
+        experiencesFixed: row.experiences_fixed || 0,
+        experiencesVerified: row.experiences_verified || 0,
+        experiencesSponsored: row.experiences_sponsored || 0,
+        count: row.count || 0,
+      }));
+    } catch (error) {
+      console.error('Error fetching category leaderboard from view:', error);
+      
+      // Fallback to original method if view doesn't exist
+      let orderByField;
+      switch (category) {
+        case "experiencesAdded":
+          orderByField = activityPoints.experiencesAdded;
+          break;
+        case "experiencesFixed":
+          orderByField = activityPoints.experiencesFixed;
+          break;
+        case "experiencesVerified":
+          orderByField = activityPoints.experiencesVerified;
+          break;
+        case "experiencesSponsored":
+          orderByField = activityPoints.experiencesSponsored;
+          break;
+        default:
+          orderByField = activityPoints.totalPoints;
+      }
 
-    // Create user map for quick lookup
-    const usersById = new Map(users.map((u) => [u.id, u]));
-
-     // Filter out users without proper user records and users with 0 points (unranked)
-     const validLeaderboard = leaderboard
-       .filter((row) => {
-         const userData = usersById.get(row.userId);
-         return userData && (userData.name || userData.email) && (row.totalPoints || 0) > 0; // Must have name/email AND points > 0
-       })
-      .slice(0, limit) // Apply the original limit after filtering
-      .map((row, index) => {
-        const userData = usersById.get(row.userId);
-        let count = 0;
-        switch (category) {
-          case "experiencesAdded":
-            count = row.experiencesAdded || 0;
-            break;
-          case "experiencesFixed":
-            count = row.experiencesFixed || 0;
-            break;
-          case "experiencesVerified":
-            count = row.experiencesVerified || 0;
-            break;
-          case "experiencesSponsored":
-            count = row.experiencesSponsored || 0;
-            break;
-          default:
-            count = row.totalPoints || 0;
-        }
-
-        return {
-          id: row.userId,
-          name:
-            userData?.name || userData?.email?.split("@")[0] || "Unknown User",
-          avatar: userData?.image || undefined,
-          totalPoints: row.totalPoints || 0,
-          level: Math.floor((row.totalPoints || 0) / 100) + 1,
-          experiencesAdded: row.experiencesAdded || 0,
-          experiencesFixed: row.experiencesFixed || 0,
-          experiencesVerified: row.experiencesVerified || 0,
-          experiencesSponsored: row.experiencesSponsored || 0,
-          count,
-        };
+      const leaderboard = await db.query.activityPoints.findMany({
+        orderBy: desc(orderByField),
+        limit: limit * 2,
+        offset,
       });
 
-    return validLeaderboard;
+      const userIds = leaderboard.map((row) => row.userId).filter(Boolean);
+      const users = await db.select().from(user).where(inArray(user.id, userIds));
+      const usersById = new Map(users.map((u) => [u.id, u]));
+
+      const validLeaderboard = leaderboard
+        .filter((row) => {
+          const userData = usersById.get(row.userId);
+          return userData && (userData.name || userData.email) && (row.totalPoints || 0) > 0;
+        })
+        .slice(0, limit)
+        .map((row) => {
+          const userData = usersById.get(row.userId);
+          let count = 0;
+          switch (category) {
+            case "experiencesAdded":
+              count = row.experiencesAdded || 0;
+              break;
+            case "experiencesFixed":
+              count = row.experiencesFixed || 0;
+              break;
+            case "experiencesVerified":
+              count = row.experiencesVerified || 0;
+              break;
+            case "experiencesSponsored":
+              count = row.experiencesSponsored || 0;
+              break;
+            default:
+              count = row.totalPoints || 0;
+          }
+          return {
+            id: row.userId,
+            name: userData?.name || userData?.email?.split("@")[0] || "Unknown User",
+            avatar: userData?.image || undefined,
+            totalPoints: row.totalPoints || 0,
+            level: Math.floor((row.totalPoints || 0) / 100) + 1,
+            experiencesAdded: row.experiencesAdded || 0,
+            experiencesFixed: row.experiencesFixed || 0,
+            experiencesVerified: row.experiencesVerified || 0,
+            experiencesSponsored: row.experiencesSponsored || 0,
+            count,
+          };
+        });
+
+      return validLeaderboard;
+    }
   }
 
   /**
