@@ -130,7 +130,7 @@ export function useBadgesByCategory(userId: string | undefined, category: string
       }
 
       const badges = result.data || [];
-      return badges.filter(badge => badge.category === category);
+      return badges.filter((badge: BadgeData) => badge.category === category);
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
