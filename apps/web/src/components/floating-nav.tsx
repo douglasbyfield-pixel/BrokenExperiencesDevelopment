@@ -1,5 +1,5 @@
 "use client";
-import { Home, MapPin, Settings, User } from "lucide-react";
+import { Home, MapPin, Settings, User, Trophy, Award } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
@@ -11,6 +11,8 @@ export default function FloatingNav() {
 		{ to: "/home", label: "Home", icon: Home },
 		{ to: "/map", label: "Map", icon: MapPin },
 		{ to: "/profile", label: "Profile", icon: User },
+		{ to: "/leaderboard", label: "Leaderboard", icon: Trophy },
+		{ to: "/achievements", label: "Achievements", icon: Award },
 		{ to: "/settings", label: "Settings", icon: Settings },
 	] as const;
 

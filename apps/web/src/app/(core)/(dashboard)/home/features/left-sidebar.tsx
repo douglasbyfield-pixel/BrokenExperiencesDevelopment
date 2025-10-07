@@ -111,7 +111,13 @@ const navigationItems: NavItem[] = [
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth={2}
-          d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+          d="M12 15l-3-3h6l-3 3z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
         />
       </svg>
     ),
@@ -150,7 +156,7 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
   return (
     <aside
       className={cn(
-        "hidden w-60 lg:w-64 xl:w-72 flex-col bg-white lg:flex h-full overflow-y-auto",
+        "hidden w-60 lg:w-64 xl:w-72 flex-col bg-white lg:flex h-screen overflow-y-auto sticky top-0",
         className
       )}
     >
@@ -181,12 +187,12 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
                 <Link
                   key={item.href}
                   href={item.href as any}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-3 text-black transition-colors",
-                    isActive 
-                      ? "bg-gray-100 font-semibold" 
-                      : "hover:bg-gray-100"
-                  )}
+                   className={cn(
+                     "flex items-center gap-3 rounded-lg px-3 py-3 text-black transition-colors",
+                     isActive 
+                       ? "bg-gray-100 font-semibold" 
+                       : "hover:bg-gray-100"
+                   )}
                 >
                   {item.icon}
                   <span className="font-medium">{item.label}</span>

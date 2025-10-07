@@ -164,8 +164,8 @@ export function ExperienceForm({
     <div className="flex flex-col h-screen">
       {/* Main content area */}
       <div className="flex-1 relative">
-        {/* Show selected content */}
-        {contentType !== "text" && photos.length > 0 && (
+        {/* Show selected content - show photos if any exist, regardless of content type */}
+        {photos.length > 0 && (
           <div className="absolute inset-0">
             {photos.map((photo, index) => (
               <div key={photo} className="relative w-full h-full">
@@ -191,8 +191,8 @@ export function ExperienceForm({
           </div>
         )}
 
-        {/* Empty state for text-only reports */}
-        {contentType === "text" && (
+        {/* Empty state for text-only reports when no photos */}
+        {contentType === "text" && photos.length === 0 && (
           <div className="w-full h-full bg-muted flex items-center justify-center">
             <div className="text-center">
               <Type className="w-16 h-16 text-muted-foreground mx-auto mb-4" />

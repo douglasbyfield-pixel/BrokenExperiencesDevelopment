@@ -42,9 +42,5 @@ export function AchievementsClient() {
     );
   }
 
-  return (
-    <div className="p-6">
-      <AchievementsGrid badges={badges} loading={isLoading} />
-    </div>
-  );
+  return <AchievementsGrid badges={badges} loading={isLoading} />;
 }
