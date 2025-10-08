@@ -571,10 +571,10 @@ export default function CreateExperienceCard({
 					</>
 				)}
 				
-				<div className="ml-6 flex items-center justify-between">
-					<div className="flex items-center space-x-2">
+				<div className="ml-6 flex items-center justify-between gap-2">
+					<div className="flex items-center space-x-1 sm:space-x-2 flex-shrink min-w-0">
 						{/* Photo upload button - Always visible */}
-						<label className="cursor-pointer">
+						<label className="cursor-pointer flex-shrink-0">
 							<div className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
 								<Picture className="h-4 w-4" />
 							</div>
@@ -592,7 +592,7 @@ export default function CreateExperienceCard({
 							<button
 								type="button"
 								onClick={() => setIsCameraOpen(true)}
-								className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors"
+								className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors flex-shrink-0"
 							>
 								<Camera className="h-4 w-4" />
 							</button>
@@ -607,7 +607,7 @@ export default function CreateExperienceCard({
 											type="button" 
 											onClick={handleGetLocation}
 											disabled={isGettingLocation || locationPermission === 'denied'}
-											className={`flex items-center justify-center w-7 h-7 rounded-full transition-colors disabled:opacity-50 ${
+											className={`flex items-center justify-center w-7 h-7 rounded-full transition-colors disabled:opacity-50 flex-shrink-0 ${
 												locationPermission === 'denied'
 													? 'bg-red-50 text-red-600 border border-red-200 cursor-not-allowed'
 													: 'hover:bg-blue-50 text-blue-600 hover:text-blue-700 border border-blue-200'
@@ -632,7 +632,7 @@ export default function CreateExperienceCard({
 										value={field.state.value}
 										onValueChange={field.handleChange}
 									>
-										<SelectTrigger className="w-[90px] h-7 text-xs border-gray-200 bg-white text-gray-700">
+										<SelectTrigger className="w-[80px] sm:w-[100px] h-7 text-xs border-gray-200 bg-white text-gray-700 flex-shrink-0">
 											<SelectValue placeholder="Category" />
 										</SelectTrigger>
 										<SelectContent>
@@ -655,12 +655,12 @@ export default function CreateExperienceCard({
 						</form.Field>
 					</div>
 					
-					<div className="flex items-center gap-1.5">
+					<div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
 						{isExpanded && (
 							<Button
 								type="button"
 								onClick={handleCancel}
-								className="rounded-full bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 px-3 py-1 text-md"
+								className="rounded-full bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 px-2 sm:px-3 py-1 text-sm"
 							>
 								Cancel
 							</Button>
@@ -669,7 +669,7 @@ export default function CreateExperienceCard({
 							{(state) => (
 								<Button
 									type="submit"
-									className="rounded-full bg-black font-medium text-white text-md hover:bg-gray-800 disabled:opacity-50 px-4 py-1 "
+									className="rounded-full bg-black font-medium text-white text-sm hover:bg-gray-800 disabled:opacity-50 px-3 sm:px-4 py-1"
 									disabled={!state.canSubmit || state.isSubmitting || isExecuting || !location || !location.latitude || !location.longitude}
 								>
 									{state.isSubmitting || isExecuting ? "Posting..." : "Post"}

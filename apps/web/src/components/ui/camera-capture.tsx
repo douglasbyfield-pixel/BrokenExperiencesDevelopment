@@ -14,6 +14,8 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [capturedImages, setCapturedImages] = useState<string[]>([]);
+  const [showCaptureFlash, setShowCaptureFlash] = useState(false);
 
   // Handle video stream when component mounts or stream changes
   useEffect(() => {
@@ -73,8 +75,17 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
         canvas.toBlob((blob) => {
           if (blob) {
             const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+            
+            // Create preview URL for captured image
+            const imageUrl = URL.createObjectURL(blob);
+            setCapturedImages(prev => [...prev, imageUrl]);
+            
+            // Show capture flash effect
+            setShowCaptureFlash(true);
+            setTimeout(() => setShowCaptureFlash(false), 150);
+            
             onCapture(file);
-            onClose();
+            // Don't automatically close - let user stay on camera screen
           }
         }, 'image/jpeg', 0.8);
       }
@@ -83,6 +94,9 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
 
   const handleClose = () => {
     stopCamera();
+    // Cleanup image URLs to prevent memory leaks
+    capturedImages.forEach(url => URL.revokeObjectURL(url));
+    setCapturedImages([]);
     onClose();
   };
 
@@ -92,7 +106,15 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
     <div className="fixed inset-0 bg-black text-white z-50 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-black/50">
-        <h2 className="text-lg font-semibold">Take Photo</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold">Take Photo</h2>
+          {capturedImages.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-white/10 border border-white/20 text-white px-3 py-1.5 rounded-lg text-sm backdrop-blur-sm">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span className="font-medium">{capturedImages.length}</span>
+            </div>
+          )}
+        </div>
         <button
           onClick={handleClose}
           className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
@@ -117,13 +139,43 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
             </div>
           </div>
         ) : (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-          />
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+            
+            {/* Flash effect */}
+            {showCaptureFlash && (
+              <div className="absolute inset-0 bg-white pointer-events-none animate-pulse" />
+            )}
+            
+            {/* Recent captures thumbnail strip */}
+            {capturedImages.length > 0 && (
+              <div className="absolute bottom-4 left-4 flex gap-2">
+                {capturedImages.slice(-3).map((imageUrl, index) => (
+                  <div
+                    key={index}
+                    className="w-12 h-12 rounded-lg overflow-hidden border-2 border-white/50 bg-black/20"
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={`Captured ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+                {capturedImages.length > 3 && (
+                  <div className="w-12 h-12 rounded-lg border-2 border-white/50 bg-black/50 flex items-center justify-center">
+                    <span className="text-white text-xs">+{capturedImages.length - 3}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
       

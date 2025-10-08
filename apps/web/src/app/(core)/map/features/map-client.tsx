@@ -21,7 +21,7 @@ import {
 	PopoverPopup,
 } from "@web/components/animate-ui/primitives/base/popover";
 import type { Experience } from "@web/types";
-import { useVoteExperience } from "@web/hooks/use-experiences";
+// Removed useVoteExperience - voting not available on map
 import { useShare } from "@web/hooks/use-share";
 import { getCategoryStyling, CATEGORY_STYLING } from "@web/lib/category-config";
 import { mapOperations } from "../utils/mapOperations";
@@ -214,11 +214,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 		};
 	}, []); // Only run once on mount
 
-	const { mutate: voteOnExperience, isPending: isVoting } = useVoteExperience();
-	
-	// Debounce state for vote handling
-	const [isVoteDebouncing, setIsVoteDebouncing] = useState(false);
-	const voteTimeoutRef = useRef<NodeJS.Timeout>();
+	// Removed voting state - not needed for map view
 
 	// Debounce search query
 	useEffect(() => {
@@ -336,44 +332,9 @@ export default function MapClient({ experiences }: MapClientProps) {
 		});
 	};
 
-	// Debounced vote handler to prevent rapid clicking
-	const handleVote = useCallback((experienceId: string) => {
-		// Prevent multiple rapid clicks
-		if (isVoteDebouncing || isVoting) {
-			console.log('🚫 Map vote debounced - please wait');
-			return;
-		}
+	// Removed voting functionality from map - users should vote from feed/details pages
 
-		// Set debouncing state
-		setIsVoteDebouncing(true);
-		
-		// Clear any existing timeout
-		if (voteTimeoutRef.current) {
-			clearTimeout(voteTimeoutRef.current);
-		}
-
-		// Execute vote immediately for good UX (optimistic update)
-		console.log('🗳️ Processing map cosign vote...');
-		voteOnExperience({
-			experienceId: experienceId,
-			vote: 'up' // Use 'up' for cosigning
-		});
-
-		// Reset debouncing after 1 second
-		voteTimeoutRef.current = setTimeout(() => {
-			setIsVoteDebouncing(false);
-			console.log('✅ Map vote debouncing reset');
-		}, 1000);
-	}, [voteOnExperience, isVoteDebouncing, isVoting]);
-
-	// Cleanup timeout on unmount
-	useEffect(() => {
-		return () => {
-			if (voteTimeoutRef.current) {
-				clearTimeout(voteTimeoutRef.current);
-			}
-		};
-	}, []);
+	// Removed vote cleanup - not needed for map view
 
 	// Share handlers
 	const handleNativeShare = async () => {
@@ -1598,20 +1559,8 @@ export default function MapClient({ experiences }: MapClientProps) {
 					)}
 
 					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-4">
-							<Button
-								size="sm"
-								variant="ghost"
-								className="flex items-center gap-1 text-gray-700 transition-colors hover:text-green-600"
-								onClick={(e) => {
-									e.stopPropagation();
-									handleVote(selectedExperience.id);
-								}}
-							>
-								{/* <ThumbsUp className="h-4 w-4" /> */}
-								{/* <span className="font-medium">{selectedExperience.upvotes}</span> */}
-							</Button>
-						</div>
+						{/* Removed voting from map - users can vote from feed/details pages */}
+						<div></div>
 
 						<div className="flex items-center gap-2">
 							<Button
