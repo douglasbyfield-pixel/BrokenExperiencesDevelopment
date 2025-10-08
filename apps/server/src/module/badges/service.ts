@@ -11,7 +11,7 @@ export interface BadgeWithStatus {
 	points: number;
 	requirement: number;
 	requirementType: string;
-	rarity: string;
+	rarity: string | null;
 	isHidden: boolean;
 	createdAt: Date;
 	// User-specific status
