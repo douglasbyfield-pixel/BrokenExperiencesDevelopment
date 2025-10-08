@@ -150,12 +150,6 @@ export function LeaderboardCard({ users, category, showActivityBreakdown = false
                   <div className={`font-bold text-lg ${getPointsAnimation(rank)} ${
                     isTopThree ? 'text-xl' : ''
                   }`}>
-<<<<<<< HEAD
-                    {category === "overall" ? user.totalPoints : user.totalPoints}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {category === "overall" ? "total points" : "points"}
-=======
                     {category === "overall" ? user.totalPoints : (user.count || 0)}
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -163,7 +157,6 @@ export function LeaderboardCard({ users, category, showActivityBreakdown = false
                      category === "experiencesAdded" ? "reports" :
                      category === "experiencesFixed" ? "fixes" :
                      category === "experiencesVerified" ? "verifications" : "sponsorships"}
->>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
                   </div>
                 </div>
               </div>
