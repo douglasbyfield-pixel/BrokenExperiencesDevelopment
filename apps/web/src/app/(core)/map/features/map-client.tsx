@@ -24,6 +24,11 @@ import type { Experience } from "@web/types";
 import { useVoteExperience } from "@web/hooks/use-experiences";
 import { useShare } from "@web/hooks/use-share";
 import { getCategoryStyling, CATEGORY_STYLING } from "@web/lib/category-config";
+import { mapOperations } from "../utils/mapOperations";
+import { applyFilters } from "../utils/filterUtils";
+import { locationActions } from "../utils/locationActions";
+import { createReactMarker, createReactCluster } from "../utils/markerUtils";
+import { MAP_CONFIG } from "../constants/mapConstants";
 import {
 	AlertCircle,
 	ArrowLeft,
@@ -174,8 +179,6 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const [currentRoute, setCurrentRoute] = useState<any>(null);
 	const [isNavigating, setIsNavigating] = useState(false);
 	const [navPanelMinimized, setNavPanelMinimized] = useState(false);
-	const [is3DView, setIs3DView] = useState(false);
-	const [proximityRadius, setProximityRadius] = useState(5); // km radius for proximity
 	const [clusters, setClusters] = useState<Array<{
 		id: string;
 		lat: number;
@@ -187,13 +190,15 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const router = useRouter();
 	const { copyToClipboard, shareToWhatsApp, shareToTwitter, shareToFacebook, shareViaWebShare } = useShare();
 
-	// Fetch categories from database
-	useEffect(() => {
+	// Fetch categories from database - memoized to prevent refetching
+	const categoriesMemo = useMemo(() => {
+		let isMounted = true;
+		
 		const fetchCategories = async () => {
 			try {
 				const { eden } = await import("@web/lib/eden");
 				const result = await eden.category.get({ $query: { limit: 50, offset: 0 } });
-				if (Array.isArray(result?.data)) {
+				if (Array.isArray(result?.data) && isMounted) {
 					const sorted = result.data.sort((a: any, b: any) => a.name.localeCompare(b.name));
 					setCategories(sorted);
 				}
@@ -203,7 +208,11 @@ export default function MapClient({ experiences }: MapClientProps) {
 		};
 		
 		fetchCategories();
-	}, []);
+		
+		return () => {
+			isMounted = false;
+		};
+	}, []); // Only run once on mount
 
 	const { mutate: voteOnExperience, isPending: isVoting } = useVoteExperience();
 	
@@ -228,11 +237,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 			return;
 		}
 
-		const options = {
-			enableHighAccuracy: true,
-			timeout: 15000,
-			maximumAge: 60000,
-		};
+		const options = MAP_CONFIG.GEOLOCATION_OPTIONS;
 
 		navigator.geolocation.getCurrentPosition(
 			(position) => {
@@ -272,65 +277,10 @@ export default function MapClient({ experiences }: MapClientProps) {
 		setFilteredExperiences(experiences);
 	}, [experiences]);
 
-	// Proximity filtering function
-	const getFilteredExperiencesByProximity = useCallback((experiences: Experience[], userLoc: {lat: number, lng: number}, radius: number = proximityRadius) => {
-		if (!userLoc) return experiences;
-		
-		return experiences.filter(experience => {
-			const experienceLat = Number(experience.latitude);
-			const experienceLng = Number(experience.longitude);
-			
-			if (isNaN(experienceLat) || isNaN(experienceLng)) return false;
-			
-			const distance = getDistance(userLoc.lat, userLoc.lng, experienceLat, experienceLng);
-			return distance <= radius;
-		});
-	}, [proximityRadius]);
-
-	// Memoized filtering function for better performance with proximity
+	// Memoized filtering function for better performance
 	const filteredExperiencesMemo = useMemo(() => {
-		let filtered = [...experiences];
-
-		// Apply proximity filtering first if user location is available
-		if (userLocation) {
-			filtered = getFilteredExperiencesByProximity(filtered, userLocation, proximityRadius);
-		}
-
-		// Apply status filters
-		if (activeFilters.status.length > 0) {
-			filtered = filtered.filter((experience) =>
-				activeFilters.status.includes(experience.status),
-			);
-		}
-
-		// Apply priority filters
-		if (activeFilters.priority.length > 0) {
-			filtered = filtered.filter((experience) =>
-				activeFilters.priority.includes(experience.priority),
-			);
-		}
-
-		// Apply category filters
-		if (activeFilters.category.length > 0) {
-			filtered = filtered.filter(
-				(experience) =>
-					experience.categoryId && activeFilters.category.includes(experience.categoryId),
-			);
-		}
-
-		// Apply debounced search query
-		if (debouncedSearchQuery) {
-			const searchLower = debouncedSearchQuery.toLowerCase();
-			filtered = filtered.filter(
-				(experience) =>
-					experience.title?.toLowerCase().includes(searchLower) ||
-					experience.description?.toLowerCase().includes(searchLower) ||
-					(experience.address && experience.address.toLowerCase().includes(searchLower)),
-			);
-		}
-
-		return filtered;
-	}, [experiences, activeFilters, debouncedSearchQuery, userLocation, getFilteredExperiencesByProximity, proximityRadius]);
+		return applyFilters(experiences, activeFilters, debouncedSearchQuery);
+	}, [experiences, activeFilters, debouncedSearchQuery]);
 
 	// Update filtered experiences when memo changes
 	useEffect(() => {
@@ -403,10 +353,10 @@ export default function MapClient({ experiences }: MapClientProps) {
 		}
 
 		// Execute vote immediately for good UX (optimistic update)
-		console.log('🗳️ Processing map endorse vote...');
+		console.log('🗳️ Processing map cosign vote...');
 		voteOnExperience({
 			experienceId: experienceId,
-			vote: 'up' // Use 'up' for endorsing
+			vote: 'up' // Use 'up' for cosigning
 		});
 
 		// Reset debouncing after 1 second
@@ -581,7 +531,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 			map.fitBounds(bounds, {
 				padding: 50,
-				pitch: is3DView ? 68 : 0,
+				pitch: 68,
 				duration: 1500,
 			});
 
@@ -614,53 +564,8 @@ export default function MapClient({ experiences }: MapClientProps) {
 				// Dynamically import mapboxgl to avoid SSR issues
 				const mapboxgl = (await import("mapbox-gl")).default;
 
-				// Telemetry blocking - comprehensive approach
-				if (typeof window !== "undefined") {
-					// Block telemetry requests using transformRequest
-					const originalFetch = window.fetch;
-					window.fetch = ((input: any, init: any) => {
-						const url = typeof input === "string" ? input : input.url;
-						if (
-							url &&
-							(url.includes("events.mapbox.com") ||
-								url.includes("api.mapbox.com/events"))
-						) {
-							console.log("🚫 Blocked telemetry request:", url);
-							return Promise.resolve(new Response());
-						}
-						return originalFetch(input, init);
-					}) as typeof fetch;
-
-					// Block XMLHttpRequest telemetry
-					const OriginalXHR = window.XMLHttpRequest;
-					window.XMLHttpRequest = (() => {
-						const xhr = new OriginalXHR();
-						const originalOpen = xhr.open;
-						xhr.open = function (
-							method: string,
-							url: string | URL,
-							...args: any[]
-						) {
-							if (
-								typeof url === "string" &&
-								(url.includes("events.mapbox.com") ||
-									url.includes("api.mapbox.com/events"))
-							) {
-								console.log("🚫 Blocked XHR telemetry request:", url);
-								return;
-							}
-							return originalOpen.call(
-								this,
-								method,
-								url,
-								args[0],
-								args[1],
-								args[2],
-							);
-						};
-						return xhr;
-					}) as any;
-				}
+				// Lightweight telemetry blocking - only block in transformRequest
+				// This is more efficient than intercepting all network requests
 
 				// Mapbox access token - using correct env var name
 				mapboxgl.accessToken =
@@ -672,7 +577,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 					style: "mapbox://styles/mapbox/dark-v11",
 					center: [userLocation.lng, userLocation.lat],
 					zoom: 14,
-					pitch: 0, // Default to 2D view
+					pitch: 68,
 					bearing: 0,
 					transformRequest: (url) => {
 						// Block all telemetry and analytics requests
@@ -691,59 +596,67 @@ export default function MapClient({ experiences }: MapClientProps) {
 				mapInstance.on("load", () => {
 					console.log("✅ Map loaded successfully");
 
-					const layers = mapInstance.getStyle().layers;
-					const labelLayerId = layers.find(
-						(layer) =>
-							layer.type === "symbol" &&
-							layer.layout &&
-							layer.layout["text-field"],
-					)?.id;
-					mapInstance.addLayer(
-						{
-							id: "add-3d-buildings",
-							source: "composite",
-							"source-layer": "building",
-							filter: ["==", "extrude", "true"],
-							type: "fill-extrusion",
-							minzoom: 15,
-							paint: {
-								"fill-extrusion-color": "#aaa",
-								"fill-extrusion-height": [
-									"interpolate",
-									["linear"],
-									["zoom"],
-									15,
-									0,
-									15.05,
-									["get", "height"],
-								],
-								"fill-extrusion-base": [
-									"interpolate",
-									["linear"],
-									["zoom"],
-									15,
-									0,
-									15.05,
-									["get", "min_height"],
-								],
-								"fill-extrusion-opacity": 0.6,
-							},
-						},
-						labelLayerId,
-					);
+					// Add 3D buildings layer asynchronously to not block initial render
+					requestAnimationFrame(() => {
+						const layers = mapInstance.getStyle().layers;
+						const labelLayerId = layers.find(
+							(layer) =>
+								layer.type === "symbol" &&
+								layer.layout &&
+								layer.layout["text-field"],
+						)?.id;
+						
+						if (labelLayerId) {
+							mapInstance.addLayer(
+								{
+									id: "add-3d-buildings",
+									source: "composite",
+									"source-layer": "building",
+									filter: ["==", "extrude", "true"],
+									type: "fill-extrusion",
+									minzoom: 15,
+									paint: {
+										"fill-extrusion-color": "#aaa",
+										"fill-extrusion-height": [
+											"interpolate",
+											["linear"],
+											["zoom"],
+											15,
+											0,
+											15.05,
+											["get", "height"],
+										],
+										"fill-extrusion-base": [
+											"interpolate",
+											["linear"],
+											["zoom"],
+											15,
+											0,
+											15.05,
+											["get", "min_height"],
+										],
+										"fill-extrusion-opacity": 0.6,
+									},
+								},
+								labelLayerId,
+							);
+						}
+					});
 
+					// Set map as loaded immediately for better UX
+					setMapLoaded(true);
+
+					// Fly to location with reduced duration for faster initial load
 					setTimeout(() => {
 						mapInstance.flyTo({
 							center: [userLocation.lng, userLocation.lat],
 							zoom: 16.5,
-							pitch: 0, // Default to 2D view
+							pitch: 68,
 							bearing: 0,
-							duration: 2500,
+							duration: 1500, // Reduced from 2500ms
 							essential: true,
 						});
-					}, 500);
-
-					setMapLoaded(true);
+					}, 200); // Reduced from 500ms
 				});
 
 				const nav = new mapboxgl.NavigationControl({
@@ -754,29 +667,28 @@ export default function MapClient({ experiences }: MapClientProps) {
 				mapInstance.addControl(nav, "top-right");
 
 				// Add geolocate control with custom options and 3D view preserved
-				const geolocate = new mapboxgl.GeolocateControl({
-					positionOptions: {
-						enableHighAccuracy: true,
-						timeout: 10000,
-						maximumAge: 0,
-					},
-					trackUserLocation: true,
-					showUserHeading: true,
-					showAccuracyCircle: true,
-					fitBoundsOptions: {
-						maxZoom: 15,
-						pitch: 0, // Default to 2D view
-						bearing: 0,
-					},
-				});
-				mapInstance.addControl(geolocate, "top-right");
+				// Load geolocate control asynchronously to not block initial render
+				let geolocate: any;
+				requestAnimationFrame(() => {
+					geolocate = new mapboxgl.GeolocateControl({
+						positionOptions: {
+							enableHighAccuracy: true,
+							timeout: 10000,
+							maximumAge: 0,
+						},
+						trackUserLocation: true,
+						showUserHeading: true,
+						showAccuracyCircle: true,
+						fitBoundsOptions: {
+							maxZoom: 15,
+							pitch: 68,
+							bearing: 0,
+						},
+					});
+					mapInstance.addControl(geolocate, "top-right");
 
-				setTimeout(() => {
-					geolocate.trigger();
-				}, 1000);
-
-				// Add popup for location features with enhanced quick actions
-				geolocate.on("geolocate", (e: any) => {
+					// Add popup for location features with enhanced quick actions
+					geolocate.on("geolocate", (e: any) => {
 					console.log("📍 Geolocate triggered:", e);
 
 					if (e.coords) {
@@ -791,7 +703,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 						mapInstance.flyTo({
 							center: [newLocation.lng, newLocation.lat],
 							zoom: 16,
-							pitch: is3DView ? 68 : 0,
+							pitch: 68,
 							bearing: 0,
 							duration: 1500,
 						});
@@ -834,100 +746,22 @@ export default function MapClient({ experiences }: MapClientProps) {
 							.addTo(mapInstance);
 
 						(window as any).reportIssueHere = () => {
-							console.log("📍 Report issue at:", newLocation);
-							alert(
-								`Report issue at: ${newLocation.lat.toFixed(6)}, ${newLocation.lng.toFixed(6)}`,
-							);
+							locationActions.reportIssueHere(newLocation);
 							popup.remove();
 						};
 
 						(window as any).findNearbyIssues = () => {
-							console.log("🔍 Finding nearby issues...");
-							const nearby = filteredExperiences.filter((experience) => {
-								const distance = getDistance(
-									newLocation.lat,
-									newLocation.lng,
-									Number(experience.latitude),
-									Number(experience.longitude),
-								);
-								return distance <= 2;
-							});
-
-							console.log(`Found ${nearby.length} nearby issues`);
-
-							if (nearby.length > 0) {
-								const bounds = new mapboxgl.LngLatBounds();
-								nearby.forEach((experience) => {
-									bounds.extend([Number(experience.longitude), Number(experience.latitude)]);
-								});
-								bounds.extend([newLocation.lng, newLocation.lat]);
-
-								mapInstance.fitBounds(bounds, {
-									padding: 50,
-									pitch: is3DView ? 68 : 0,
-									duration: 1500,
-								});
-
-								alert(
-									`Found ${nearby.length} issues within 2km of your location!`,
-								);
-							} else {
-								alert("No issues found within 2km of your location.");
-							}
+							locationActions.findNearbyIssues(newLocation, filteredExperiences, mapInstance);
 							popup.remove();
 						};
 
 						(window as any).showClosestIssue = () => {
-							console.log("🎯 Finding closest experience...");
-
-							if (filteredExperiences.length === 0) {
-								alert("No issues available to show.");
-								popup.remove();
-								return;
-							}
-
-							// Find the closest issue
-							let closestExperience = filteredExperiences[0];
-							let closestDistance = getDistance(
-								newLocation.lat,
-								newLocation.lng,
-								Number(closestExperience.latitude),
-								Number(closestExperience.longitude),
-							);
-
-							filteredExperiences.forEach((experience) => {
-								const distance = getDistance(
-									newLocation.lat,
-									newLocation.lng,
-									Number(experience.latitude),
-									Number(experience.longitude),
-								);
-								if (distance < closestDistance) {
-									closestDistance = distance;
-									closestExperience = experience;
-								}
-							});
-
-							// Fly to closest issue and select it
-							mapInstance.flyTo({
-								center: [Number(closestExperience.longitude), Number(closestExperience.latitude)],
-								zoom: 17,
-								pitch: is3DView ? 68 : 0,
-								duration: 2000,
-							});
-
-							setSelectedExperience(closestExperience);
-							console.log(
-								`Closest issue: ${closestExperience.title} (${closestDistance.toFixed(2)}km away)`,
-							);
+							locationActions.showClosestIssue(newLocation, filteredExperiences, mapInstance, setSelectedExperience);
 							popup.remove();
 						};
 
 						(window as any).shareLocation = () => {
-							const locationText = `My location: ${newLocation.lat.toFixed(6)}, ${newLocation.lng.toFixed(6)}`;
-							navigator.clipboard.writeText(locationText);
-							console.log("📤 Location copied to clipboard");
-							alert("Location copied to clipboard!");
+							locationActions.shareLocation(newLocation);
 							popup.remove();
 						};
 
@@ -935,6 +769,12 @@ export default function MapClient({ experiences }: MapClientProps) {
 							if (popup.isOpen()) popup.remove();
 						}, 15000);
 					}
+					});
+
+					// Trigger geolocation after a shorter delay
+					setTimeout(() => {
+						geolocate.trigger();
+					}, 500); // Reduced from 1000ms
 				});
 
 				setMap(mapInstance);
@@ -1051,170 +891,87 @@ export default function MapClient({ experiences }: MapClientProps) {
 		return clusters;
 	};
 
-	// Create markers when map loads and we have issues
-	useEffect(() => {
-		if (!map || !mapLoaded || !filteredExperiences.length) return;
+	// Memoized marker creation function for better performance
+	const createMarkers = useCallback(async (experiences: Experience[], zoom: number) => {
+		if (!map || !experiences.length) return;
 
-		console.log(
-			"🎯 Creating clustered markers for",
-			filteredExperiences.length,
-			"filtered issues",
-		);
-
-		// Get current zoom level for clustering
-		const currentZoom = map.getZoom();
-		
 		// Create clusters
-		const newClusters = createClusters(filteredExperiences, currentZoom);
+		const newClusters = createClusters(experiences, zoom);
 		setClusters(newClusters);
 
-		// Remove existing markers
+		// Remove existing markers efficiently
 		const existingMarkers = document.querySelectorAll(".custom-marker, .cluster-marker");
 		existingMarkers.forEach((marker) => marker.remove());
 
 		// Dynamically import mapboxgl for markers
-		import("mapbox-gl").then(({ default: mapboxgl }) => {
-			// Create markers for each cluster
-			newClusters.forEach((cluster) => {
-				if (cluster.count === 1) {
-					// Single marker - show individual experience
-					const experience = cluster.experiences[0];
-					
-					console.log("🎯 Creating single marker for:", experience.title);
-					
-					const categoryName = experience.category?.name || 'Other';
-					const categoryStyling = getCategoryStyling(categoryName);
-					
-					const markerEl = document.createElement("div");
-					markerEl.className = "custom-marker";
-					markerEl.innerHTML = `
-						<div class="relative drop-shadow-lg">
-							<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
-								 style="background-color: ${categoryStyling.color};">
-								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-									${categoryStyling.svgPath}
-								</svg>
-							</div>
+		const { default: mapboxgl } = await import("mapbox-gl");
+		
+		// Create markers for each cluster
+		newClusters.forEach((cluster) => {
+			if (cluster.count === 1) {
+				// Single marker - show individual experience
+				const experience = cluster.experiences[0];
+				const markerEl = createReactMarker(experience, setSelectedExperience);
+				
+				new mapboxgl.Marker(markerEl)
+					.setLngLat([cluster.lng, cluster.lat])
+					.addTo(map);
+			} else {
+				// Cluster marker - simple design matching original style
+				const markerEl = document.createElement("div");
+				markerEl.className = "cluster-marker";
+				markerEl.innerHTML = `
+					<div class="relative drop-shadow-lg">
+						<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
+							 style="background-color: #374151;">
+							<div class="text-white font-bold text-sm">${cluster.count}</div>
 						</div>
-					`;
+					</div>
+				`;
 
-					markerEl.addEventListener("click", (e) => {
-						e.stopPropagation();
-						setSelectedExperience(experience);
-						console.log("📍 Single issue selected:", experience.title);
-					});
-					
-					new mapboxgl.Marker(markerEl)
-						.setLngLat([cluster.lng, cluster.lat])
-						.addTo(map);
-				} else {
-					// Cluster marker - simple design matching original style
-					console.log("🎯 Creating cluster marker for", cluster.count, "issues");
-					
-					const markerEl = document.createElement("div");
-					markerEl.className = "cluster-marker";
-					markerEl.innerHTML = `
-						<div class="relative drop-shadow-lg">
-							<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
-								 style="background-color: #374151;">
-								<div class="text-white font-bold text-sm">${cluster.count}</div>
-							</div>
-						</div>
-					`;
-
-					markerEl.addEventListener("click", (e) => {
-						e.stopPropagation();
-						setSelectedCluster(cluster.experiences);
-						console.log("📍 Cluster selected:", cluster.count, "issues");
-					});
-					
-					new mapboxgl.Marker(markerEl)
-						.setLngLat([cluster.lng, cluster.lat])
-						.addTo(map);
-				}
-			});
-
-			console.log("✅ Clustered markers created successfully");
-		});
-
-		// Listen for zoom changes to update clustering
-		if (map) {
-			const handleZoomEnd = () => {
-				const currentZoom = map.getZoom();
-				console.log("🔍 Zoom changed to:", currentZoom, "- updating clusters");
-				
-				// Recreate clusters with new zoom level
-				const updatedClusters = createClusters(filteredExperiences, currentZoom);
-				setClusters(updatedClusters);
-				
-				// Remove existing markers
-				const existingMarkers = document.querySelectorAll(".custom-marker, .cluster-marker");
-				existingMarkers.forEach((marker) => marker.remove());
-				
-				// Recreate markers with new clusters
-				import("mapbox-gl").then(({ default: mapboxgl }) => {
-					updatedClusters.forEach((cluster) => {
-						if (cluster.count === 1) {
-							const experience = cluster.experiences[0];
-							const categoryName = experience.category?.name || 'Other';
-							const categoryStyling = getCategoryStyling(categoryName);
-							
-							const markerEl = document.createElement("div");
-							markerEl.className = "custom-marker";
-							markerEl.innerHTML = `
-								<div class="relative drop-shadow-lg">
-									<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
-										 style="background-color: ${categoryStyling.color};">
-										<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-											${categoryStyling.svgPath}
-										</svg>
-									</div>
-								</div>
-							`;
-
-							markerEl.addEventListener("click", (e) => {
-								e.stopPropagation();
-								setSelectedExperience(experience);
-							});
-							
-							new mapboxgl.Marker(markerEl)
-								.setLngLat([cluster.lng, cluster.lat])
-								.addTo(map);
-						} else {
-							const markerEl = document.createElement("div");
-							markerEl.className = "cluster-marker";
-							markerEl.innerHTML = `
-								<div class="relative drop-shadow-lg">
-									<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
-										 style="background-color: #374151;">
-										<div class="text-white font-bold text-sm">${cluster.count}</div>
-									</div>
-								</div>
-							`;
-
-							markerEl.addEventListener("click", (e) => {
-								e.stopPropagation();
-								setSelectedCluster(cluster.experiences);
-							});
-							
-							new mapboxgl.Marker(markerEl)
-								.setLngLat([cluster.lng, cluster.lat])
-								.addTo(map);
-						}
-					});
+				markerEl.addEventListener("click", (e) => {
+					e.stopPropagation();
+					setSelectedCluster(cluster.experiences);
 				});
-			};
+				
+				new mapboxgl.Marker(markerEl)
+					.setLngLat([cluster.lng, cluster.lat])
+					.addTo(map);
+			}
+		});
+	}, [map]);
 
-			map.on('zoomend', handleZoomEnd);
+	// Create markers when map loads and we have issues - optimized
+	useEffect(() => {
+		if (!map || !mapLoaded || !filteredExperiences.length) return;
 
-			// Cleanup
-			return () => {
-				if (map) {
-					map.off('zoomend', handleZoomEnd);
-				}
-			};
-		}
-	}, [map, mapLoaded, filteredExperiences]);
+		const currentZoom = map.getZoom();
+		createMarkers(filteredExperiences, currentZoom);
+	}, [map, mapLoaded, filteredExperiences, createMarkers]);
+
+	// Handle zoom changes with debouncing to prevent excessive re-renders
+	useEffect(() => {
+		if (!map) return;
+
+		let timeoutId: NodeJS.Timeout;
+		
+		const handleZoomEnd = () => {
+			clearTimeout(timeoutId);
+			timeoutId = setTimeout(() => {
+				const currentZoom = map.getZoom();
+				createMarkers(filteredExperiences, currentZoom);
+			}, 150); // Debounce zoom changes
+		};
+
+		map.on('zoomend', handleZoomEnd);
+
+		return () => {
+			clearTimeout(timeoutId);
+			if (map) {
+				map.off('zoomend', handleZoomEnd);
+			}
+		};
+	}, [map, filteredExperiences, createMarkers]);
 
 	// Real-time location tracking with high accuracy
 	const startLiveTracking = useCallback(() => {
@@ -1223,11 +980,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 			return;
 		}
 
-		const options = {
-			enableHighAccuracy: true,
-			timeout: 5000,
-			maximumAge: 1000,
-		};
+		const options = MAP_CONFIG.LIVE_TRACKING_OPTIONS;
 
 		const id = navigator.geolocation.watchPosition(
 			(position) => {
@@ -1239,11 +992,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 				setLocationAccuracy(position.coords.accuracy);
 
 				if (map) {
-					map.flyTo({
-						center: [newLocation.lng, newLocation.lat],
-						zoom: 15,
-						duration: 1000,
-					});
+					mapOperations.flyToLocation(map, newLocation, 15);
 				}
 				console.log(
 					"📍 Live location updated:",
@@ -1267,22 +1016,6 @@ export default function MapClient({ experiences }: MapClientProps) {
 			setWatchId(null);
 		}
 	}, [watchId]);
-
-	// Toggle 2D/3D view
-	const toggle3DView = useCallback(() => {
-		if (!map) return;
-		
-		const newIs3D = !is3DView;
-		setIs3DView(newIs3D);
-		
-		map.flyTo({
-			pitch: newIs3D ? 68 : 0,
-			duration: 1000,
-		});
-		
-		console.log(`🔄 Switched to ${newIs3D ? '3D' : '2D'} view`);
-	}, [map, is3DView]);
-
 
 	// Toggle live tracking
 	useEffect(() => {
@@ -1390,12 +1123,15 @@ export default function MapClient({ experiences }: MapClientProps) {
 		<div
 			className={`mobile-map-page h-screen w-full fixed inset-0 ${showSearchPanel ? "search-visible" : ""}`}
 		>
-			{/* Loading Overlay */}
-			{!mapLoaded && (
-				<div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-					<div className="flex items-center gap-3 rounded-lg bg-white p-6">
-						<div className="h-6 w-6 animate-spin rounded-full border-blue-600 border-b-2" />
-						<span className="text-black">Loading map...</span>
+			{/* Loading Overlay - only show for initial load */}
+			{isLoading && (
+				<div className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+					<div className="flex flex-col items-center gap-4 rounded-xl bg-white p-8 shadow-2xl">
+						<div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+						<div className="text-center">
+							<h3 className="text-lg font-semibold text-gray-900">Loading Map</h3>
+							<p className="text-sm text-gray-600">Preparing your local experience...</p>
+						</div>
 					</div>
 				</div>
 			)}
@@ -1432,25 +1168,13 @@ export default function MapClient({ experiences }: MapClientProps) {
 				</div>
 			)}
 
-			{/* 2D/3D Toggle and Live Tracking Buttons */}
-			<div className="absolute top-4 right-20 z-10 flex flex-col gap-2">
-				<Button
-					size="icon"
-					variant={is3DView ? "default" : "outline"}
-					className="bg-white shadow-lg"
-					onClick={toggle3DView}
-					title={is3DView ? "Switch to 2D view" : "Switch to 3D view"}
-				>
-					<span className="text-xs font-bold">
-						{is3DView ? "3D" : "2D"}
-					</span>
-				</Button>
+			{/* Live Tracking Button */}
+			<div className="absolute top-4 right-20 z-10">
 				<Button
 					size="icon"
 					variant={isLiveTracking ? "default" : "outline"}
 					className="bg-white shadow-lg"
 					onClick={() => setIsLiveTracking(!isLiveTracking)}
-					title={isLiveTracking ? "Stop live tracking" : "Start live tracking"}
 				>
 					<Navigation
 						className={`h-4 w-4 ${isLiveTracking ? "text-blue-600" : ""}`}
@@ -1514,12 +1238,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 										}
 									});
 
-									map?.flyTo({
-										center: [Number(closestExperience.longitude), Number(closestExperience.latitude)],
-										zoom: 17,
-										pitch: is3DView ? 68 : 0,
-										duration: 2000,
-									});
+									mapOperations.flyToWithPitch(map, [Number(closestExperience.longitude), Number(closestExperience.latitude)], 17, 68);
 
 									setSelectedExperience(closestExperience);
 									setShowQuickActions(false);
@@ -1570,7 +1289,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 										map?.fitBounds(bounds, {
 											padding: 50,
-											pitch: is3DView ? 68 : 0,
+											pitch: 68,
 											duration: 1500,
 										});
 									});
@@ -1588,12 +1307,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 							className="flex h-auto flex-col items-center gap-1 p-3 text-xs"
 							onClick={() => {
 								if (userLocation && map) {
-									map.flyTo({
-										center: [userLocation.lng, userLocation.lat],
-										zoom: 16.5,
-										pitch: is3DView ? 68 : 0,
-										duration: 1500,
-									});
+									mapOperations.flyToLocation(map, userLocation, 16.5);
 									setShowQuickActions(false);
 								}
 							}}
@@ -1616,7 +1330,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 										map.fitBounds(bounds, {
 											padding: 50,
-											pitch: is3DView ? 68 : 0,
+											pitch: 0,
 											duration: 2000,
 										});
 									});
