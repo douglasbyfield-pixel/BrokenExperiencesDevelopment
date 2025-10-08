@@ -10,7 +10,7 @@ const supabaseAdmin = createClient(
 
 webpush.setVapidDetails(
   'mailto:dev@yourdomain.com',
-  process.env.VAPID_PUBLIC_KEY!,
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!
 );
 
@@ -20,19 +20,53 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
   }
 
-  const { userId, title, body } = await req.json();
+  const { userId, title, body, broadcast } = await req.json();
 
-  const { data: subs, error } = await supabaseAdmin
-    .from('push_subscriptions')
-    .select('*')
-    .eq('user_id', userId);
+  // Support both single user and broadcast
+  let query = supabaseAdmin.from('push_subscriptions').select('*');
+  
+  if (broadcast) {
+    // Get all subscriptions for broadcast
+    console.log('📢 Broadcasting to all users...');
+  } else {
+    // Get subscriptions for specific user
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'userId required for non-broadcast messages' }), { status: 400 });
+    }
+    query = query.eq('user_id', userId);
+  }
+  
+  const { data: subs, error } = await query;
 
   if (error) {
     console.error('Failed to fetch subscriptions', error);
     return new Response(JSON.stringify({ error: 'Failed to fetch subscriptions' }), { status: 500 });
   }
 
-  const payload = JSON.stringify({ title, body });
+  const payload = JSON.stringify({ 
+    title: `🔥 ${title}`, 
+    body: `${body} • Community Power`,
+    icon: 'https://img.icons8.com/fluency/96/megaphone.png',
+    badge: 'https://img.icons8.com/fluency/96/megaphone.png',
+    requireInteraction: false,
+    vibrate: [100, 50, 100],
+    timestamp: Date.now(),
+    actions: [
+      {
+        action: 'view',
+        title: '🚀 Take Action'
+      },
+      {
+        action: 'share', 
+        title: '📢 Share'
+      }
+    ],
+    data: {
+      url: '/home',
+      timestamp: Date.now(),
+      type: 'community_update'
+    }
+  });
   let sent = 0;
 
   for (const s of subs ?? []) {
@@ -47,7 +81,6 @@ export async function POST(req: Request) {
       if (e?.statusCode === 404 || e?.statusCode === 410) {
         await supabaseAdmin.from('push_subscriptions')
           .delete()
-          .eq('user_id', userId)
           .eq('endpoint', s.endpoint);
       } else {
         console.error('push error:', e?.statusCode, e?.body || e?.message);

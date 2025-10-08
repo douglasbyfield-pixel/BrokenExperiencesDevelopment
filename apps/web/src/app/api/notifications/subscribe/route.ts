@@ -14,6 +14,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Store the subscription in the database (you'll need to create this table)
+    console.log('Storing subscription for user:', user.id);
+    console.log('Subscription data:', subscription);
+    
     const { error } = await supabase
       .from('push_subscriptions')
       .upsert({
@@ -22,11 +25,14 @@ export async function POST(request: NextRequest) {
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id,endpoint'
       });
 
     if (error) {
       console.error('Failed to store push subscription:', error);
-      return NextResponse.json({ error: 'Failed to store subscription' }, { status: 500 });
+      console.error('Detailed error:', JSON.stringify(error, null, 2));
+      return NextResponse.json({ error: 'Failed to store subscription', details: error }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

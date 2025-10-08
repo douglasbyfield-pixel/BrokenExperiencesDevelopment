@@ -488,7 +488,7 @@ export default function CreateExperienceCard({
 									<textarea
 										id={field.name}
 										name={field.name}
-										placeholder={isExpanded ? "Describe your experience..." : "What's broken?"}
+										placeholder={isExpanded ? "Describe the slackness you want fixed..." : "Report the Slackness!"}
 										value={field.state.value}
 										onFocus={() => {
 											// Expand when user clicks/focuses on the input
