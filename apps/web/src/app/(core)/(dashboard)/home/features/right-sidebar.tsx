@@ -11,9 +11,10 @@ import {
   Users,
   BarChart3
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearch } from "@web/context/SearchContext";
 import { useExperiencesContext } from "@web/context/ExperiencesContext";
+import { useRouter } from "next/navigation";
 
 interface RightSidebarProps {
   className?: string;
@@ -31,6 +32,7 @@ export default function RightSidebar({
   recentExperiences,
 }: RightSidebarProps) {
   const { onCategoryFilter } = useSearch();
+  const router = useRouter();
   
   // Get experiences from context if available, otherwise use prop
   let contextExperiences: Experience[] = [];
@@ -41,6 +43,83 @@ export default function RightSidebar({
     // Context not available, use prop
   }
   const experiencesToUse = contextExperiences.length > 0 ? contextExperiences : (recentExperiences || []);
+  
+  // Calculate real weekly statistics
+  const weeklyStats = useMemo(() => {
+    if (!experiencesToUse.length) {
+      console.log('📊 No experiences available for weekly stats');
+      return {
+        newReports: 0,
+        resolved: 0,
+        inProgress: 0
+      };
+    }
+
+    const now = new Date();
+    
+    // Calculate proper start of current week (Monday 00:00:00)
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Monday
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    // End of week is Sunday 23:59:59
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+    
+    console.log('📊 Weekly stats calculation:', {
+      totalExperiences: experiencesToUse.length,
+      timeRange: { 
+        from: startOfWeek.toISOString(), 
+        to: endOfWeek.toISOString(),
+        currentTime: now.toISOString()
+      }
+    });
+    
+    // Filter experiences from this week (Monday 00:00 to current time)
+    const thisWeekExperiences = experiencesToUse.filter(exp => {
+      const createdDate = new Date(exp.createdAt);
+      const isThisWeek = createdDate >= startOfWeek && createdDate <= now;
+      if (isThisWeek) {
+        console.log('📊 This week experience:', {
+          id: exp.id,
+          createdAt: exp.createdAt,
+          status: exp.status,
+          title: exp.title?.substring(0, 50)
+        });
+      }
+      return isThisWeek;
+    });
+    
+    // Count by status
+    const resolved = thisWeekExperiences.filter(exp => exp.status === 'resolved').length;
+    const inProgress = thisWeekExperiences.filter(exp => exp.status === 'in_progress').length;
+    
+    const stats = {
+      newReports: thisWeekExperiences.length,
+      resolved,
+      inProgress
+    };
+    
+    console.log('📊 Final weekly stats:', stats);
+    
+    return stats;
+  }, [experiencesToUse]);
+  
+  // Handle clicking on live activity items
+  const handleActivityClick = (experience: Experience) => {
+    // Navigate to map with location parameters
+    const params = new URLSearchParams();
+    if (experience.latitude && experience.longitude) {
+      params.set('lat', experience.latitude.toString());
+      params.set('lng', experience.longitude.toString());
+      params.set('zoom', '16'); // Close zoom to focus on the marker
+      params.set('focus', experience.id.toString()); // Experience ID to highlight
+    }
+    router.push(`/map?${params.toString()}`);
+  };
   
   const [currentPage, setCurrentPage] = useState(0);
   const categoriesPerPage = 5;
@@ -233,7 +312,7 @@ export default function RightSidebar({
 
 
           {/* Live Activity */}
-          {!userStats && (
+          {(
             <Card className="border-gray-200 bg-gray-50 p-6 shadow-none">
               <h3 className="font-bold text-lg text-black mb-4 flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-gray-600" />
@@ -262,15 +341,19 @@ export default function RightSidebar({
                     const actionText = experience.status === 'resolved' ? 'resolved' : 'reported';
                     
                     return (
-                      <div key={experience.id} className="flex items-center gap-3 p-2 rounded bg-white/50">
+                      <button 
+                        key={experience.id} 
+                        onClick={() => handleActivityClick(experience)}
+                        className="w-full flex items-center gap-3 p-2 rounded bg-white/50 hover:bg-white/80 transition-colors cursor-pointer text-left"
+                      >
                         <div className={`w-2 h-2 ${statusColor} rounded-full ${index === 0 ? 'animate-pulse' : ''}`}></div>
                         <div className="flex-1">
-                          <p className="text-sm text-gray-700">
+                          <p className="text-sm text-gray-700 hover:text-gray-900">
                             Issue {actionText} {experience.address ? `at ${experience.address.split(',')[0]}` : 'in your area'}
                           </p>
                           <p className="text-xs text-gray-500">{timeText}</p>
                         </div>
-                      </div>
+                      </button>
                     );
                   })
                 ) : (
@@ -348,22 +431,15 @@ export default function RightSidebar({
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">New Reports</span>
-                <span className="font-semibold text-black">{stats?.totalExperiences ? Math.floor(stats.totalExperiences * 0.1) : 12}</span>
+                <span className="font-semibold text-black">{weeklyStats.newReports}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Resolved</span>
-                <span className="font-semibold text-gray-700">{stats?.resolvedExperiences ? Math.floor(stats.resolvedExperiences * 0.15) : 8}</span>
+                <span className="font-semibold text-green-600">{weeklyStats.resolved}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">In Progress</span>
-                <span className="font-semibold text-gray-700">{stats?.totalExperiences ? Math.floor(stats.totalExperiences * 0.05) : 4}</span>
-              </div>
-              <div className="pt-2 border-t border-gray-200">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">Active Users</span>
-                  <span className="font-semibold text-black ml-auto">{stats?.activeUsers || 24}</span>
-                </div>
+                <span className="font-semibold text-orange-600">{weeklyStats.inProgress}</span>
               </div>
             </div>
           </Card>

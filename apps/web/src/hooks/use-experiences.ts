@@ -217,20 +217,39 @@ export function useVoteExperience() {
     mutationFn: async ({ experienceId, vote }: { experienceId: string; vote: 'up' | 'down' }) => {
       console.log('🗳️ Voting on experience...');
       
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.error('❌ No session found, user not authenticated');
+        throw new Error('You must be logged in to cosign');
+      }
+      
+      console.log('✅ User authenticated:', session.user.id);
+      
       const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
+      console.log('📤 Sending vote to:', `${apiUrl}/experience/${experienceId}/vote`);
+      
       const response = await fetch(`${apiUrl}/experience/${experienceId}/vote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ vote }),
+        body: JSON.stringify({ vote: vote === 'up' }),
       });
 
+      console.log('📥 Response status:', response.status, response.statusText);
+      
       if (!response.ok) {
-        throw new Error(`Failed to vote: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ Server error response:', errorText);
+        throw new Error(`Failed to vote: ${response.statusText} - ${errorText}`);
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log('✅ Server response:', result);
+      return result;
     },
     onMutate: async ({ experienceId, vote }) => {
       // Cancel any outgoing refetches

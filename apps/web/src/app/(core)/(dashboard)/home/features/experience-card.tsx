@@ -15,7 +15,7 @@ import {
 	Edit,
 	MessageCircle,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@web/components/auth-provider";
 import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
@@ -80,8 +80,18 @@ interface ExperienceCardProps {
 export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	const { user } = useAuth();
 	const router = useRouter();
-	const [isLiked, setIsLiked] = useState(experience.userVote === true);
-	const [likeCount, setLikeCount] = useState(experience.upvotes || 0);
+	// Use the actual experience data instead of local state for better sync
+	const isLiked = experience.userVote === true;
+	const likeCount = experience.upvotes || 0;
+	
+	// Debug logging for vote state
+	console.log('🔍 Experience vote state:', {
+		id: experience.id,
+		userVote: experience.userVote,
+		isLiked,
+		upvotes: experience.upvotes,
+		likeCount
+	});
 	const [showDropdown, setShowDropdown] = useState(false);
 	const [isEditingStatus, setIsEditingStatus] = useState(false);
 	const [localPriority, setLocalPriority] = useState<string>(experience.priority);
@@ -121,6 +131,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 	// Use TanStack Query for optimistic voting
 	const { mutate: voteOnExperience, isPending: isExecuting } = useVoteExperience();
+	
+	// Debounce state for vote handling
+	const [isVoteDebouncing, setIsVoteDebouncing] = useState(false);
+	const voteTimeoutRef = useRef<NodeJS.Timeout>();
 
 	const { execute: deleteExperience, isExecuting: isDeleting } = useAction(deleteExperienceAction, {
 		onSuccess: () => {
@@ -134,13 +148,44 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		}
 	});
 
-	const handleVote = () => {
-		// TanStack Query handles optimistic updates automatically
+	// Debounced vote handler to prevent rapid clicking
+	const handleVote = useCallback(() => {
+		// Prevent multiple rapid clicks
+		if (isVoteDebouncing || isExecuting) {
+			console.log('🚫 Vote debounced - please wait');
+			return;
+		}
+
+		// Set debouncing state
+		setIsVoteDebouncing(true);
+		
+		// Clear any existing timeout
+		if (voteTimeoutRef.current) {
+			clearTimeout(voteTimeoutRef.current);
+		}
+
+		// Execute vote immediately for good UX (optimistic update)
+		console.log('🗳️ Processing cosign vote...');
 		voteOnExperience({
 			experienceId: experience.id,
 			vote: isLiked ? 'down' : 'up' // Toggle between up and down
 		});
-	};
+
+		// Reset debouncing after 1 second
+		voteTimeoutRef.current = setTimeout(() => {
+			setIsVoteDebouncing(false);
+			console.log('✅ Vote debouncing reset');
+		}, 1000);
+	}, [voteOnExperience, experience.id, isLiked, isVoteDebouncing, isExecuting]);
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (voteTimeoutRef.current) {
+				clearTimeout(voteTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	const handleImageClick = (e: React.MouseEvent, index: number) => {
 		e.stopPropagation();
@@ -492,7 +537,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 										🔥 Community Hot Topic
 									</span>
 									<span className="text-xs text-blue-600">
-										{likeCount} people validate this concern
+										{likeCount} cosigns - Community validated issue
 									</span>
 								</div>
 							</div>
@@ -632,7 +677,39 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								<MapPin className="h-4 w-4 flex-shrink-0 text-gray-400" />
 								<span className="text-sm font-medium">{experience.address}</span>
 							</div>
-						<Popover>
+							<div className="flex items-center gap-2">
+								{/* Cosign Button */}
+								<button
+									onClick={(e) => {
+										e.stopPropagation();
+										handleVote();
+									}}
+									disabled={isExecuting || isVoteDebouncing}
+									title={
+										isVoteDebouncing ? 'Processing...' :
+										isExecuting ? 'Saving...' :
+										likeCount === 0 ? 'Cosign to validate this concern' :
+										likeCount === 1 ? '1 Cosign' :
+										likeCount >= 2 && likeCount < 5 ? `${likeCount} Cosigns - Building momentum` :
+										likeCount >= 5 && likeCount < 10 ? `${likeCount} Cosigns - Escalating to authorities` :
+										`${likeCount} Cosigns - Community priority`
+									}
+									className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all duration-200 ${
+										isLiked 
+											? 'text-blue-600 bg-blue-50 font-semibold' 
+											: 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+									} ${(isExecuting || isVoteDebouncing) ? 'opacity-70 cursor-not-allowed' : ''}`}
+								>
+									<Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+									<span className="text-sm">
+										{likeCount === 0 ? 'Cosign' : 
+										 isLiked ? 'Cosign' : 
+										 likeCount === 1 ? '1' :
+										 `${likeCount}`}
+									</span>
+								</button>
+								
+								<Popover>
 							<PopoverTrigger 
 								className="group flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all"
 								onClick={(e) => e.stopPropagation()}
@@ -701,54 +778,28 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								</PopoverPositioner>
 							</PopoverPortal>
 						</Popover>
+							</div>
 						</div>
 					)}
 
-					{/* Action Buttons - Community Validation */}
-					<div className="flex items-center justify-between pt-2 border-t border-gray-100">
-						<div className="flex items-center gap-6">
-							{/* Cosign Button */}
-							<button
+					{/* Report to Authority Button - Show for high cosign posts */}
+					{likeCount >= 5 && (
+						<div className="pt-2 border-t border-gray-100">
+							<button 
 								onClick={(e) => {
 									e.stopPropagation();
-									handleVote();
+									alert('Report to MP/Authority feature - Coming soon!');
 								}}
-								disabled={isExecuting}
-								className={`flex items-center gap-2 text-sm transition-all duration-200 ${
-									isLiked 
-										? 'text-blue-600 font-semibold' 
-										: 'text-gray-500 hover:text-blue-600'
-								}`}
+								className="flex items-center gap-2 text-sm bg-red-600 text-white px-3 py-1 rounded-full hover:bg-red-700 transition-all duration-200 font-medium"
 							>
-								<Heart className={`h-5 w-5 ${isLiked ? 'fill-current' : ''}`} />
-								<span>{likeCount} {likeCount === 1 ? 'Cosign' : 'Cosigns'}</span>
+								<AlertTriangle className="h-4 w-4" />
+								<span>Report to Authority</span>
 							</button>
-
-							{/* Community Support Button */}
-							<button 
-								onClick={(e) => e.stopPropagation()}
-								className="flex items-center gap-2 text-sm text-gray-500 hover:text-green-600 transition-all duration-200"
-							>
-								<MessageCircle className="h-5 w-5" />
-								<span>Support</span>
-							</button>
-							
-							{/* Report to Authority Button - Show for high cosign posts */}
-							{likeCount >= 5 && (
-								<button 
-									onClick={(e) => {
-										e.stopPropagation();
-										alert('Report to MP/Authority feature - Coming soon!');
-									}}
-									className="flex items-center gap-2 text-sm bg-red-600 text-white px-3 py-1 rounded-full hover:bg-red-700 transition-all duration-200 font-medium"
-								>
-									<AlertTriangle className="h-4 w-4" />
-									<span>Report to MP</span>
-								</button>
-							)}
 						</div>
+					)}
 
-						{/* More Options */}
+					{/* More Options */}
+					<div className="flex justify-end">
 						{isOwnPost && (
 							<Popover>
 								<PopoverTrigger 
