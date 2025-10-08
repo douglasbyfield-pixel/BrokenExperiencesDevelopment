@@ -69,9 +69,10 @@ export class LevelingService {
 	 * Get user level information
 	 */
 	static async getUserLevel(userId: string): Promise<UserProfile | null> {
-		return await db.query.userProfile.findFirst({
+		const result = await db.query.userProfile.findFirst({
 			where: (profile, { eq }) => eq(profile.auth_user_id, userId),
 		});
+		return result ?? null;
 	}
 
 	/**

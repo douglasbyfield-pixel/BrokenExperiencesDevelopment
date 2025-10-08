@@ -15,7 +15,11 @@ import {
 	Edit,
 	MessageCircle,
 } from "lucide-react";
+<<<<<<< HEAD
 import { useState, useRef, useEffect } from "react";
+=======
+import { useState, useRef, useEffect, useCallback } from "react";
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 import { useAuth } from "@web/components/auth-provider";
 import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
@@ -33,6 +37,10 @@ import {
 	PopoverDescription,
 	PopoverClose,
 } from "@web/components/animate-ui/primitives/base/popover";
+<<<<<<< HEAD
+=======
+import { Dialog } from "@web/components/ui/dialog";
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 
 // Priority configuration matching the map
 const priorityConfig: Record<string, { color: string; label: string; bgColor: string }> = {
@@ -79,8 +87,23 @@ interface ExperienceCardProps {
 export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	const { user } = useAuth();
 	const router = useRouter();
+<<<<<<< HEAD
 	const [isLiked, setIsLiked] = useState(experience.userVote === true);
 	const [likeCount, setLikeCount] = useState(experience.upvotes || 0);
+=======
+	// Use the actual experience data instead of local state for better sync
+	const isLiked = experience.userVote === true;
+	const likeCount = experience.upvotes || 0;
+	
+	// Debug logging for vote state
+	console.log('🔍 Experience vote state:', {
+		id: experience.id,
+		userVote: experience.userVote,
+		isLiked,
+		upvotes: experience.upvotes,
+		likeCount
+	});
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 	const [showDropdown, setShowDropdown] = useState(false);
 	const [isEditingStatus, setIsEditingStatus] = useState(false);
 	const [localPriority, setLocalPriority] = useState<string>(experience.priority);
@@ -98,6 +121,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 	const [currentImageIndex, setCurrentImageIndex] = useState(0);
 	const [localStatus, setLocalStatus] = useState<string>(experience.status);
+<<<<<<< HEAD
+=======
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 	const dropdownRef = useRef<HTMLDivElement>(null);
 
 	// Close dropdown when clicking outside
@@ -119,6 +146,13 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 	// Use TanStack Query for optimistic voting
 	const { mutate: voteOnExperience, isPending: isExecuting } = useVoteExperience();
+<<<<<<< HEAD
+=======
+	
+	// Debounce state for vote handling
+	const [isVoteDebouncing, setIsVoteDebouncing] = useState(false);
+	const voteTimeoutRef = useRef<NodeJS.Timeout>();
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 
 	const { execute: deleteExperience, isExecuting: isDeleting } = useAction(deleteExperienceAction, {
 		onSuccess: () => {
@@ -132,13 +166,53 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		}
 	});
 
+<<<<<<< HEAD
 	const handleVote = () => {
 		// TanStack Query handles optimistic updates automatically
+=======
+	// Debounced vote handler to prevent rapid clicking
+	const handleVote = useCallback(() => {
+		// Prevent multiple rapid clicks
+		if (isVoteDebouncing || isExecuting) {
+			console.log('🚫 Vote debounced - please wait');
+			return;
+		}
+
+		// Set debouncing state
+		setIsVoteDebouncing(true);
+		
+		// Clear any existing timeout
+		if (voteTimeoutRef.current) {
+			clearTimeout(voteTimeoutRef.current);
+		}
+
+		// Execute vote immediately for good UX (optimistic update)
+		console.log('🗳️ Processing cosign vote...');
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 		voteOnExperience({
 			experienceId: experience.id,
 			vote: isLiked ? 'down' : 'up' // Toggle between up and down
 		});
+<<<<<<< HEAD
 	};
+=======
+
+		// Reset debouncing after 1 second
+		voteTimeoutRef.current = setTimeout(() => {
+			setIsVoteDebouncing(false);
+			console.log('✅ Vote debouncing reset');
+		}, 1000);
+	}, [voteOnExperience, experience.id, isLiked, isVoteDebouncing, isExecuting]);
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (voteTimeoutRef.current) {
+				clearTimeout(voteTimeoutRef.current);
+			}
+		};
+	}, []);
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 
 	const handleImageClick = (e: React.MouseEvent, index: number) => {
 		e.stopPropagation();
@@ -148,9 +222,14 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 	const handleDelete = async () => {
 		setShowDropdown(false);
+<<<<<<< HEAD
 		if (confirm('Are you sure you want to delete this experience? This action cannot be undone.')) {
 			deleteExperience({ experienceId: experience.id });
 		}
+=======
+		setShowDeleteDialog(false);
+		deleteExperience({ experienceId: experience.id });
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 	};
 
 	const handleEdit = () => {
@@ -322,6 +401,21 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								<span className="font-semibold text-gray-900 hover:text-gray-600 transition-colors cursor-pointer text-sm sm:text-base truncate">
 									{displayName}
 								</span>
+<<<<<<< HEAD
+=======
+								{/* Community Champion Badge for active users */}
+								{likeCount >= 10 && (
+									<span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full font-bold border border-yellow-300">
+										🏆 Champion
+									</span>
+								)}
+								{/* Community Voice Badge for engaged users */}
+								{likeCount >= 5 && likeCount < 10 && (
+									<span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-medium">
+										📢 Voice
+									</span>
+								)}
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 								<span className="text-gray-500 text-xs sm:text-sm hidden sm:inline">@{username}</span>
 								<span className="text-gray-400 hidden sm:inline">·</span>
 								<span className="text-gray-500 text-xs sm:text-sm hover:text-gray-700 transition-colors cursor-pointer">
@@ -471,6 +565,22 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						<p className="text-gray-900 text-sm sm:text-base whitespace-pre-wrap leading-relaxed break-words">
 							{experience.description}
 						</p>
+<<<<<<< HEAD
+=======
+						{/* Community Impact Indicator */}
+						{likeCount >= 3 && (
+							<div className="mt-2 p-2 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg">
+								<div className="flex items-center gap-2">
+									<span className="text-xs font-semibold text-blue-700">
+										🔥 Community Hot Topic
+									</span>
+									<span className="text-xs text-blue-600">
+										{likeCount} cosigns - Community validated issue
+									</span>
+								</div>
+							</div>
+						)}
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 					</div>
 
 					{/* Images */}
@@ -606,7 +716,43 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								<MapPin className="h-4 w-4 flex-shrink-0 text-gray-400" />
 								<span className="text-sm font-medium">{experience.address}</span>
 							</div>
+<<<<<<< HEAD
 						<Popover>
+=======
+							<div className="flex items-center gap-2">
+								{/* Cosign Button */}
+								<button
+									onClick={(e) => {
+										e.stopPropagation();
+										handleVote();
+									}}
+									disabled={isExecuting || isVoteDebouncing}
+									title={
+										isVoteDebouncing ? 'Processing...' :
+										isExecuting ? 'Saving...' :
+										likeCount === 0 ? 'Cosign to validate this concern' :
+										likeCount === 1 ? '1 Cosign' :
+										likeCount >= 2 && likeCount < 5 ? `${likeCount} Cosigns - Building momentum` :
+										likeCount >= 5 && likeCount < 10 ? `${likeCount} Cosigns - Escalating to authorities` :
+										`${likeCount} Cosigns - Community priority`
+									}
+									className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all duration-200 ${
+										isLiked 
+											? 'text-blue-600 bg-blue-50 font-semibold' 
+											: 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+									} ${(isExecuting || isVoteDebouncing) ? 'opacity-70 cursor-not-allowed' : ''}`}
+								>
+									<Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+									<span className="text-sm">
+										{likeCount === 0 ? 'Cosign' : 
+										 isLiked ? 'Cosign' : 
+										 likeCount === 1 ? '1' :
+										 `${likeCount}`}
+									</span>
+								</button>
+								
+								<Popover>
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 							<PopoverTrigger 
 								className="group flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all"
 								onClick={(e) => e.stopPropagation()}
@@ -675,6 +821,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								</PopoverPositioner>
 							</PopoverPortal>
 						</Popover>
+<<<<<<< HEAD
 						</div>
 					)}
 
@@ -709,6 +856,30 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						</div>
 
 						{/* More Options */}
+=======
+							</div>
+						</div>
+					)}
+
+					{/* Report to Authority Button - Show for high cosign posts */}
+					{likeCount >= 5 && (
+						<div className="pt-2 border-t border-gray-100">
+							<button 
+								onClick={(e) => {
+									e.stopPropagation();
+									alert('Report to MP/Authority feature - Coming soon!');
+								}}
+								className="flex items-center gap-2 text-sm bg-red-600 text-white px-3 py-1 rounded-full hover:bg-red-700 transition-all duration-200 font-medium"
+							>
+								<AlertTriangle className="h-4 w-4" />
+								<span>Report to Authority</span>
+							</button>
+						</div>
+					)}
+
+					{/* More Options */}
+					<div className="flex justify-end">
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 						{isOwnPost && (
 							<Popover>
 								<PopoverTrigger 
@@ -729,7 +900,11 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 													<span className="text-sm">Edit Status</span>
 												</button>
 												<button
+<<<<<<< HEAD
 													onClick={() => deleteExperience({ experienceId: experience.id })}
+=======
+													onClick={() => setShowDeleteDialog(true)}
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 													disabled={isDeleting}
 													className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 w-full text-left text-red-600"
 												>
@@ -765,6 +940,42 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 				/>
 			);
 		})()}
+<<<<<<< HEAD
+=======
+		
+		{/* Delete Confirmation Dialog */}
+		<Dialog 
+			open={showDeleteDialog} 
+			onOpenChange={setShowDeleteDialog}
+			title="Delete Experience"
+		>
+			<div className="space-y-4">
+				<div className="flex items-center gap-2 text-red-600 mb-2">
+					<AlertTriangle className="h-5 w-5" />
+					<span className="font-semibold">Are you sure?</span>
+				</div>
+				<p className="text-gray-600 text-sm">
+					This action cannot be undone and will permanently remove the experience report.
+				</p>
+				<div className="flex gap-2 justify-end pt-4">
+					<Button
+						variant="outline"
+						onClick={() => setShowDeleteDialog(false)}
+						className="border-gray-300 text-gray-700 hover:bg-gray-50"
+					>
+						Cancel
+					</Button>
+					<Button
+						onClick={handleDelete}
+						disabled={isDeleting}
+						className="bg-red-600 hover:bg-red-700 text-white px-6"
+					>
+						{isDeleting ? 'Deleting...' : 'Delete Experience'}
+					</Button>
+				</div>
+			</div>
+		</Dialog>
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 		</>
 	);
 }

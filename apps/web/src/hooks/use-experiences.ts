@@ -24,7 +24,11 @@ export function useExperiences(userId?: string) {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUserId = session?.user?.id || userId;
 
+<<<<<<< HEAD
       console.log('🚀 Fetching experiences with TanStack Query...');
+=======
+      // Reduced logging for performance
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
       const startTime = performance.now();
 
       try {
@@ -50,10 +54,17 @@ export function useExperiences(userId?: string) {
         }
 
         const experiences = await response.json();
+<<<<<<< HEAD
         const endTime = performance.now();
         console.log(`✅ Experiences fetched: ${experiences.length} items in ${(endTime - startTime).toFixed(2)}ms`);
         if (experiences.length > 0) {
           console.log('✅ First experience:', experiences[0].id, experiences[0].description?.substring(0, 50));
+=======
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          const endTime = performance.now();
+          console.log(`✅ Experiences fetched: ${experiences.length} items in ${(endTime - startTime).toFixed(2)}ms`);
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
         }
 
         return experiences;
@@ -62,6 +73,7 @@ export function useExperiences(userId?: string) {
         throw error;
       }
     },
+<<<<<<< HEAD
     // Cache for 30 seconds, background refetch every 10 seconds for more frequent updates
     staleTime: 30 * 1000,
     refetchInterval: 10 * 1000,
@@ -69,6 +81,14 @@ export function useExperiences(userId?: string) {
     gcTime: 2 * 60 * 1000,
     // Refetch on window focus to catch new posts
     refetchOnWindowFocus: true,
+=======
+    // Cache for 5 minutes, no automatic background refetch
+    staleTime: 5 * 60 * 1000,
+    // Keep in cache for 10 minutes
+    gcTime: 10 * 60 * 1000,
+    // Only refetch on window focus if data is stale
+    refetchOnWindowFocus: 'always',
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
   });
 }
 
@@ -119,11 +139,10 @@ export function useMapMarkers() {
         throw error;
       }
     },
-    // Cache for 1 minute, background refetch every 15 seconds
-    staleTime: 1 * 60 * 1000,
-    refetchInterval: 15 * 1000,
-    // Keep in cache for 3 minutes
-    gcTime: 3 * 60 * 1000,
+    // Cache for 3 minutes, no automatic background refetch
+    staleTime: 3 * 60 * 1000,
+    // Keep in cache for 5 minutes
+    gcTime: 5 * 60 * 1000,
   });
 }
 
@@ -219,11 +238,28 @@ export function useVoteExperience() {
     mutationFn: async ({ experienceId, vote }: { experienceId: string; vote: 'up' | 'down' }) => {
       console.log('🗳️ Voting on experience...');
       
+<<<<<<< HEAD
       const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
+=======
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.error('❌ No session found, user not authenticated');
+        throw new Error('You must be logged in to cosign');
+      }
+      
+      console.log('✅ User authenticated:', session.user.id);
+      
+      const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
+      console.log('📤 Sending vote to:', `${apiUrl}/experience/${experienceId}/vote`);
+      
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
       const response = await fetch(`${apiUrl}/experience/${experienceId}/vote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+<<<<<<< HEAD
         },
         body: JSON.stringify({ vote }),
       });
@@ -233,6 +269,24 @@ export function useVoteExperience() {
       }
 
       return response.json();
+=======
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ vote: vote === 'up' }),
+      });
+
+      console.log('📥 Response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Server error response:', errorText);
+        throw new Error(`Failed to vote: ${response.statusText} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Server response:', result);
+      return result;
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
     },
     onMutate: async ({ experienceId, vote }) => {
       // Cancel any outgoing refetches

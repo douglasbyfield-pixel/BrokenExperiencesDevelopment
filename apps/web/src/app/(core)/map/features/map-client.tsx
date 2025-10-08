@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
@@ -21,8 +21,7 @@ import {
 	PopoverPopup,
 } from "@web/components/animate-ui/primitives/base/popover";
 import type { Experience } from "@web/types";
-import { voteOnExperienceAction } from "@web/action/experience";
-import { useAction } from "next-safe-action/hooks";
+import { useVoteExperience } from "@web/hooks/use-experiences";
 import { useShare } from "@web/hooks/use-share";
 import { getCategoryStyling, CATEGORY_STYLING } from "@web/lib/category-config";
 import {
@@ -147,6 +146,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const [filteredExperiences, setFilteredExperiences] = useState<Experience[]>(experiences);
 	const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
 	const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+	const searchParams = useSearchParams();
 	const [userLocation, setUserLocation] = useState<{
 		lat: number;
 		lng: number;
@@ -203,15 +203,11 @@ export default function MapClient({ experiences }: MapClientProps) {
 		fetchCategories();
 	}, []);
 
-	const { execute: voteOnExperience } = useAction(voteOnExperienceAction, {
-		onSuccess: () => {
-			// Reload to show updated vote count
-			window.location.reload();
-		},
-		onError: (error) => {
-			console.error("Vote failed:", error);
-		}
-	});
+	const { mutate: voteOnExperience, isPending: isVoting } = useVoteExperience();
+	
+	// Debounce state for vote handling
+	const [isVoteDebouncing, setIsVoteDebouncing] = useState(false);
+	const voteTimeoutRef = useRef<NodeJS.Timeout>();
 
 	// Debounce search query
 	useEffect(() => {
@@ -319,6 +315,36 @@ export default function MapClient({ experiences }: MapClientProps) {
 		setFilteredExperiences(filteredExperiencesMemo);
 	}, [filteredExperiencesMemo]);
 
+	// Handle URL parameters for focusing on specific markers
+	useEffect(() => {
+		if (!map || !mapLoaded || !experiences.length) return;
+
+		const lat = searchParams.get('lat');
+		const lng = searchParams.get('lng');
+		const zoom = searchParams.get('zoom');
+		const focusId = searchParams.get('focus');
+
+		if (lat && lng) {
+			// Fly to the specified coordinates
+			map.flyTo({
+				center: [parseFloat(lng), parseFloat(lat)],
+				zoom: zoom ? parseFloat(zoom) : 16,
+				duration: 1500,
+			});
+
+			// If there's a focus ID, find and select that experience
+			if (focusId) {
+				const targetExperience = experiences.find(exp => exp.id.toString() === focusId);
+				if (targetExperience) {
+					// Delay the selection to ensure the map has moved
+					setTimeout(() => {
+						setSelectedExperience(targetExperience);
+					}, 1000);
+				}
+			}
+		}
+	}, [map, mapLoaded, experiences, searchParams]);
+
 	const toggleFilter = (
 		type: "status" | "priority" | "category",
 		value: string,
@@ -338,11 +364,123 @@ export default function MapClient({ experiences }: MapClientProps) {
 		});
 	};
 
-	const handleVote = (experienceId: string) => {
+	// Debounced vote handler to prevent rapid clicking
+	const handleVote = useCallback((experienceId: string) => {
+		// Prevent multiple rapid clicks
+		if (isVoteDebouncing || isVoting) {
+			console.log('🚫 Map vote debounced - please wait');
+			return;
+		}
+
+		// Set debouncing state
+		setIsVoteDebouncing(true);
+		
+		// Clear any existing timeout
+		if (voteTimeoutRef.current) {
+			clearTimeout(voteTimeoutRef.current);
+		}
+
+		// Execute vote immediately for good UX (optimistic update)
+		console.log('🗳️ Processing map cosign vote...');
 		voteOnExperience({
 			experienceId: experienceId,
-			vote: true
+			vote: 'up' // Use 'up' for cosigning
 		});
+
+		// Reset debouncing after 1 second
+		voteTimeoutRef.current = setTimeout(() => {
+			setIsVoteDebouncing(false);
+			console.log('✅ Map vote debouncing reset');
+		}, 1000);
+	}, [voteOnExperience, isVoteDebouncing, isVoting]);
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (voteTimeoutRef.current) {
+				clearTimeout(voteTimeoutRef.current);
+			}
+		};
+	}, []);
+
+	// Share handlers
+	const handleNativeShare = async () => {
+		if (!selectedExperience) return;
+		
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
+			const shareText = `Check out this issue: ${selectedExperience.title}`;
+			
+			const success = await shareViaWebShare(shareText, shareText, shareUrl);
+			if (!success) {
+				// Fallback to copy to clipboard
+				await handleCopyLink();
+			}
+		} catch (error) {
+			console.error('Failed to share natively:', error);
+			alert('Failed to share');
+		}
+	};
+
+	const handleCopyLink = async () => {
+		if (!selectedExperience) return;
+		
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
+			
+			const success = await copyToClipboard(shareUrl);
+			if (success) {
+				alert('Share link copied to clipboard!');
+			} else {
+				alert('Failed to copy to clipboard');
+			}
+		} catch (error) {
+			console.error('Failed to copy link:', error);
+			alert('Failed to copy link');
+		}
+	};
+
+	const handleWhatsAppShare = async () => {
+		if (!selectedExperience) return;
+		
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
+			const shareText = `Check out this issue: ${selectedExperience.title}`;
+			shareToWhatsApp(shareText, shareUrl);
+		} catch (error) {
+			console.error('Failed to share to WhatsApp:', error);
+			alert('Failed to share to WhatsApp');
+		}
+	};
+
+	const handleTwitterShare = async () => {
+		if (!selectedExperience) return;
+		
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
+			const shareText = `Check out this issue: ${selectedExperience.title}`;
+			shareToTwitter(shareText, shareUrl);
+		} catch (error) {
+			console.error('Failed to share to Twitter:', error);
+			alert('Failed to share to Twitter');
+		}
+	};
+
+	const handleFacebookShare = async () => {
+		if (!selectedExperience) return;
+		
+		try {
+			const baseUrl = window.location.origin;
+			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
+			shareToFacebook(shareUrl);
+		} catch (error) {
+			console.error('Failed to share to Facebook:', error);
+			alert('Failed to share to Facebook');
+		}
 	};
 
 	// Share handlers
@@ -1209,20 +1347,81 @@ export default function MapClient({ experiences }: MapClientProps) {
 	}
 
 	if (mapError) {
+		// Check if it's a location permission error
+		const isLocationError = mapError.includes('Location access denied') || mapError.includes('denied');
+		
 		return (
-			<div className="fixed inset-0 flex items-center justify-center bg-gray-100 p-4 dark:bg-gray-900">
-				<Card className="w-full max-w-md">
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2 text-red-600">
-							<AlertCircle className="h-5 w-5" />
-							Map Error
+			<div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+				<Card className="w-full max-w-lg backdrop-blur-sm bg-white/95 border-0 shadow-2xl">
+					<CardHeader className="text-center pb-4">
+						<div className="mx-auto mb-4 w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+							<MapPin className="h-10 w-10 text-white" />
+						</div>
+						<CardTitle className="text-2xl font-bold text-gray-900">
+							{isLocationError ? 'Unlock Your Local Experience' : 'Map Unavailable'}
 						</CardTitle>
 					</CardHeader>
-					<CardContent>
-						<p className="mb-4 text-gray-600 dark:text-gray-400">{mapError}</p>
-						<Button onClick={() => window.location.reload()} className="w-full">
-							Retry
-						</Button>
+					<CardContent className="text-center space-y-6">
+						{isLocationError ? (
+							<>
+								<div className="space-y-4">
+									<p className="text-lg text-gray-700 leading-relaxed">
+										🌟 <strong>You're missing out!</strong> Enable location access to unlock the full Broken Experiences magic.
+									</p>
+									
+									<div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+										<h3 className="font-semibold text-blue-900 mb-3">✨ What you'll get with location:</h3>
+										<div className="grid grid-cols-1 gap-2 text-sm text-blue-800">
+											<div className="flex items-center gap-2">
+												<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+												<span>📍 Find issues happening right around you</span>
+											</div>
+											<div className="flex items-center gap-2">
+												<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+												<span>🎯 Get personalized local recommendations</span>
+											</div>
+											<div className="flex items-center gap-2">
+												<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+												<span>🚀 Report issues with precise GPS coordinates</span>
+											</div>
+											<div className="flex items-center gap-2">
+												<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+												<span>🌈 Navigate to nearby community reports</span>
+											</div>
+										</div>
+									</div>
+									
+									<div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+										<p className="text-amber-800 text-sm">
+											<strong>⚠️ Without location:</strong> You'll only see a basic map without the personalized, location-aware features that make this app powerful.
+										</p>
+									</div>
+								</div>
+								
+								<div className="space-y-3">
+									<Button 
+										onClick={() => window.location.reload()} 
+										className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 text-lg font-semibold shadow-lg"
+									>
+										🔓 Enable Location & Retry
+									</Button>
+									
+									<p className="text-xs text-gray-500">
+										Click "Allow" when your browser asks for location permission
+									</p>
+								</div>
+							</>
+						) : (
+							<>
+								<p className="text-gray-600">{mapError}</p>
+								<Button 
+									onClick={() => window.location.reload()} 
+									className="w-full bg-gray-900 hover:bg-gray-800 text-white"
+								>
+									Try Again
+								</Button>
+							</>
+						)}
 					</CardContent>
 				</Card>
 			</div>
@@ -1381,9 +1580,14 @@ export default function MapClient({ experiences }: MapClientProps) {
 							onClick={() => {
 								const recentIssues = filteredExperiences
 									.sort(
-										(a, b) =>
-											new Date(b.createdAt).getTime() -
-											new Date(a.createdAt).getTime(),
+										(a, b) => {
+											const dateA = new Date(a.createdAt);
+											const dateB = new Date(b.createdAt);
+											if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+												return 0; // Keep original order if dates are invalid
+											}
+											return dateB.getTime() - dateA.getTime();
+										}
 									)
 									.slice(0, 10);
 
@@ -1757,7 +1961,17 @@ export default function MapClient({ experiences }: MapClientProps) {
 					</div>
 
 					<div className="mt-2 border-t pt-2 text-gray-500 text-xs">
-						Reported {new Date(selectedExperience.createdAt).toLocaleDateString()}
+						Reported {(() => {
+							try {
+								const date = new Date(selectedExperience.createdAt);
+								if (isNaN(date.getTime())) {
+									return 'Unknown date';
+								}
+								return date.toLocaleDateString();
+							} catch (error) {
+								return 'Unknown date';
+							}
+						})()}
 						{selectedExperience.status === 'resolved' && (
 							<span className="ml-2">
 								• Resolved

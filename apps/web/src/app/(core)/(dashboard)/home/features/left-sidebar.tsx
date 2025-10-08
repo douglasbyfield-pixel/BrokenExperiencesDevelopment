@@ -6,9 +6,17 @@ import { cn, getInitials } from "@web/lib/utils";
 import { useAuth } from "@web/components/auth-provider";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
+<<<<<<< HEAD
 import { LogOut } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { usePathname } from "next/navigation";
+=======
+import { Home, MapPin, User as UserIcon, Trophy, Award, Settings, Search, LogOut } from "lucide-react";
+import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useSearch } from "@web/context/SearchContext";
+import { Input } from "@web/components/ui/input";
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 
 interface LeftSidebarProps {
   className?: string;
@@ -24,6 +32,7 @@ const navigationItems: NavItem[] = [
   {
     href: "/home",
     label: "Home",
+<<<<<<< HEAD
     icon: (
       <svg
         className="w-6 h-6"
@@ -39,10 +48,14 @@ const navigationItems: NavItem[] = [
         />
       </svg>
     ),
+=======
+    icon: <Home className="w-5 h-5" />,
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
   },
   {
     href: "/map",
     label: "Map",
+<<<<<<< HEAD
     icon: (
       <svg
         className="w-6 h-6"
@@ -58,10 +71,14 @@ const navigationItems: NavItem[] = [
         />
       </svg>
     ),
+=======
+    icon: <MapPin className="w-5 h-5" />,
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
   },
   {
     href: "/profile",
     label: "Profile",
+<<<<<<< HEAD
     icon: (
       <svg
         className="w-6 h-6"
@@ -77,10 +94,14 @@ const navigationItems: NavItem[] = [
         />
       </svg>
     ),
+=======
+    icon: <UserIcon className="w-5 h-5" />,
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
   },
   {
     href: "/leaderboard",
     label: "Leaderboard",
+<<<<<<< HEAD
     icon: (
       <svg
         className="w-6 h-6"
@@ -96,10 +117,19 @@ const navigationItems: NavItem[] = [
         />
       </svg>
     ),
+=======
+    icon: <Trophy className="w-5 h-5" />,
+  },
+  {
+    href: "/achievements",
+    label: "Achievements",
+    icon: <Award className="w-5 h-5" />,
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
   },
   {
     href: "/settings",
     label: "Settings",
+<<<<<<< HEAD
     icon: (
       <svg
         className="w-6 h-6"
@@ -121,17 +151,35 @@ const navigationItems: NavItem[] = [
         />
       </svg>
     ),
+=======
+    icon: <Settings className="w-5 h-5" />,
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
   },
 ];
 
 export default function LeftSidebar({ className }: LeftSidebarProps) {
   const { user, signOut } = useAuth();
   const pathname = usePathname();
+<<<<<<< HEAD
+=======
+  const { onSearchChange } = useSearch();
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    onSearchChange(value);
+  };
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 
   return (
     <aside
       className={cn(
+<<<<<<< HEAD
         "hidden w-60 lg:w-64 xl:w-72 flex-col bg-white lg:flex h-full overflow-y-auto",
+=======
+        "hidden w-60 lg:w-64 xl:w-72 flex-col bg-white/95 backdrop-blur-sm border-r border-gray-100 lg:flex h-screen overflow-y-auto sticky top-0",
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
         className
       )}
     >
@@ -154,6 +202,22 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
             </h1>
           </div>
 
+<<<<<<< HEAD
+=======
+          {/* Search */}
+          <div className="mb-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search experiences..."
+                className="pl-10 pr-4 py-3 border border-gray-200 rounded-md bg-gray-50/80 focus:bg-white focus:border-gray-400 focus:ring-1 focus:ring-gray-400/20 text-black placeholder:text-gray-500 transition-all shadow-sm"
+                value={searchTerm}
+                onChange={handleSearchChange}
+              />
+            </div>
+          </div>
+
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
           {/* Navigation */}
           <nav className="flex flex-col gap-1">
             {navigationItems.map((item) => {
@@ -162,6 +226,7 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
                 <Link
                   key={item.href}
                   href={item.href as any}
+<<<<<<< HEAD
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-3 text-black transition-colors",
                     isActive 
@@ -170,6 +235,21 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
                   )}
                 >
                   {item.icon}
+=======
+                   className={cn(
+                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                     isActive 
+                       ? "bg-gray-100 text-black shadow-sm" 
+                       : "hover:bg-gray-50 text-gray-600 hover:text-gray-900 hover:translate-x-0.5"
+                   )}
+                >
+                  <div className={cn(
+                    "transition-colors",
+                    isActive ? "text-black" : "text-gray-500"
+                  )}>
+                    {item.icon}
+                  </div>
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
                   <span className="font-medium">{item.label}</span>
                 </Link>
               );
@@ -179,8 +259,13 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
 
         {/* User Profile - moved to bottom */}
         {user && (
+<<<<<<< HEAD
           <div className="mt-auto p-3 lg:p-4 border-t border-gray-200">
             <div className="flex items-center space-x-3 rounded-lg p-2 hover:bg-gray-100">
+=======
+          <div className="mt-auto p-3 lg:p-4 border-t border-gray-100">
+            <div className="flex items-center space-x-3 rounded-lg p-2 hover:bg-gray-50 transition-colors">
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
               <Avatar className="h-10 w-10">
                 <AvatarImage
                   src={user?.user_metadata?.avatar_url || undefined}
@@ -201,7 +286,11 @@ export default function LeftSidebar({ className }: LeftSidebarProps) {
                 variant="ghost"
                 size="sm"
                 onClick={signOut}
+<<<<<<< HEAD
                 className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50"
+=======
+                className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 rounded-md"
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
                 title="Sign out"
               >
                 <LogOut className="h-4 w-4" />

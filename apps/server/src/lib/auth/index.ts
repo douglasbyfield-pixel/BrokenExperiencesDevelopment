@@ -5,7 +5,7 @@ import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { SettingsService } from "@server/module/settings/service";
 
-const trustedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app")
+const trustedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app,https://brokenexperiences-dev.vercel.app")
 	.split(",")
 	.map(s => s.trim())
 	.filter(Boolean);
@@ -44,38 +44,25 @@ export const auth = betterAuth<BetterAuthOptions>({
 		},
 	},
 	hooks: {
-		after: [
-			{
-				matcher: (ctx: any) => ctx.path === "/sign-up/email" || ctx.path?.includes("/callback"),
-				handler: async (ctx: any) => {
-					try {
-						// Create default settings for new users
-						if (ctx.user?.id) {
-							console.log("🎯 Creating default settings for new user:", ctx.user.id);
-							await SettingsService.createDefaultSettings(ctx.user.id);
-							console.log("✅ Default settings created successfully");
-						}
-					} catch (error) {
-						console.error("❌ Failed to create default settings:", error);
-						// Don't fail the registration if settings creation fails
-					}
-				},
-			},
-			{
-				matcher: (ctx: any) => ctx.path === "/sign-in/email" || ctx.path?.includes("/callback"),
-				handler: async (ctx: any) => {
-					try {
-						// Ensure settings exist for existing users on sign-in
-						if (ctx.user?.id) {
-							console.log("🔍 Checking settings for user:", ctx.user.id);
-							const settings = await SettingsService.getUserSettings(ctx.user.id);
-							console.log("✅ User settings verified/created");
-						}
-					} catch (error) {
-						console.error("❌ Failed to verify user settings:", error);
-					}
-				},
-			},
-		],
+		after: async (ctx: any) => {
+			try {
+				// Create default settings for new users on sign-up
+				if ((ctx.path === "/sign-up/email" || ctx.path?.includes("/callback")) && ctx.user?.id) {
+					console.log("🎯 Creating default settings for new user:", ctx.user.id);
+					await SettingsService.createDefaultSettings(ctx.user.id);
+					console.log("✅ Default settings created successfully");
+				}
+				
+				// Ensure settings exist for existing users on sign-in
+				if ((ctx.path === "/sign-in/email" || ctx.path?.includes("/callback")) && ctx.user?.id) {
+					console.log("🔍 Checking settings for user:", ctx.user.id);
+					await SettingsService.getUserSettings(ctx.user.id);
+					console.log("✅ User settings verified/created");
+				}
+			} catch (error) {
+				console.error("❌ Failed to handle user settings:", error);
+				// Don't fail the authentication if settings creation fails
+			}
+		},
 	},
 });

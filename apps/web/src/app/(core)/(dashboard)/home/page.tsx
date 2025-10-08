@@ -1,7 +1,10 @@
 "use client";
 
 import { eden } from "@web/lib/eden";
+<<<<<<< HEAD
 import { createClient } from "@web/lib/supabase/client";
+=======
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 import { useEffect, useState } from "react";
 import CreateExperienceCard from "./features/create-experience-card";
 import Feed from "./features/feed";
@@ -9,11 +12,18 @@ import FeedHeader from "./features/feed-header";
 import { useExperiences } from "@web/hooks/use-experiences";
 import { useQuery } from "@tanstack/react-query";
 import { useSearch } from "@web/context/SearchContext";
+<<<<<<< HEAD
+=======
+import { ExperiencesProvider } from "@web/context/ExperiencesContext";
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 
 export default function HomePage() {
 	const [activeTab, setActiveTab] = useState<"for-you" | "communities">("for-you");
 	const [searchTerm, setSearchTerm] = useState("");
+<<<<<<< HEAD
 	const [isSearching, setIsSearching] = useState(false);
+=======
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 	const { setSearchHandler, setSearchChangeHandler, setCategoryFilterHandler } = useSearch();
 
@@ -83,19 +93,28 @@ export default function HomePage() {
 
 	const handleSearchChange = (term: string) => {
 		setSearchTerm(term);
+<<<<<<< HEAD
 		setIsSearching(term.length > 0);
+=======
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 	};
 
 	const clearSearch = () => {
 		setSearchTerm("");
+<<<<<<< HEAD
 		setIsSearching(false);
+=======
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 	};
 
 	const handleCategoryFilter = (categoryName: string) => {
 		setSelectedCategory(categoryName);
 		// Clear search when filtering by category
 		setSearchTerm("");
+<<<<<<< HEAD
 		setIsSearching(false);
+=======
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 	};
 
 	const clearCategoryFilter = () => {
@@ -133,6 +152,7 @@ export default function HomePage() {
 		? experiences.filter(exp => exp.category?.name !== "Personal") // Example filter for communities
 		: experiences;
 
+<<<<<<< HEAD
 	const displayExperiences = filterExperiences(baseExperiences, searchTerm, selectedCategory);
 
 	return (
@@ -142,6 +162,36 @@ export default function HomePage() {
 				<CreateExperienceCard categoryOptions={categoryOptions} />
 				<div className="border-t border-gray-200">
 					{searchTerm ? (
+=======
+	const filteredExperiences = filterExperiences(baseExperiences, searchTerm, selectedCategory);
+	
+	// Sort by community engagement (cosigns) to prioritize validated concerns
+	const displayExperiences = filteredExperiences.sort((a, b) => {
+		const aUpvotes = a.upvotes || 0;
+		const bUpvotes = b.upvotes || 0;
+		
+		// Prioritize posts with high engagement first
+		if (aUpvotes !== bUpvotes) {
+			return bUpvotes - aUpvotes;
+		}
+		
+		// Then by recency
+		return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+	});
+
+	return (
+		<ExperiencesProvider 
+			experiences={experiences} 
+			isLoading={experiencesLoading} 
+			error={experiencesError ? "Something went wrong. Please try refreshing the page." : null}
+		>
+			<div>
+				<FeedHeader onTabChange={handleTabChange} />
+				<div className="px-4 lg:px-6">
+					<CreateExperienceCard categoryOptions={categoryOptions} />
+					<div className="border-t border-gray-200">
+						{searchTerm ? (
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 						<div>
 							{/* Search Results Header */}
 							<div className="p-4 border-b border-gray-200 bg-gray-50">
@@ -196,8 +246,15 @@ export default function HomePage() {
 					) : (
 						<Feed experiences={displayExperiences} />
 					)}
+<<<<<<< HEAD
 				</div>
 			</div>
 		</div>
+=======
+					</div>
+				</div>
+			</div>
+		</ExperiencesProvider>
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 	);
 }

@@ -16,6 +16,19 @@ export default function CoreLayout(props: LayoutProps<"/">) {
 		}
 	}, [user, isLoading, router]);
 
+	// Register service worker for push notifications
+	useEffect(() => {
+		if ('serviceWorker' in navigator && user) {
+			navigator.serviceWorker.register('/sw.js')
+				.then((registration) => {
+					console.log('Service Worker registered:', registration);
+				})
+				.catch((error) => {
+					console.error('Service Worker registration failed:', error);
+				});
+		}
+	}, [user]);
+
 	// Show loading state while checking auth
 	if (isLoading) {
 		return (

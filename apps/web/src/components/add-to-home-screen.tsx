@@ -32,6 +32,7 @@ export function AddToHomeScreen() {
   const [isActuallyInstalled, setIsActuallyInstalled] = useState(false);
   const { settings, updateSettings } = useSettings();
   
+<<<<<<< HEAD
   // Debug component mount and state
   useEffect(() => {
     console.log('🚀 AddToHomeScreen Component State:', {
@@ -45,6 +46,21 @@ export function AddToHomeScreen() {
       timestamp: new Date().toISOString()
     });
   }, [showPrompt, isStandalone, settings, deferredPrompt, isIOS, browserInfo]);
+=======
+  // Debug component mount and state (only in development)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🚀 AddToHomeScreen Component State:', {
+        showPrompt,
+        isStandalone,
+        hasDeferredPrompt: !!deferredPrompt,
+        isIOS,
+        browserInfo: browserInfo.name,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [showPrompt, isStandalone, deferredPrompt, isIOS, browserInfo]);
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 
   // Set global functions for logo to use
   globalShowInstallPrompt = () => {
@@ -83,12 +99,22 @@ export function AddToHomeScreen() {
         });
       }
       
+<<<<<<< HEAD
       console.log('🔍 PWA Detection:', {
         displayMode,
         iosStandalone,
         isPWAUrl,
         userAgent: navigator.userAgent
       });
+=======
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 PWA Detection:', {
+          displayMode,
+          iosStandalone,
+          isPWAUrl
+        });
+      }
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
       
       // For now, let's be more conservative and only consider it installed
       // if we're really sure (require multiple signals)

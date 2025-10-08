@@ -325,6 +325,11 @@ export default function CreateExperienceCard({
       preview: URL.createObjectURL(file)
     }));
     setPhotos(prev => [...prev, ...newPhotos]);
+<<<<<<< HEAD
+=======
+    // Expand the form when photos are added so they're visible immediately
+    setIsExpanded(true);
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
   };
 
   const removePhoto = (id: string) => {
@@ -344,6 +349,11 @@ export default function CreateExperienceCard({
       preview: URL.createObjectURL(file)
     };
     setPhotos(prev => [...prev, newPhoto]);
+<<<<<<< HEAD
+=======
+    // Expand the form when photos are captured so they're visible immediately
+    setIsExpanded(true);
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
   };
 
   const form = useForm({
@@ -484,7 +494,11 @@ export default function CreateExperienceCard({
 									<textarea
 										id={field.name}
 										name={field.name}
+<<<<<<< HEAD
 										placeholder={isExpanded ? "Describe your experience..." : "What's broken?"}
+=======
+										placeholder={isExpanded ? "Describe the slackness you want fixed..." : "Report the Slackness!"}
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 										value={field.state.value}
 										onFocus={() => {
 											// Expand when user clicks/focuses on the input
@@ -496,7 +510,11 @@ export default function CreateExperienceCard({
 										onChange={(e) => {
 											field.handleChange(e.target.value);
 										}}
+<<<<<<< HEAD
 										className="w-full resize-none bg-transparent text-sm sm:text-base text-black placeholder:text-gray-400 focus:outline-none min-h-[32px] break-words"
+=======
+										className="w-full resize-none bg-transparent text-lg sm:text-xl text-black placeholder:text-gray-400 focus:outline-none min-h-[40px] break-words"
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 										rows={isExpanded ? 3 : 1}
 										maxLength={500}
 									/>

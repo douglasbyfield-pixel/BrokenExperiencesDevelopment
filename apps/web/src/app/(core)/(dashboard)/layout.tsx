@@ -6,6 +6,10 @@ import MobileNav from "./home/features/mobile-nav";
 import { eden } from "@web/lib/eden";
 import { useEffect, useState } from "react";
 import { SearchProvider } from "@web/context/SearchContext";
+<<<<<<< HEAD
+=======
+import { useExperiences } from "@web/hooks/use-experiences";
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 
 export default function HomeLayout({
 	children,
@@ -15,6 +19,13 @@ export default function HomeLayout({
 	const [stats, setStats] = useState<any>(null);
 	const [trendingCategories, setTrendingCategories] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
+<<<<<<< HEAD
+=======
+	
+	// Get recent experiences for live activity
+	const { data: experiences = [] } = useExperiences();
+	
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 
 	// Dummy search function for layout - will be overridden by page-level search
 	const handleSearch = (searchTerm: string) => {
@@ -48,8 +59,13 @@ export default function HomeLayout({
 					userStats={null}
 					trendingCategories={trendingCategories}
 				/>
+<<<<<<< HEAD
 				<div className="mx-auto max-w-screen-xl h-screen">
 					<div className="flex h-full">
+=======
+				<div className="mx-auto max-w-screen-xl min-h-screen">
+					<div className="flex min-h-screen">
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 						<LeftSidebar />
 						<main className="flex-1 min-w-0 lg:border-x lg:border-gray-200">
 							{children}
@@ -58,6 +74,10 @@ export default function HomeLayout({
 							stats={stats}
 							userStats={null}
 							trendingCategories={trendingCategories}
+<<<<<<< HEAD
+=======
+							recentExperiences={experiences}
+>>>>>>> 54abad9f86f69d9ecf0484366110fe35311ea187
 						/>
 					</div>
 				</div>
