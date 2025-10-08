@@ -12,8 +12,8 @@ export interface BadgeWithStatus {
 	requirement: number;
 	requirementType: string;
 	rarity: string | null;
-	isHidden: boolean;
-	createdAt: Date;
+	isHidden: boolean | null;
+	createdAt: Date | null;
 	// User-specific status
 	isObtained: boolean;
 	progress: number;
