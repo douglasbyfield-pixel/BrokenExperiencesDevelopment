@@ -37,7 +37,7 @@ export function PerformanceMonitor() {
 
     // Monitor data fetching
     const originalFetch = window.fetch;
-    window.fetch = async (...args) => {
+    const wrappedFetch = async (...args: Parameters<typeof fetch>) => {
       const start = performance.now();
       const response = await originalFetch(...args);
       const end = performance.now();
@@ -49,6 +49,8 @@ export function PerformanceMonitor() {
       
       return response;
     };
+    // @ts-expect-error - Next.js extends fetch with additional properties that we don't need to implement
+    window.fetch = wrappedFetch as typeof fetch;
 
     // Monitor image loading
     const handleImageLoad = () => {
