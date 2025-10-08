@@ -24,6 +24,11 @@ import type { Experience } from "@web/types";
 import { useVoteExperience } from "@web/hooks/use-experiences";
 import { useShare } from "@web/hooks/use-share";
 import { getCategoryStyling, CATEGORY_STYLING } from "@web/lib/category-config";
+import { mapOperations } from "../utils/mapOperations";
+import { applyFilters } from "../utils/filterUtils";
+import { locationActions } from "../utils/locationActions";
+import { createReactMarker, createReactCluster } from "../utils/markerUtils";
+import { MAP_CONFIG } from "../constants/mapConstants";
 import {
 	AlertCircle,
 	ArrowLeft,
@@ -226,11 +231,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 			return;
 		}
 
-		const options = {
-			enableHighAccuracy: true,
-			timeout: 15000,
-			maximumAge: 60000,
-		};
+		const options = MAP_CONFIG.GEOLOCATION_OPTIONS;
 
 		navigator.geolocation.getCurrentPosition(
 			(position) => {
@@ -272,42 +273,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 	// Memoized filtering function for better performance
 	const filteredExperiencesMemo = useMemo(() => {
-		let filtered = [...experiences];
-
-		// Apply status filters
-		if (activeFilters.status.length > 0) {
-			filtered = filtered.filter((experience) =>
-				activeFilters.status.includes(experience.status),
-			);
-		}
-
-		// Apply priority filters
-		if (activeFilters.priority.length > 0) {
-			filtered = filtered.filter((experience) =>
-				activeFilters.priority.includes(experience.priority),
-			);
-		}
-
-		// Apply category filters
-		if (activeFilters.category.length > 0) {
-			filtered = filtered.filter(
-				(experience) =>
-					experience.categoryId && activeFilters.category.includes(experience.categoryId),
-			);
-		}
-
-		// Apply debounced search query
-		if (debouncedSearchQuery) {
-			const searchLower = debouncedSearchQuery.toLowerCase();
-			filtered = filtered.filter(
-				(experience) =>
-					experience.title?.toLowerCase().includes(searchLower) ||
-					experience.description?.toLowerCase().includes(searchLower) ||
-					(experience.address && experience.address.toLowerCase().includes(searchLower)),
-			);
-		}
-
-		return filtered;
+		return applyFilters(experiences, activeFilters, debouncedSearchQuery);
 	}, [experiences, activeFilters, debouncedSearchQuery]);
 
 	// Update filtered experiences when memo changes
@@ -812,100 +778,22 @@ export default function MapClient({ experiences }: MapClientProps) {
 							.addTo(mapInstance);
 
 						(window as any).reportIssueHere = () => {
-							console.log("📍 Report issue at:", newLocation);
-							alert(
-								`Report issue at: ${newLocation.lat.toFixed(6)}, ${newLocation.lng.toFixed(6)}`,
-							);
+							locationActions.reportIssueHere(newLocation);
 							popup.remove();
 						};
 
 						(window as any).findNearbyIssues = () => {
-							console.log("🔍 Finding nearby issues...");
-							const nearby = filteredExperiences.filter((experience) => {
-								const distance = getDistance(
-									newLocation.lat,
-									newLocation.lng,
-									Number(experience.latitude),
-									Number(experience.longitude),
-								);
-								return distance <= 2;
-							});
-
-							console.log(`Found ${nearby.length} nearby issues`);
-
-							if (nearby.length > 0) {
-								const bounds = new mapboxgl.LngLatBounds();
-								nearby.forEach((experience) => {
-									bounds.extend([Number(experience.longitude), Number(experience.latitude)]);
-								});
-								bounds.extend([newLocation.lng, newLocation.lat]);
-
-								mapInstance.fitBounds(bounds, {
-									padding: 50,
-									pitch: 68,
-									duration: 1500,
-								});
-
-								alert(
-									`Found ${nearby.length} issues within 2km of your location!`,
-								);
-							} else {
-								alert("No issues found within 2km of your location.");
-							}
+							locationActions.findNearbyIssues(newLocation, filteredExperiences, mapInstance);
 							popup.remove();
 						};
 
 						(window as any).showClosestIssue = () => {
-							console.log("🎯 Finding closest experience...");
-
-							if (filteredExperiences.length === 0) {
-								alert("No issues available to show.");
-								popup.remove();
-								return;
-							}
-
-							// Find the closest issue
-							let closestExperience = filteredExperiences[0];
-							let closestDistance = getDistance(
-								newLocation.lat,
-								newLocation.lng,
-								Number(closestExperience.latitude),
-								Number(closestExperience.longitude),
-							);
-
-							filteredExperiences.forEach((experience) => {
-								const distance = getDistance(
-									newLocation.lat,
-									newLocation.lng,
-									Number(experience.latitude),
-									Number(experience.longitude),
-								);
-								if (distance < closestDistance) {
-									closestDistance = distance;
-									closestExperience = experience;
-								}
-							});
-
-							// Fly to closest issue and select it
-							mapInstance.flyTo({
-								center: [Number(closestExperience.longitude), Number(closestExperience.latitude)],
-								zoom: 17,
-								pitch: 68,
-								duration: 2000,
-							});
-
-							setSelectedExperience(closestExperience);
-							console.log(
-								`Closest issue: ${closestExperience.title} (${closestDistance.toFixed(2)}km away)`,
-							);
+							locationActions.showClosestIssue(newLocation, filteredExperiences, mapInstance, setSelectedExperience);
 							popup.remove();
 						};
 
 						(window as any).shareLocation = () => {
-							const locationText = `My location: ${newLocation.lat.toFixed(6)}, ${newLocation.lng.toFixed(6)}`;
-							navigator.clipboard.writeText(locationText);
-							console.log("📤 Location copied to clipboard");
-							alert("Location copied to clipboard!");
+							locationActions.shareLocation(newLocation);
 							popup.remove();
 						};
 
@@ -1060,27 +948,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 					
 					console.log("🎯 Creating single marker for:", experience.title);
 					
-					const categoryName = experience.category?.name || 'Other';
-					const categoryStyling = getCategoryStyling(categoryName);
-					
-					const markerEl = document.createElement("div");
-					markerEl.className = "custom-marker";
-					markerEl.innerHTML = `
-						<div class="relative drop-shadow-lg">
-							<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
-								 style="background-color: ${categoryStyling.color};">
-								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-									${categoryStyling.svgPath}
-								</svg>
-							</div>
-						</div>
-					`;
-
-					markerEl.addEventListener("click", (e) => {
-						e.stopPropagation();
-						setSelectedExperience(experience);
-						console.log("📍 Single issue selected:", experience.title);
-					});
+					const markerEl = createReactMarker(experience, setSelectedExperience);
 					
 					new mapboxgl.Marker(markerEl)
 						.setLngLat([cluster.lng, cluster.lat])
@@ -1134,47 +1002,12 @@ export default function MapClient({ experiences }: MapClientProps) {
 					updatedClusters.forEach((cluster) => {
 						if (cluster.count === 1) {
 							const experience = cluster.experiences[0];
-							const categoryName = experience.category?.name || 'Other';
-							const categoryStyling = getCategoryStyling(categoryName);
-							
-							const markerEl = document.createElement("div");
-							markerEl.className = "custom-marker";
-							markerEl.innerHTML = `
-								<div class="relative drop-shadow-lg">
-									<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
-										 style="background-color: ${categoryStyling.color};">
-										<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-											${categoryStyling.svgPath}
-										</svg>
-									</div>
-								</div>
-							`;
-
-							markerEl.addEventListener("click", (e) => {
-								e.stopPropagation();
-								setSelectedExperience(experience);
-							});
-							
+							const markerEl = createReactMarker(experience, setSelectedExperience);
 							new mapboxgl.Marker(markerEl)
 								.setLngLat([cluster.lng, cluster.lat])
 								.addTo(map);
 						} else {
-							const markerEl = document.createElement("div");
-							markerEl.className = "cluster-marker";
-							markerEl.innerHTML = `
-								<div class="relative drop-shadow-lg">
-									<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
-										 style="background-color: #374151;">
-										<div class="text-white font-bold text-sm">${cluster.count}</div>
-									</div>
-								</div>
-							`;
-
-							markerEl.addEventListener("click", (e) => {
-								e.stopPropagation();
-								setSelectedCluster(cluster.experiences);
-							});
-							
+							const markerEl = createReactCluster(cluster, setSelectedCluster);
 							new mapboxgl.Marker(markerEl)
 								.setLngLat([cluster.lng, cluster.lat])
 								.addTo(map);
@@ -1201,11 +1034,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 			return;
 		}
 
-		const options = {
-			enableHighAccuracy: true,
-			timeout: 5000,
-			maximumAge: 1000,
-		};
+		const options = MAP_CONFIG.LIVE_TRACKING_OPTIONS;
 
 		const id = navigator.geolocation.watchPosition(
 			(position) => {
@@ -1217,11 +1046,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 				setLocationAccuracy(position.coords.accuracy);
 
 				if (map) {
-					map.flyTo({
-						center: [newLocation.lng, newLocation.lat],
-						zoom: 15,
-						duration: 1000,
-					});
+					mapOperations.flyToLocation(map, newLocation, 15);
 				}
 				console.log(
 					"📍 Live location updated:",
@@ -1464,12 +1289,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 										}
 									});
 
-									map?.flyTo({
-										center: [Number(closestExperience.longitude), Number(closestExperience.latitude)],
-										zoom: 17,
-										pitch: 68,
-										duration: 2000,
-									});
+									mapOperations.flyToWithPitch(map, [Number(closestExperience.longitude), Number(closestExperience.latitude)], 17, 68);
 
 									setSelectedExperience(closestExperience);
 									setShowQuickActions(false);
@@ -1538,12 +1358,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 							className="flex h-auto flex-col items-center gap-1 p-3 text-xs"
 							onClick={() => {
 								if (userLocation && map) {
-									map.flyTo({
-										center: [userLocation.lng, userLocation.lat],
-										zoom: 16.5,
-										pitch: 68,
-										duration: 1500,
-									});
+									mapOperations.flyToLocation(map, userLocation, 16.5);
 									setShowQuickActions(false);
 								}
 							}}
