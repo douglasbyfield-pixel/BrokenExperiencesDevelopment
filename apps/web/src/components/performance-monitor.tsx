@@ -49,7 +49,6 @@ export function PerformanceMonitor() {
       
       return response;
     };
-    // @ts-expect-error - Next.js extends fetch with additional properties that we don't need to implement
     window.fetch = wrappedFetch as typeof fetch;
 
     // Monitor image loading
