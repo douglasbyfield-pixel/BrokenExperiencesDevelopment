@@ -382,7 +382,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 					</div>
 
 					{/* Title - with proper truncation to prevent clashing */}
-					<h3 className="font-semibold text-gray-900 text-lg leading-tight mb-2 pr-16 truncate">
+					<h3 className="font-semibold text-gray-900 text-xl leading-tight mb-2 pr-16 truncate">
 						{experience.title}
 					</h3>
 
@@ -480,7 +480,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 					{/* Content */}
 					<div className="mb-3">
-						<p className="text-gray-900 text-sm sm:text-base whitespace-pre-wrap leading-relaxed break-words">
+						<p className="text-gray-900 text-base sm:text-lg whitespace-pre-wrap leading-relaxed break-words">
 							{experience.description}
 						</p>
 						{/* Subtle hot topic indicator */}
