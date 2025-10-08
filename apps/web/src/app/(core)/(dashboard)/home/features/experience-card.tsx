@@ -323,6 +323,18 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								<span className="font-semibold text-gray-900 hover:text-gray-600 transition-colors cursor-pointer text-sm sm:text-base truncate">
 									{displayName}
 								</span>
+								{/* Community Champion Badge for active users */}
+								{likeCount >= 10 && (
+									<span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full font-bold border border-yellow-300">
+										🏆 Champion
+									</span>
+								)}
+								{/* Community Voice Badge for engaged users */}
+								{likeCount >= 5 && likeCount < 10 && (
+									<span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-medium">
+										📢 Voice
+									</span>
+								)}
 								<span className="text-gray-500 text-xs sm:text-sm hidden sm:inline">@{username}</span>
 								<span className="text-gray-400 hidden sm:inline">·</span>
 								<span className="text-gray-500 text-xs sm:text-sm hover:text-gray-700 transition-colors cursor-pointer">
@@ -472,6 +484,19 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						<p className="text-gray-900 text-sm sm:text-base whitespace-pre-wrap leading-relaxed break-words">
 							{experience.description}
 						</p>
+						{/* Community Impact Indicator */}
+						{likeCount >= 3 && (
+							<div className="mt-2 p-2 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg">
+								<div className="flex items-center gap-2">
+									<span className="text-xs font-semibold text-blue-700">
+										🔥 Community Hot Topic
+									</span>
+									<span className="text-xs text-blue-600">
+										{likeCount} people validate this concern
+									</span>
+								</div>
+							</div>
+						)}
 					</div>
 
 					{/* Images */}
@@ -679,10 +704,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 						</div>
 					)}
 
-					{/* Action Buttons - Hidden */}
-					<div className="flex items-center justify-between pt-2 hidden">
+					{/* Action Buttons - Community Validation */}
+					<div className="flex items-center justify-between pt-2 border-t border-gray-100">
 						<div className="flex items-center gap-6">
-							{/* Like Button */}
+							{/* Cosign Button */}
 							<button
 								onClick={(e) => {
 									e.stopPropagation();
@@ -691,22 +716,36 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								disabled={isExecuting}
 								className={`flex items-center gap-2 text-sm transition-all duration-200 ${
 									isLiked 
-										? 'text-red-500' 
-										: 'text-gray-500 hover:text-gray-700'
+										? 'text-blue-600 font-semibold' 
+										: 'text-gray-500 hover:text-blue-600'
 								}`}
 							>
 								<Heart className={`h-5 w-5 ${isLiked ? 'fill-current' : ''}`} />
-								<span>{likeCount}</span>
+								<span>{likeCount} {likeCount === 1 ? 'Cosign' : 'Cosigns'}</span>
 							</button>
 
-							{/* Comment Button (placeholder for future) */}
+							{/* Community Support Button */}
 							<button 
 								onClick={(e) => e.stopPropagation()}
-								className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-all duration-200"
+								className="flex items-center gap-2 text-sm text-gray-500 hover:text-green-600 transition-all duration-200"
 							>
 								<MessageCircle className="h-5 w-5" />
-								<span>Comment</span>
+								<span>Support</span>
 							</button>
+							
+							{/* Report to Authority Button - Show for high cosign posts */}
+							{likeCount >= 5 && (
+								<button 
+									onClick={(e) => {
+										e.stopPropagation();
+										alert('Report to MP/Authority feature - Coming soon!');
+									}}
+									className="flex items-center gap-2 text-sm bg-red-600 text-white px-3 py-1 rounded-full hover:bg-red-700 transition-all duration-200 font-medium"
+								>
+									<AlertTriangle className="h-4 w-4" />
+									<span>Report to MP</span>
+								</button>
+							)}
 						</div>
 
 						{/* More Options */}

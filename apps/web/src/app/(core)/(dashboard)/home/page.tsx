@@ -82,19 +82,16 @@ export default function HomePage() {
 
 	const handleSearchChange = (term: string) => {
 		setSearchTerm(term);
-		setIsSearching(term.length > 0);
 	};
 
 	const clearSearch = () => {
 		setSearchTerm("");
-		setIsSearching(false);
 	};
 
 	const handleCategoryFilter = (categoryName: string) => {
 		setSelectedCategory(categoryName);
 		// Clear search when filtering by category
 		setSearchTerm("");
-		setIsSearching(false);
 	};
 
 	const clearCategoryFilter = () => {
@@ -132,7 +129,21 @@ export default function HomePage() {
 		? experiences.filter(exp => exp.category?.name !== "Personal") // Example filter for communities
 		: experiences;
 
-	const displayExperiences = filterExperiences(baseExperiences, searchTerm, selectedCategory);
+	const filteredExperiences = filterExperiences(baseExperiences, searchTerm, selectedCategory);
+	
+	// Sort by community engagement (cosigns) to prioritize validated concerns
+	const displayExperiences = filteredExperiences.sort((a, b) => {
+		const aUpvotes = a.upvotes || 0;
+		const bUpvotes = b.upvotes || 0;
+		
+		// Prioritize posts with high engagement first
+		if (aUpvotes !== bUpvotes) {
+			return bUpvotes - aUpvotes;
+		}
+		
+		// Then by recency
+		return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+	});
 
 	return (
 		<ExperiencesProvider 
