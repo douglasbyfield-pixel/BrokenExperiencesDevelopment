@@ -24,7 +24,7 @@ export function useExperiences(userId?: string) {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUserId = session?.user?.id || userId;
 
-      console.log('🚀 Fetching experiences with TanStack Query...');
+      // Reduced logging for performance
       const startTime = performance.now();
 
       try {
@@ -50,10 +50,10 @@ export function useExperiences(userId?: string) {
         }
 
         const experiences = await response.json();
-        const endTime = performance.now();
-        console.log(`✅ Experiences fetched: ${experiences.length} items in ${(endTime - startTime).toFixed(2)}ms`);
-        if (experiences.length > 0) {
-          console.log('✅ First experience:', experiences[0].id, experiences[0].description?.substring(0, 50));
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          const endTime = performance.now();
+          console.log(`✅ Experiences fetched: ${experiences.length} items in ${(endTime - startTime).toFixed(2)}ms`);
         }
 
         return experiences;
@@ -62,13 +62,12 @@ export function useExperiences(userId?: string) {
         throw error;
       }
     },
-    // Cache for 30 seconds, background refetch every 10 seconds for more frequent updates
-    staleTime: 30 * 1000,
-    refetchInterval: 10 * 1000,
-    // Keep in cache for 2 minutes
-    gcTime: 2 * 60 * 1000,
-    // Refetch on window focus to catch new posts
-    refetchOnWindowFocus: true,
+    // Cache for 5 minutes, no automatic background refetch
+    staleTime: 5 * 60 * 1000,
+    // Keep in cache for 10 minutes
+    gcTime: 10 * 60 * 1000,
+    // Only refetch on window focus if data is stale
+    refetchOnWindowFocus: 'always',
   });
 }
 
@@ -119,11 +118,10 @@ export function useMapMarkers() {
         throw error;
       }
     },
-    // Cache for 1 minute, background refetch every 15 seconds
-    staleTime: 1 * 60 * 1000,
-    refetchInterval: 15 * 1000,
-    // Keep in cache for 3 minutes
-    gcTime: 3 * 60 * 1000,
+    // Cache for 3 minutes, no automatic background refetch
+    staleTime: 3 * 60 * 1000,
+    // Keep in cache for 5 minutes
+    gcTime: 5 * 60 * 1000,
   });
 }
 

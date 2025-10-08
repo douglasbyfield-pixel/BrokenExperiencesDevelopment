@@ -1,7 +1,6 @@
 "use client";
 
 import { eden } from "@web/lib/eden";
-import { createClient } from "@web/lib/supabase/client";
 import { useEffect, useState } from "react";
 import CreateExperienceCard from "./features/create-experience-card";
 import Feed from "./features/feed";
@@ -9,11 +8,11 @@ import FeedHeader from "./features/feed-header";
 import { useExperiences } from "@web/hooks/use-experiences";
 import { useQuery } from "@tanstack/react-query";
 import { useSearch } from "@web/context/SearchContext";
+import { ExperiencesProvider } from "@web/context/ExperiencesContext";
 
 export default function HomePage() {
 	const [activeTab, setActiveTab] = useState<"for-you" | "communities">("for-you");
 	const [searchTerm, setSearchTerm] = useState("");
-	const [isSearching, setIsSearching] = useState(false);
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 	const { setSearchHandler, setSearchChangeHandler, setCategoryFilterHandler } = useSearch();
 
@@ -136,12 +135,17 @@ export default function HomePage() {
 	const displayExperiences = filterExperiences(baseExperiences, searchTerm, selectedCategory);
 
 	return (
-		<div>
-			<FeedHeader onTabChange={handleTabChange} />
-			<div className="px-4 lg:px-6">
-				<CreateExperienceCard categoryOptions={categoryOptions} />
-				<div className="border-t border-gray-200">
-					{searchTerm ? (
+		<ExperiencesProvider 
+			experiences={experiences} 
+			isLoading={experiencesLoading} 
+			error={experiencesError ? "Something went wrong. Please try refreshing the page." : null}
+		>
+			<div>
+				<FeedHeader onTabChange={handleTabChange} />
+				<div className="px-4 lg:px-6">
+					<CreateExperienceCard categoryOptions={categoryOptions} />
+					<div className="border-t border-gray-200">
+						{searchTerm ? (
 						<div>
 							{/* Search Results Header */}
 							<div className="p-4 border-b border-gray-200 bg-gray-50">
@@ -196,8 +200,9 @@ export default function HomePage() {
 					) : (
 						<Feed experiences={displayExperiences} />
 					)}
+					</div>
 				</div>
 			</div>
-		</div>
+		</ExperiencesProvider>
 	);
 }

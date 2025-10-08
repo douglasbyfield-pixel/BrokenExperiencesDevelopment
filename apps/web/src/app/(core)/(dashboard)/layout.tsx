@@ -15,6 +15,7 @@ export default function HomeLayout({
 	const [stats, setStats] = useState<any>(null);
 	const [trendingCategories, setTrendingCategories] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
+	
 
 	// Dummy search function for layout - will be overridden by page-level search
 	const handleSearch = (searchTerm: string) => {
@@ -58,6 +59,7 @@ export default function HomeLayout({
 							stats={stats}
 							userStats={null}
 							trendingCategories={trendingCategories}
+							recentExperiences={[]}
 						/>
 					</div>
 				</div>
