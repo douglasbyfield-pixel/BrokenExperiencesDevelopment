@@ -6,6 +6,7 @@ import MobileNav from "./home/features/mobile-nav";
 import { eden } from "@web/lib/eden";
 import { useEffect, useState } from "react";
 import { SearchProvider } from "@web/context/SearchContext";
+import { useExperiences } from "@web/hooks/use-experiences";
 
 export default function HomeLayout({
 	children,
@@ -15,6 +16,9 @@ export default function HomeLayout({
 	const [stats, setStats] = useState<any>(null);
 	const [trendingCategories, setTrendingCategories] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
+	
+	// Get recent experiences for live activity
+	const { data: experiences = [] } = useExperiences();
 	
 
 	// Dummy search function for layout - will be overridden by page-level search
@@ -59,7 +63,7 @@ export default function HomeLayout({
 							stats={stats}
 							userStats={null}
 							trendingCategories={trendingCategories}
-							recentExperiences={[]}
+							recentExperiences={experiences}
 						/>
 					</div>
 				</div>

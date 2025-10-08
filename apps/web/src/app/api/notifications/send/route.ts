@@ -19,7 +19,6 @@ export async function POST(req: Request) {
   if (req.headers.get('x-admin-token') !== process.env.ADMIN_TOKEN) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
   }
-
   const { userId, title, body, broadcast } = await req.json();
 
   // Support both single user and broadcast
