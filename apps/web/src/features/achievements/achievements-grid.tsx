@@ -1,9 +1,7 @@
 "use client";
 
 import { BadgeCard, type BadgeData } from "./badge-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
-import { Badge } from "@web/components/ui/badge";
-import { Trophy, Target, DollarSign, Users, Sparkles, Award, Star } from "lucide-react";
+import { Trophy, DollarSign, Users, Bug, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface AchievementsGridProps {
@@ -14,35 +12,35 @@ interface AchievementsGridProps {
 const categoryInfo = {
   fixer: {
     name: "Fixer",
-    icon: Target,
-    color: "text-emerald-600",
-    bgColor: "bg-gradient-to-br from-emerald-50 to-green-50",
-    borderColor: "border-emerald-200",
-    gradient: "from-emerald-500 to-green-600",
+    icon: Bug,
+    color: "text-black",
+    bgGlass: "bg-emerald-500/10",
+    borderGlass: "border-emerald-300/20",
+    gradient: "from-emerald-500/20 to-green-500/20",
   },
   reporter: {
     name: "Reporter", 
-    icon: Star,
-    color: "text-blue-600",
-    bgColor: "bg-gradient-to-br from-blue-50 to-indigo-50",
-    borderColor: "border-blue-200",
-    gradient: "from-blue-500 to-indigo-600",
+    icon: MessageSquare,
+    color: "text-black",
+    bgGlass: "bg-blue-500/10",
+    borderGlass: "border-blue-300/20",
+    gradient: "from-blue-500/20 to-indigo-500/20",
   },
   sponsor: {
     name: "Sponsor",
     icon: DollarSign,
-    color: "text-amber-600", 
-    bgColor: "bg-gradient-to-br from-amber-50 to-orange-50",
-    borderColor: "border-amber-200",
-    gradient: "from-amber-500 to-orange-600",
+    color: "text-black", 
+    bgGlass: "bg-amber-500/10",
+    borderGlass: "border-amber-300/20",
+    gradient: "from-amber-500/20 to-orange-500/20",
   },
   community: {
     name: "Community",
     icon: Users,
-    color: "text-violet-600",
-    bgColor: "bg-gradient-to-br from-violet-50 to-purple-50", 
-    borderColor: "border-violet-200",
-    gradient: "from-violet-500 to-purple-600",
+    color: "text-black",
+    bgGlass: "bg-violet-500/10", 
+    borderGlass: "border-violet-300/20",
+    gradient: "from-violet-500/20 to-purple-500/20",
   },
 };
 
@@ -82,37 +80,37 @@ export function AchievementsGrid({ badges, loading = false }: AchievementsGridPr
     return (
       <div className="space-y-8">
         {/* Header Skeleton */}
-        <Card className="bg-gray-50 border-gray-200 shadow-none">
-          <CardContent className="p-6">
+        <div className="rounded-2xl border backdrop-blur-xl bg-white/10 border-white/20">
+          <div className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
+                <div className="h-8 w-8 bg-white/20 rounded-full animate-pulse backdrop-blur-md"></div>
                 <div className="space-y-2">
-                  <div className="h-6 bg-gray-200 rounded w-32 animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+                  <div className="h-6 bg-white/20 rounded w-32 animate-pulse backdrop-blur-md"></div>
+                  <div className="h-4 bg-white/20 rounded w-48 animate-pulse backdrop-blur-md"></div>
                 </div>
               </div>
               <div className="text-right space-y-2">
-                <div className="h-8 bg-gray-200 rounded w-16 animate-pulse"></div>
-                <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                <div className="h-8 bg-white/20 rounded w-16 animate-pulse backdrop-blur-md"></div>
+                <div className="h-4 bg-white/20 rounded w-20 animate-pulse backdrop-blur-md"></div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Grid Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-4">
+            <div key={i} className="animate-pulse rounded-2xl border backdrop-blur-xl bg-white/10 border-white/20">
+              <div className="p-4">
                 <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-8 bg-gray-200 rounded-full w-12 mx-auto"></div>
-                  <div className="h-3 bg-gray-200 rounded w-full"></div>
-                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                  <div className="h-4 bg-white/20 rounded w-3/4 backdrop-blur-md"></div>
+                  <div className="h-8 bg-white/20 rounded-full w-12 mx-auto backdrop-blur-md"></div>
+                  <div className="h-3 bg-white/20 rounded w-full backdrop-blur-md"></div>
+                  <div className="h-3 bg-white/20 rounded w-2/3 backdrop-blur-md"></div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -131,20 +129,17 @@ export function AchievementsGrid({ badges, loading = false }: AchievementsGridPr
   return (
     <div className="space-y-8">
       {/* Stats Summary Card */}
-      <Card className="bg-gray-50 border-gray-200 shadow-none relative overflow-hidden group hover:shadow-md transition-all duration-300">
-        {/* Subtle background pattern */}
-        <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500" />
+      <div className="relative overflow-hidden group rounded-2xl border backdrop-blur-xl bg-white/10 border-white/20 hover:bg-white/15 transition-all duration-300">
+        {/* Enhanced glassmorphism background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-white/8 to-white/3" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10" />
         
-        <CardContent className="p-6 relative z-10">
+        <div className="p-6 relative z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="p-3 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg">
-                  <Trophy className="h-8 w-8 text-white" />
-                </div>
-                {/* Sparkle effects */}
-                <div className="absolute -top-1 -right-1">
-                  <Sparkles className="h-4 w-4 text-yellow-500 animate-pulse" />
+                <div className="p-3 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30">
+                  <Trophy className="h-8 w-8 text-black stroke-[1.5]" />
                 </div>
               </div>
               <div className={`transition-all duration-500 ${showStats ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
@@ -192,8 +187,8 @@ export function AchievementsGrid({ badges, loading = false }: AchievementsGridPr
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Categories */}
       {Object.entries(badgesByCategory).map(([category, categoryBadges], categoryIndex) => {
@@ -206,14 +201,14 @@ export function AchievementsGrid({ badges, loading = false }: AchievementsGridPr
           <div key={category} className="space-y-6">
             {/* Enhanced Category Header */}
             <div className="relative">
-              <Card className="bg-white border-gray-200 shadow-none hover:shadow-sm transition-all duration-300">
-                <CardContent className="p-4">
+              <div className="rounded-2xl border backdrop-blur-xl bg-white/10 border-white/20 hover:bg-white/15 transition-all duration-300">
+                <div className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`relative p-3 rounded-2xl ${categoryData?.bgColor} ${categoryData?.borderColor} border shadow-sm`}>
-                        <Icon className={`h-6 w-6 ${categoryData?.color}`} />
+                      <div className={`relative p-3 rounded-2xl ${categoryData?.bgGlass} ${categoryData?.borderGlass} border backdrop-blur-md`}>
+                        <Icon className={`h-6 w-6 ${categoryData?.color} stroke-[1.5]`} />
                         {/* Subtle glow effect */}
-                        <div className={`absolute inset-0 rounded-2xl bg-gradient-to-r ${categoryData?.gradient} opacity-10 blur-sm`} />
+                        <div className={`absolute inset-0 rounded-2xl bg-gradient-to-r ${categoryData?.gradient} opacity-30 blur-sm`} />
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-gray-900 mb-1">
@@ -226,21 +221,18 @@ export function AchievementsGrid({ badges, loading = false }: AchievementsGridPr
                     </div>
                     
                     <div className="text-right">
-                      <Badge 
-                        variant="outline" 
-                        className={`text-sm font-semibold ${
+                      <div className={`px-3 py-1 rounded-xl text-sm font-medium backdrop-blur-md border ${
                           completionPercentage === 100 
-                            ? 'bg-green-50 text-green-700 border-green-200' 
+                            ? 'bg-emerald-500/15 text-emerald-800 border-emerald-300/25' 
                             : completionPercentage >= 50
-                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                            : 'bg-gray-50 text-gray-700 border-gray-200'
-                        }`}
-                      >
+                            ? 'bg-blue-500/15 text-blue-800 border-blue-300/25'
+                            : 'bg-slate-500/15 text-slate-800 border-slate-300/25'
+                        }`}>
                         {completionPercentage}% Complete
-                      </Badge>
+                      </div>
                       
                       {/* Category progress bar */}
-                      <div className="mt-2 w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="mt-2 w-24 h-2 bg-white/20 backdrop-blur-md rounded-full overflow-hidden border border-white/20">
                         <div 
                           className={`h-full bg-gradient-to-r ${categoryData?.gradient} transition-all duration-1000 ease-out`}
                           style={{ width: `${completionPercentage}%` }}
@@ -248,8 +240,8 @@ export function AchievementsGrid({ badges, loading = false }: AchievementsGridPr
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
 
             {/* Enhanced Badges Grid */}
