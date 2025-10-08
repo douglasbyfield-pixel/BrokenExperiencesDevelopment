@@ -12,17 +12,12 @@ import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { useSettings } from "@web/context/SettingsContext";
 import { useAuth } from "@web/components/auth-provider";
-import { Bell, Eye, Palette, Save, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 interface UserSettings {
-	notifications: {
-		email: boolean;
-		push: boolean;
-		issueUpdates: boolean;
-	};
 	privacy: {
 		showProfile: boolean;
 		showActivity: boolean;
@@ -37,7 +32,7 @@ export default function SettingsPage() {
 	const { settings, updateSettings, loading } = useSettings();
 	const { user, session } = useAuth();
 	const [saving, setSaving] = useState(false);
-	const [deletePassword, setDeletePassword] = useState("");
+	const [confirmDelete, setConfirmDelete] = useState("");
 	const [showDeleteSection, setShowDeleteSection] = useState(false);
 	const router = useRouter();
 
@@ -60,12 +55,12 @@ export default function SettingsPage() {
 			return;
 		}
 
-		if (!deletePassword.trim()) {
-			toast.error("Please enter your password to delete your account");
+		if (confirmDelete.toLowerCase() !== "delete") {
+			toast.error("Please type 'DELETE' to confirm account deletion");
 			return;
 		}
 
-		if (!confirm("Are you absolutely sure? This action cannot be undone.")) {
+		if (!confirm("Are you absolutely sure? This action cannot be undone and will permanently delete all your data.")) {
 			return;
 		}
 
@@ -78,7 +73,7 @@ export default function SettingsPage() {
 						'Authorization': `Bearer ${session.access_token}`,
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify({ confirmPassword: deletePassword }),
+					body: JSON.stringify({ userId: user.id }),
 				},
 			);
 
@@ -87,7 +82,7 @@ export default function SettingsPage() {
 				router.push("/login");
 			} else {
 				const errorData = await response.json().catch(() => ({}));
-				toast.error(errorData.message || "Failed to delete account. Please check your password.");
+				toast.error(errorData.message || "Failed to delete account. Please try again.");
 			}
 		} catch (error) {
 			console.error("Failed to delete account:", error);
@@ -162,40 +157,9 @@ export default function SettingsPage() {
 				<div className="container mx-auto max-w-4xl px-4 py-6">
 
 				<div className="space-y-6">
-					{/* Push Notifications */}
-					<Card className="border border-gray-200 bg-white shadow-sm">
-						<CardHeader>
-							<div className="flex items-center gap-2">
-								<Bell className="h-5 w-5 text-black" />
-								<CardTitle className="text-black">
-									Notifications
-								</CardTitle>
-							</div>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="flex items-center justify-between">
-								<div>
-									<Label className="font-medium text-black">
-										Push Notifications
-									</Label>
-									<p className="text-gray-600 text-sm">
-										Receive push notifications about new reports in your area
-									</p>
-								</div>
-								<input
-									type="checkbox"
-									checked={settings.notifications.push}
-									onChange={(e) =>
-										updateSetting("notifications", "push", e.target.checked)
-									}
-									className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-							</div>
-						</CardContent>
-					</Card>
 
 					{/* Danger Zone */}
-					<Card className="border border-red-200 bg-white shadow-sm">
+					<Card className="border border-red-200 bg-white">
 						<CardHeader>
 							<div className="flex items-center gap-2">
 								<Trash2 className="h-5 w-5 text-red-600" />
@@ -221,18 +185,21 @@ export default function SettingsPage() {
 									<div className="space-y-4 rounded-lg border border-red-200 p-4">
 										<div>
 											<Label
-												htmlFor="deletePassword"
+												htmlFor="confirmDelete"
 												className="font-medium text-black"
 											>
-												Enter your password to confirm
+												Type "DELETE" to confirm
 											</Label>
+											<p className="text-gray-600 text-xs mt-1 mb-2">
+												Since you're signed in with Google, type "DELETE" to confirm account deletion.
+											</p>
 											<Input
-												id="deletePassword"
-												type="password"
-												value={deletePassword}
-												onChange={(e) => setDeletePassword(e.target.value)}
-												placeholder="Your password"
-												className="mt-2 border-red-300 bg-white text-black"
+												id="confirmDelete"
+												type="text"
+												value={confirmDelete}
+												onChange={(e) => setConfirmDelete(e.target.value)}
+												placeholder="Type DELETE here"
+												className="mt-1 border-red-300 bg-white text-black"
 											/>
 										</div>
 										<div className="flex gap-3">
@@ -240,7 +207,7 @@ export default function SettingsPage() {
 												variant="outline"
 												onClick={() => {
 													setShowDeleteSection(false);
-													setDeletePassword("");
+													setConfirmDelete("");
 												}}
 												className="border-gray-300"
 											>
