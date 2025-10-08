@@ -3,18 +3,43 @@ export const runtime = 'nodejs'; // web-push needs Node, not Edge
 import { createClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // server-only
-);
+// Type for push subscription from database
+type PushSubscription = {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_id: string;
+};
 
-webpush.setVapidDetails(
-  'mailto:dev@yourdomain.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+// Lazy initialization helpers
+let supabaseAdmin: ReturnType<typeof createClient> | null = null;
+let webpushConfigured = false;
+
+function getSupabaseAdmin() {
+  if (!supabaseAdmin) {
+    supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY! // server-only
+    );
+  }
+  return supabaseAdmin;
+}
+
+function configureWebpush() {
+  if (!webpushConfigured) {
+    webpush.setVapidDetails(
+      'mailto:dev@yourdomain.com',
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+      process.env.VAPID_PRIVATE_KEY!
+    );
+    webpushConfigured = true;
+  }
+}
 
 export async function POST(req: Request) {
+  // Initialize clients when handler is called
+  const supabaseAdmin = getSupabaseAdmin();
+  configureWebpush();
   // simple protection so only you can call it
   if (req.headers.get('x-admin-token') !== process.env.ADMIN_TOKEN) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
@@ -35,7 +60,7 @@ export async function POST(req: Request) {
     query = query.eq('user_id', userId);
   }
   
-  const { data: subs, error } = await query;
+  const { data: subs, error } = await query as { data: PushSubscription[] | null; error: any };
 
   if (error) {
     console.error('Failed to fetch subscriptions', error);
