@@ -6,8 +6,12 @@
 
 @theme {
 	--font-sans:
-		"Inter", "Geist", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+		var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
+		"Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
 		"Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+	--font-mono:
+		var(--font-jetbrains-mono), "JetBrains Mono", "Fira Code", "Consolas", 
+		"Liberation Mono", "Menlo", monospace;
 }
 
 html,
@@ -229,4 +233,66 @@ body {
 
 .animate-pulse-subtle {
 	animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Cool tooltip animations */
+@keyframes tooltip-bounce {
+	0% {
+		transform: scale(0.8) translateY(10px);
+		opacity: 0;
+	}
+	50% {
+		transform: scale(1.05) translateY(-2px);
+		opacity: 0.8;
+	}
+	100% {
+		transform: scale(1) translateY(0);
+		opacity: 1;
+	}
+}
+
+@keyframes tooltip-wiggle {
+	0%, 100% {
+		transform: rotate(0deg) scale(1);
+	}
+	25% {
+		transform: rotate(-2deg) scale(1.05);
+	}
+	75% {
+		transform: rotate(2deg) scale(1.05);
+	}
+}
+
+.animate-tooltip-bounce {
+	animation: tooltip-bounce 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.animate-tooltip-wiggle {
+	animation: tooltip-wiggle 0.6s ease-in-out;
+}
+
+/* Hover scale animation for action buttons */
+.action-button {
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.action-button:hover {
+	transform: scale(1.1);
+}
+
+.action-button:active {
+	transform: scale(0.95);
+}
+
+/* Mobile scrolling optimization */
+@media (max-width: 768px) {
+	body {
+		overscroll-behavior-y: contain;
+		overflow-x: hidden;
+	}
+	
+	main {
+		overflow-y: auto;
+		-webkit-overflow-scrolling: touch;
+	}
 }

@@ -54,8 +54,8 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 
 	return (
 		<>
-			{/* Mobile Header */}
-			<div className="sticky top-0 z-50 lg:hidden bg-white border-b border-gray-200">
+			{/* Mobile Header - Hide on small screens, show on medium+ */}
+			<div className="sticky top-0 z-50 hidden md:block lg:hidden bg-white border-b border-gray-200">
 				<div className="flex items-center justify-between p-4">
 					<button
 						onClick={() => setIsMenuOpen(!isMenuOpen)}

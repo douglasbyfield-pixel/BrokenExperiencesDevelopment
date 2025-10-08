@@ -5,6 +5,7 @@ import { AuthProvider } from "./auth-provider";
 import { SettingsNotifications } from "./settings-notifications";
 import { ThemeProvider } from "./theme-provider";
 import { Toaster } from "./ui/sonner";
+import { OfflineNotification } from "./offline-notification";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useState } from "react";
@@ -47,6 +48,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 						{children}
 						<Toaster richColors />
 						<SettingsNotifications />
+						<OfflineNotification />
 						<ReactQueryDevtools initialIsOpen={false} />
 					</SettingsProvider>
 				</AuthProvider>

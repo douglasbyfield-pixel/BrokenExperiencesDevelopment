@@ -222,7 +222,7 @@ export function useVoteExperience() {
       
       if (!session) {
         console.error('❌ No session found, user not authenticated');
-        throw new Error('You must be logged in to cosign');
+        throw new Error('You must be logged in to endorse');
       }
       
       console.log('✅ User authenticated:', session.user.id);

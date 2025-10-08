@@ -174,6 +174,8 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const [currentRoute, setCurrentRoute] = useState<any>(null);
 	const [isNavigating, setIsNavigating] = useState(false);
 	const [navPanelMinimized, setNavPanelMinimized] = useState(false);
+	const [is3DView, setIs3DView] = useState(false);
+	const [proximityRadius, setProximityRadius] = useState(5); // km radius for proximity
 	const [clusters, setClusters] = useState<Array<{
 		id: string;
 		lat: number;
@@ -270,9 +272,29 @@ export default function MapClient({ experiences }: MapClientProps) {
 		setFilteredExperiences(experiences);
 	}, [experiences]);
 
-	// Memoized filtering function for better performance
+	// Proximity filtering function
+	const getFilteredExperiencesByProximity = useCallback((experiences: Experience[], userLoc: {lat: number, lng: number}, radius: number = proximityRadius) => {
+		if (!userLoc) return experiences;
+		
+		return experiences.filter(experience => {
+			const experienceLat = Number(experience.latitude);
+			const experienceLng = Number(experience.longitude);
+			
+			if (isNaN(experienceLat) || isNaN(experienceLng)) return false;
+			
+			const distance = getDistance(userLoc.lat, userLoc.lng, experienceLat, experienceLng);
+			return distance <= radius;
+		});
+	}, [proximityRadius]);
+
+	// Memoized filtering function for better performance with proximity
 	const filteredExperiencesMemo = useMemo(() => {
 		let filtered = [...experiences];
+
+		// Apply proximity filtering first if user location is available
+		if (userLocation) {
+			filtered = getFilteredExperiencesByProximity(filtered, userLocation, proximityRadius);
+		}
 
 		// Apply status filters
 		if (activeFilters.status.length > 0) {
@@ -308,7 +330,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 		}
 
 		return filtered;
-	}, [experiences, activeFilters, debouncedSearchQuery]);
+	}, [experiences, activeFilters, debouncedSearchQuery, userLocation, getFilteredExperiencesByProximity, proximityRadius]);
 
 	// Update filtered experiences when memo changes
 	useEffect(() => {
@@ -381,10 +403,10 @@ export default function MapClient({ experiences }: MapClientProps) {
 		}
 
 		// Execute vote immediately for good UX (optimistic update)
-		console.log('🗳️ Processing map cosign vote...');
+		console.log('🗳️ Processing map endorse vote...');
 		voteOnExperience({
 			experienceId: experienceId,
-			vote: 'up' // Use 'up' for cosigning
+			vote: 'up' // Use 'up' for endorsing
 		});
 
 		// Reset debouncing after 1 second
@@ -559,7 +581,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 			map.fitBounds(bounds, {
 				padding: 50,
-				pitch: 68,
+				pitch: is3DView ? 68 : 0,
 				duration: 1500,
 			});
 
@@ -650,7 +672,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 					style: "mapbox://styles/mapbox/dark-v11",
 					center: [userLocation.lng, userLocation.lat],
 					zoom: 14,
-					pitch: 68,
+					pitch: 0, // Default to 2D view
 					bearing: 0,
 					transformRequest: (url) => {
 						// Block all telemetry and analytics requests
@@ -714,7 +736,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 						mapInstance.flyTo({
 							center: [userLocation.lng, userLocation.lat],
 							zoom: 16.5,
-							pitch: 68,
+							pitch: 0, // Default to 2D view
 							bearing: 0,
 							duration: 2500,
 							essential: true,
@@ -743,7 +765,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 					showAccuracyCircle: true,
 					fitBoundsOptions: {
 						maxZoom: 15,
-						pitch: 68,
+						pitch: 0, // Default to 2D view
 						bearing: 0,
 					},
 				});
@@ -769,7 +791,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 						mapInstance.flyTo({
 							center: [newLocation.lng, newLocation.lat],
 							zoom: 16,
-							pitch: 68,
+							pitch: is3DView ? 68 : 0,
 							bearing: 0,
 							duration: 1500,
 						});
@@ -842,7 +864,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 								mapInstance.fitBounds(bounds, {
 									padding: 50,
-									pitch: 68,
+									pitch: is3DView ? 68 : 0,
 									duration: 1500,
 								});
 
@@ -890,7 +912,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 							mapInstance.flyTo({
 								center: [Number(closestExperience.longitude), Number(closestExperience.latitude)],
 								zoom: 17,
-								pitch: 68,
+								pitch: is3DView ? 68 : 0,
 								duration: 2000,
 							});
 
@@ -1246,6 +1268,22 @@ export default function MapClient({ experiences }: MapClientProps) {
 		}
 	}, [watchId]);
 
+	// Toggle 2D/3D view
+	const toggle3DView = useCallback(() => {
+		if (!map) return;
+		
+		const newIs3D = !is3DView;
+		setIs3DView(newIs3D);
+		
+		map.flyTo({
+			pitch: newIs3D ? 68 : 0,
+			duration: 1000,
+		});
+		
+		console.log(`🔄 Switched to ${newIs3D ? '3D' : '2D'} view`);
+	}, [map, is3DView]);
+
+
 	// Toggle live tracking
 	useEffect(() => {
 		if (isLiveTracking) {
@@ -1394,13 +1432,25 @@ export default function MapClient({ experiences }: MapClientProps) {
 				</div>
 			)}
 
-			{/* Live Tracking Button */}
-			<div className="absolute top-4 right-20 z-10">
+			{/* 2D/3D Toggle and Live Tracking Buttons */}
+			<div className="absolute top-4 right-20 z-10 flex flex-col gap-2">
+				<Button
+					size="icon"
+					variant={is3DView ? "default" : "outline"}
+					className="bg-white shadow-lg"
+					onClick={toggle3DView}
+					title={is3DView ? "Switch to 2D view" : "Switch to 3D view"}
+				>
+					<span className="text-xs font-bold">
+						{is3DView ? "3D" : "2D"}
+					</span>
+				</Button>
 				<Button
 					size="icon"
 					variant={isLiveTracking ? "default" : "outline"}
 					className="bg-white shadow-lg"
 					onClick={() => setIsLiveTracking(!isLiveTracking)}
+					title={isLiveTracking ? "Stop live tracking" : "Start live tracking"}
 				>
 					<Navigation
 						className={`h-4 w-4 ${isLiveTracking ? "text-blue-600" : ""}`}
@@ -1467,7 +1517,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 									map?.flyTo({
 										center: [Number(closestExperience.longitude), Number(closestExperience.latitude)],
 										zoom: 17,
-										pitch: 68,
+										pitch: is3DView ? 68 : 0,
 										duration: 2000,
 									});
 
@@ -1520,7 +1570,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 										map?.fitBounds(bounds, {
 											padding: 50,
-											pitch: 68,
+											pitch: is3DView ? 68 : 0,
 											duration: 1500,
 										});
 									});
@@ -1541,7 +1591,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 									map.flyTo({
 										center: [userLocation.lng, userLocation.lat],
 										zoom: 16.5,
-										pitch: 68,
+										pitch: is3DView ? 68 : 0,
 										duration: 1500,
 									});
 									setShowQuickActions(false);
@@ -1566,7 +1616,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 										map.fitBounds(bounds, {
 											padding: 50,
-											pitch: 0,
+											pitch: is3DView ? 68 : 0,
 											duration: 2000,
 										});
 									});

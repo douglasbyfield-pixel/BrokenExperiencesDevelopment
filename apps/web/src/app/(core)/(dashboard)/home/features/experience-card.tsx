@@ -5,7 +5,7 @@ import type { Experience } from "@web/types";
 import { useAction } from "next-safe-action/hooks";
 import { useVoteExperience } from "@web/hooks/use-experiences";
 import {
-	Heart,
+	CheckCircle,
 	Link,
 	MapPin,
 	MoreHorizontal,
@@ -15,6 +15,7 @@ import {
 	Edit,
 	MessageCircle,
 } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipPanel } from "@web/components/animate-ui/components/base/tooltip";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@web/components/auth-provider";
 import { Badge } from "@web/components/ui/badge";
@@ -165,7 +166,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		}
 
 		// Execute vote immediately for good UX (optimistic update)
-		console.log('🗳️ Processing cosign vote...');
+		console.log('🗳️ Processing endorse vote...');
 		voteOnExperience({
 			experienceId: experience.id,
 			vote: isLiked ? 'down' : 'up' // Toggle between up and down
@@ -347,10 +348,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 	return (
 		<>
-		<article className="bg-white border-b border-gray-200 px-4 py-3 transition-colors hover:bg-gray-50/50">
-			<div className="flex gap-2 sm:gap-4">
+		<article className="bg-white border-b border-gray-100 px-4 py-4">
+			<div className="flex gap-3">
 				{/* Avatar */}
-				<Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+				<Avatar className="h-9 w-9 flex-shrink-0">
 					<AvatarImage 
 						src={experience.reportedBy?.image || undefined} 
 						alt={`${displayName}'s avatar`} 
@@ -361,78 +362,32 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 				</Avatar>
 
 				<div className="flex-1 min-w-0">
-					{/* Header: User info and category badge */}
-					<div className="flex items-start justify-between gap-2 mb-2">
-						<div className="flex items-center gap-1 sm:gap-2 flex-wrap min-w-0">
-							<div className="flex items-center gap-1 min-w-0">
-								<span className="font-semibold text-gray-900 hover:text-gray-600 transition-colors cursor-pointer text-sm sm:text-base truncate">
-									{displayName}
-								</span>
-								{/* Community Champion Badge for active users */}
-								{likeCount >= 10 && (
-									<span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full font-bold border border-yellow-300">
-										🏆 Champion
-									</span>
-								)}
-								{/* Community Voice Badge for engaged users */}
-								{likeCount >= 5 && likeCount < 10 && (
-									<span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-medium">
-										📢 Voice
-									</span>
-								)}
-								<span className="text-gray-500 text-xs sm:text-sm hidden sm:inline">@{username}</span>
-								<span className="text-gray-400 hidden sm:inline">·</span>
-								<span className="text-gray-500 text-xs sm:text-sm hover:text-gray-700 transition-colors cursor-pointer">
-									{formatRelativeTime(experience.createdAt)}
-								</span>
-							</div>
+					{/* Header: Minimal user info */}
+					<div className="flex items-center justify-between gap-2 mb-3">
+						<div className="flex items-center gap-2 min-w-0">
+							<span className="font-medium text-gray-900 text-sm">
+								{displayName}
+							</span>
+							{/* Subtle status indicator */}
+							{likeCount >= 5 && (
+								<span className="text-xs text-blue-600">📢</span>
+							)}
+							<span className="text-gray-400 text-xs">
+								{formatRelativeTime(experience.createdAt)}
+							</span>
 						</div>
-						<span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 flex-shrink-0">
+						<span className="text-xs text-gray-500">
 							#{experience.category?.name || "general"}
 						</span>
 					</div>
 
-					{/* Badges Row: Priority, Status */}
-					<div className="mb-3">
-						{!isEditingStatus ? (
-							<div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+					{/* Title - with proper truncation to prevent clashing */}
+					<h3 className="font-semibold text-gray-900 text-lg leading-tight mb-2 pr-16 truncate">
+						{experience.title}
+					</h3>
 
-								{/* Shows priority of the experience */}
-								{/* Priority Badge
-								{localPriority && priorityConfig[localPriority] && (
-									<div className="flex items-center gap-1">
-										<div 
-											className="w-2 h-2 rounded-full"
-											style={{ backgroundColor: priorityConfig[localPriority].color }}
-										/>
-										<Badge
-											variant={
-												localPriority === "high"
-													? "destructive"
-													: localPriority === "medium"
-													? "default"
-													: "secondary"
-											}
-											className="text-xs"
-										>
-											{localPriority.charAt(0).toUpperCase() + localPriority.slice(1)}
-										</Badge>
-									</div>
-								)}
-								 */}
-							
-								{/* Shows if the experience is reported, in progress, or resolved */}
-								{/* Status Badge
-								{localStatus && statusConfig[localStatus] && (
-									<Badge
-										variant="outline"
-										className={`text-xs ${statusConfig[localStatus].textColor}`}
-									>
-										{statusConfig[localStatus].label}
-									</Badge>
-								)} */}
-							</div>
-						) : (
+					{/* Status editing section - only show when editing */}
+					{isEditingStatus && (
 							<div className="space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
 								{/* Edit Priority */}
 								<div>
@@ -521,25 +476,17 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 									</button>
 								</div>
 							</div>
-						)}
-					</div>
+					)}
 
 					{/* Content */}
 					<div className="mb-3">
 						<p className="text-gray-900 text-sm sm:text-base whitespace-pre-wrap leading-relaxed break-words">
 							{experience.description}
 						</p>
-						{/* Community Impact Indicator */}
-						{likeCount >= 3 && (
-							<div className="mt-2 p-2 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg">
-								<div className="flex items-center gap-2">
-									<span className="text-xs font-semibold text-blue-700">
-										🔥 Community Hot Topic
-									</span>
-									<span className="text-xs text-blue-600">
-										{likeCount} cosigns - Community validated issue
-									</span>
-								</div>
+						{/* Subtle hot topic indicator */}
+						{likeCount >= 8 && (
+							<div className="mt-1">
+								<span className="text-xs text-orange-500 font-medium">🔥 Trending</span>
 							</div>
 						)}
 					</div>
@@ -672,50 +619,53 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 					{/* Location */}
 					{experience.address && experience.address.trim() && (
-						<div className="flex items-center justify-between text-gray-500 mb-3">
-							<div className="flex items-center gap-2">
-								<MapPin className="h-4 w-4 flex-shrink-0 text-gray-400" />
-								<span className="text-sm font-medium">{experience.address}</span>
-							</div>
-							<div className="flex items-center gap-2">
-								{/* Cosign Button */}
-								<button
-									onClick={(e) => {
-										e.stopPropagation();
-										handleVote();
-									}}
-									disabled={isExecuting || isVoteDebouncing}
-									title={
-										isVoteDebouncing ? 'Processing...' :
+						<div className="flex items-center gap-2 text-gray-500 mb-3">
+							<MapPin className="h-4 w-4 flex-shrink-0 text-gray-400" />
+							<span className="text-sm font-medium truncate">{experience.address}</span>
+						</div>
+					)}
+
+					{/* Action Buttons - Separate Row */}
+					<div className="flex items-center justify-between">
+						<div></div> {/* Spacer */}
+						<div className="flex items-center gap-4">
+								{/* Endorse Button with Tooltip */}
+								<Tooltip delay={300}>
+									<TooltipTrigger
+										onClick={(e) => {
+											e.stopPropagation();
+											handleVote();
+										}}
+										disabled={isExecuting || isVoteDebouncing}
+										className={`action-button flex items-center gap-1.5 ${
+											isLiked 
+												? 'text-green-600' 
+												: 'text-gray-600 hover:text-green-600'
+										} ${(isExecuting || isVoteDebouncing) ? 'opacity-70 cursor-not-allowed' : ''}`}
+									>
+										<CheckCircle className={`h-5 w-5 transition-all duration-200 ${isLiked ? 'fill-current' : ''}`} />
+										{likeCount > 0 && (
+											<span className="text-sm font-medium">
+												{likeCount}
+											</span>
+										)}
+									</TooltipTrigger>
+									<TooltipPanel className="bg-black text-white text-xs rounded-md px-3 py-2 shadow-xl border border-gray-700 animate-tooltip-bounce">
+										{isVoteDebouncing ? 'Processing...' :
 										isExecuting ? 'Saving...' :
-										likeCount === 0 ? 'Cosign to validate this concern' :
-										likeCount === 1 ? '1 Cosign' :
-										likeCount >= 2 && likeCount < 5 ? `${likeCount} Cosigns - Building momentum` :
-										likeCount >= 5 && likeCount < 10 ? `${likeCount} Cosigns - Escalating to authorities` :
-										`${likeCount} Cosigns - Community priority`
-									}
-									className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all duration-200 ${
-										isLiked 
-											? 'text-blue-600 bg-blue-50 font-semibold' 
-											: 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
-									} ${(isExecuting || isVoteDebouncing) ? 'opacity-70 cursor-not-allowed' : ''}`}
-								>
-									<Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
-									<span className="text-sm">
-										{likeCount === 0 ? 'Cosign' : 
-										 isLiked ? 'Cosign' : 
-										 likeCount === 1 ? '1' :
-										 `${likeCount}`}
-									</span>
-								</button>
+										isLiked ? 'Endorsed ✓' :
+										'Endorse'}
+									</TooltipPanel>
+								</Tooltip>
 								
+								{/* Share Button */}
 								<Popover>
-							<PopoverTrigger 
-								className="group flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all"
-								onClick={(e) => e.stopPropagation()}
-							>
-								<Share className="h-4 w-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
-							</PopoverTrigger>
+									<PopoverTrigger 
+										className="action-button group flex items-center"
+										onClick={(e) => e.stopPropagation()}
+									>
+										<Share className="h-5 w-5 text-gray-600 hover:text-blue-600 transition-colors duration-200" />
+									</PopoverTrigger>
 							<PopoverPortal>
 								<PopoverPositioner>
 									<PopoverPopup 
@@ -778,25 +728,27 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								</PopoverPositioner>
 							</PopoverPortal>
 						</Popover>
-							</div>
+								
+								{/* Report to Authority Button with Tooltip */}
+								{likeCount >= 5 && (
+									<Tooltip delay={300}>
+										<TooltipTrigger
+											onClick={(e) => {
+												e.stopPropagation();
+												alert('Report to MP/Authority feature - Coming soon!');
+											}}
+											className="action-button flex items-center gap-1 text-gray-600 hover:text-red-600"
+										>
+											<AlertTriangle className="h-5 w-5 transition-all duration-200" />
+										</TooltipTrigger>
+										<TooltipPanel className="bg-red-600 text-white text-xs rounded-md px-3 py-2 shadow-xl border border-red-500 animate-tooltip-bounce">
+											Report
+										</TooltipPanel>
+									</Tooltip>
+								)}
 						</div>
-					)}
+					</div>
 
-					{/* Report to Authority Button - Show for high cosign posts */}
-					{likeCount >= 5 && (
-						<div className="pt-2 border-t border-gray-100">
-							<button 
-								onClick={(e) => {
-									e.stopPropagation();
-									alert('Report to MP/Authority feature - Coming soon!');
-								}}
-								className="flex items-center gap-2 text-sm bg-red-600 text-white px-3 py-1 rounded-full hover:bg-red-700 transition-all duration-200 font-medium"
-							>
-								<AlertTriangle className="h-4 w-4" />
-								<span>Report to Authority</span>
-							</button>
-						</div>
-					)}
 
 					{/* More Options */}
 					<div className="flex justify-end">

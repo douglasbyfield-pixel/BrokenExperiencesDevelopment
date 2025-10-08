@@ -3,6 +3,7 @@
 import LeftSidebar from "./home/features/left-sidebar";
 import RightSidebar from "./home/features/right-sidebar";
 import MobileNav from "./home/features/mobile-nav";
+import { BottomNavigation } from "@web/components/bottom-navigation";
 import { eden } from "@web/lib/eden";
 import { useEffect, useState } from "react";
 import { SearchProvider } from "@web/context/SearchContext";
@@ -48,6 +49,7 @@ export default function HomeLayout({
 	return (
 		<SearchProvider onSearch={handleSearch}>
 			<div className="min-h-screen bg-white md:mx-24 mx-0">
+				{/* Keep original mobile nav for larger screens/special features */}
 				<MobileNav 
 					stats={stats}
 					userStats={null}
@@ -56,7 +58,7 @@ export default function HomeLayout({
 				<div className="mx-auto max-w-screen-xl min-h-screen">
 					<div className="flex min-h-screen">
 						<LeftSidebar />
-						<main className="flex-1 min-w-0 lg:border-x lg:border-gray-200">
+						<main className="flex-1 min-w-0 lg:border-x lg:border-gray-200 pb-16 lg:pb-0">
 							{children}
 						</main>
 						<RightSidebar
@@ -67,6 +69,8 @@ export default function HomeLayout({
 						/>
 					</div>
 				</div>
+				{/* New Instagram-style bottom navigation */}
+				<BottomNavigation />
 			</div>
 		</SearchProvider>
 	);

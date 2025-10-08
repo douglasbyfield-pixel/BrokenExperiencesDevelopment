@@ -131,7 +131,7 @@ export default function HomePage() {
 
 	const filteredExperiences = filterExperiences(baseExperiences, searchTerm, selectedCategory);
 	
-	// Sort by community engagement (cosigns) to prioritize validated concerns
+	// Sort by community engagement (endorsements) to prioritize validated concerns
 	const displayExperiences = filteredExperiences.sort((a, b) => {
 		const aUpvotes = a.upvotes || 0;
 		const bUpvotes = b.upvotes || 0;
