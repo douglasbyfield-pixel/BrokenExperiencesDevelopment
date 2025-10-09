@@ -5,26 +5,26 @@ import { z } from "zod";
 export const userSettings = pgTable("user_settings", {
 	id: uuid("id").defaultRandom().primaryKey(),
 	userId: uuid("user_id").notNull().unique(),
-	
+
 	// Notifications settings
 	emailNotifications: boolean("email_notifications").default(true),
 	pushNotifications: boolean("push_notifications").default(true),
 	issueUpdates: boolean("issue_updates").default(true),
 	weeklyReport: boolean("weekly_report").default(false),
-	
+
 	// Privacy settings
 	showProfile: boolean("show_profile").default(true),
 	showActivity: boolean("show_activity").default(true),
 	showStats: boolean("show_stats").default(true),
-	
+
 	// Display settings
 	theme: text("theme", { enum: ["light", "dark", "system"] }).default("light"),
 	language: text("language").default("en"),
 	mapStyle: text("map_style").default("satellite-v9"),
-	
+
 	// App experience settings
 	pwaInstallPromptSeen: boolean("pwa_install_prompt_seen").default(false),
-	
+
 	createdAt: timestamp("created_at").defaultNow(),
 	updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -85,7 +85,10 @@ export function dbToFrontendFormat(dbSettings: UserSettings): FrontendSettings {
 	};
 }
 
-export function frontendToDbFormat(frontendSettings: Partial<FrontendSettings>, userId: string): Partial<NewUserSettings> {
+export function frontendToDbFormat(
+	frontendSettings: Partial<FrontendSettings>,
+	userId: string,
+): Partial<NewUserSettings> {
 	const dbUpdates: Partial<NewUserSettings> = {
 		userId,
 		updatedAt: new Date(),
@@ -132,7 +135,8 @@ export function frontendToDbFormat(frontendSettings: Partial<FrontendSettings>, 
 
 	if (frontendSettings.app) {
 		if (frontendSettings.app.pwaInstallPromptSeen !== undefined) {
-			dbUpdates.pwaInstallPromptSeen = frontendSettings.app.pwaInstallPromptSeen;
+			dbUpdates.pwaInstallPromptSeen =
+				frontendSettings.app.pwaInstallPromptSeen;
 		}
 	}
 

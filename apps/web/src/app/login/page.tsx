@@ -1,11 +1,11 @@
 "use client";
 
+import { useAuth } from "@web/components/auth-provider";
 import GoogleLogo from "@web/components/icons/google-logo";
 import { Button } from "@web/components/ui/button";
-import { useAuth } from "@web/components/auth-provider";
-import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { toast } from "sonner";
 
 export default function LoginPage() {
 	const { signIn, user, isLoading } = useAuth();
@@ -14,7 +14,7 @@ export default function LoginPage() {
 	// Redirect authenticated users to home
 	useEffect(() => {
 		if (!isLoading && user) {
-			router.push('/home');
+			router.push("/home");
 		}
 	}, [user, isLoading, router]);
 
@@ -32,29 +32,31 @@ export default function LoginPage() {
 			<div className="mx-auto w-full max-w-md px-6">
 				{/* Logo & Header */}
 				<div className="mb-12 text-center">
-					<div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-white border-2 border-gray-200 shadow-lg">
+					<div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl border-2 border-gray-200 bg-white shadow-lg">
 						<img
 							src="/images/logo.png"
 							alt="Broken Experiences"
 							className="h-16 w-16 object-contain"
 						/>
 					</div>
-					<h1 className="font-bold text-3xl text-black mb-2">Broken Experiences</h1>
-					<p className="text-gray-600 text-base">
+					<h1 className="mb-2 font-bold text-3xl text-black">
+						Broken Experiences
+					</h1>
+					<p className="text-base text-gray-600">
 						Share and discover experiences worldwide
 					</p>
 				</div>
 
 				{/* Sign In Card */}
-				<div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+				<div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-xl">
 					<div className="mb-6 text-center">
-						<h2 className="font-bold text-xl text-black mb-2">Welcome</h2>
+						<h2 className="mb-2 font-bold text-black text-xl">Welcome</h2>
 						<p className="text-gray-500 text-sm">Sign in to get started</p>
 					</div>
 
 					<Button
 						variant="outline"
-						className="h-14 w-full justify-center border-2 border-gray-200 text-black hover:bg-gray-50 hover:border-gray-300 hover:text-black rounded-xl font-medium shadow-sm hover:shadow-md transition-all"
+						className="h-14 w-full justify-center rounded-xl border-2 border-gray-200 font-medium text-black shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-black hover:shadow-md"
 						onClick={async () => {
 							try {
 								await signIn("google");
@@ -63,7 +65,7 @@ export default function LoginPage() {
 							}
 						}}
 					>
-						<GoogleLogo className="mr-3 h-5 w-5" /> 
+						<GoogleLogo className="mr-3 h-5 w-5" />
 						Continue with Google
 					</Button>
 

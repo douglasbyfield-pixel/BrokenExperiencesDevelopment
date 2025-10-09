@@ -1,30 +1,32 @@
 import { listAllImages } from "@web/lib/supabase/storage-server";
 import Link from "next/link";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function ImagesTestPage() {
 	const images = await listAllImages();
 
 	return (
 		<div className="min-h-screen bg-gray-50 py-8">
-			<div className="max-w-7xl mx-auto px-4">
+			<div className="mx-auto max-w-7xl px-4">
 				{/* Header */}
 				<div className="mb-8">
-					<Link 
-						href="/dev" 
-						className="text-blue-600 hover:text-blue-700 mb-4 inline-block"
+					<Link
+						href="/dev"
+						className="mb-4 inline-block text-blue-600 hover:text-blue-700"
 					>
 						← Back to Dev
 					</Link>
-					<h1 className="text-3xl font-bold text-gray-900">
+					<h1 className="font-bold text-3xl text-gray-900">
 						Image Storage Test
 					</h1>
-					<p className="text-gray-600 mt-2">
-						Viewing all images from Supabase <code className="bg-gray-200 px-2 py-1 rounded">issue-images</code> bucket
+					<p className="mt-2 text-gray-600">
+						Viewing all images from Supabase{" "}
+						<code className="rounded bg-gray-200 px-2 py-1">issue-images</code>{" "}
+						bucket
 					</p>
-					<div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-						<p className="text-sm text-blue-800">
+					<div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+						<p className="text-blue-800 text-sm">
 							<strong>Total Images:</strong> {images.length}
 						</p>
 					</div>
@@ -32,49 +34,49 @@ export default async function ImagesTestPage() {
 
 				{/* Images Grid */}
 				{images.length === 0 ? (
-					<div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-300">
+					<div className="rounded-lg border-2 border-gray-300 border-dashed bg-white py-12 text-center">
 						<p className="text-gray-500 text-lg">No images found in storage</p>
-						<p className="text-gray-400 text-sm mt-2">
+						<p className="mt-2 text-gray-400 text-sm">
 							Upload some images by creating a post on the home page
 						</p>
 					</div>
 				) : (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+					<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 						{images.map((image) => (
-							<div 
+							<div
 								key={image.name}
-								className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow"
+								className="overflow-hidden rounded-lg bg-white shadow-md transition-shadow hover:shadow-xl"
 							>
 								{/* Image */}
 								<div className="relative aspect-square bg-gray-100">
 									<img
 										src={image.url}
 										alt={image.name}
-										className="w-full h-full object-cover"
+										className="h-full w-full object-cover"
 									/>
 								</div>
-								
+
 								{/* Image Info */}
 								<div className="p-4">
-									<p className="text-xs font-mono text-gray-600 truncate mb-2" title={image.name}>
+									<p
+										className="mb-2 truncate font-mono text-gray-600 text-xs"
+										title={image.name}
+									>
 										{image.name}
 									</p>
-									<div className="flex justify-between text-xs text-gray-500">
+									<div className="flex justify-between text-gray-500 text-xs">
 										<span>
-											{image.createdAt 
+											{image.createdAt
 												? new Date(image.createdAt).toLocaleDateString()
-												: 'Unknown date'
-											}
+												: "Unknown date"}
 										</span>
-										<span>
-											{(image.size / 1024).toFixed(0)} KB
-										</span>
+										<span>{(image.size / 1024).toFixed(0)} KB</span>
 									</div>
 									<a
 										href={image.url}
 										target="_blank"
 										rel="noopener noreferrer"
-										className="mt-3 block w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium"
+										className="mt-3 block w-full text-center font-medium text-blue-600 text-sm hover:text-blue-700"
 									>
 										Open Original →
 									</a>
@@ -85,12 +87,17 @@ export default async function ImagesTestPage() {
 				)}
 
 				{/* Instructions */}
-				<div className="mt-12 p-6 bg-white rounded-lg border border-gray-200">
-					<h2 className="text-xl font-semibold text-gray-900 mb-4">
+				<div className="mt-12 rounded-lg border border-gray-200 bg-white p-6">
+					<h2 className="mb-4 font-semibold text-gray-900 text-xl">
 						How to Test
 					</h2>
-					<ol className="list-decimal list-inside space-y-2 text-gray-700">
-						<li>Go to the <Link href="/home" className="text-blue-600 hover:underline">home page</Link></li>
+					<ol className="list-inside list-decimal space-y-2 text-gray-700">
+						<li>
+							Go to the{" "}
+							<Link href="/home" className="text-blue-600 hover:underline">
+								home page
+							</Link>
+						</li>
 						<li>Click on "What's broken?" to create a new post</li>
 						<li>Add some images using the camera icon</li>
 						<li>Submit the post</li>
@@ -101,4 +108,3 @@ export default async function ImagesTestPage() {
 		</div>
 	);
 }
-

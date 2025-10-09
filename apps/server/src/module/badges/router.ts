@@ -1,14 +1,16 @@
+import { verifySupabaseToken } from "@server/lib/auth/supabase";
 import Elysia from "elysia";
 import { BadgesService } from "./service";
-import { verifySupabaseToken } from "@server/lib/auth/supabase";
 
 export const badgesRouter = new Elysia({ prefix: "/achievements" })
 	.get("/", async (ctx: any) => {
 		try {
 			// Get user from auth header
-			const authHeader = ctx.request.headers.get('authorization') || ctx.request.headers.get('Authorization');
+			const authHeader =
+				ctx.request.headers.get("authorization") ||
+				ctx.request.headers.get("Authorization");
 			const user = await verifySupabaseToken(authHeader || undefined);
-			
+
 			if (!user) {
 				return {
 					success: false,
@@ -17,7 +19,7 @@ export const badgesRouter = new Elysia({ prefix: "/achievements" })
 			}
 
 			const badges = await BadgesService.getBadgesWithUserStatus(user.id);
-			
+
 			return {
 				success: true,
 				data: badges,
@@ -33,9 +35,11 @@ export const badgesRouter = new Elysia({ prefix: "/achievements" })
 	.get("/obtained", async (ctx: any) => {
 		try {
 			// Get user from auth header
-			const authHeader = ctx.request.headers.get('authorization') || ctx.request.headers.get('Authorization');
+			const authHeader =
+				ctx.request.headers.get("authorization") ||
+				ctx.request.headers.get("Authorization");
 			const user = await verifySupabaseToken(authHeader || undefined);
-			
+
 			if (!user) {
 				return {
 					success: false,
@@ -44,7 +48,7 @@ export const badgesRouter = new Elysia({ prefix: "/achievements" })
 			}
 
 			const badges = await BadgesService.getUserObtainedBadges(user.id);
-			
+
 			return {
 				success: true,
 				data: badges,

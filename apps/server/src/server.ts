@@ -6,28 +6,33 @@ import logixlysia from "logixlysia";
 // import { auth } from "./lib/auth"; // Removed - using Supabase Auth
 import { appRouter } from "./module";
 
-const corsOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app,https://brokenexperiences-dev.vercel.app")
+const corsOrigins = (
+	process.env.CORS_ORIGINS ??
+	"http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app,https://brokenexperiences-dev.vercel.app"
+)
 	.split(",")
-	.map(s => s.trim())
+	.map((s) => s.trim())
 	.filter(Boolean);
 
 export const app = new Elysia()
-	.use(swagger({
-		path: "/swagger",
-		documentation: {
-			info: {
-				title: "Broken Experiences API",
-				version: "1.0.0",
-				description: "API for reporting and managing broken experiences"
+	.use(
+		swagger({
+			path: "/swagger",
+			documentation: {
+				info: {
+					title: "Broken Experiences API",
+					version: "1.0.0",
+					description: "API for reporting and managing broken experiences",
+				},
+				tags: [
+					{ name: "Category", description: "Category endpoints" },
+					{ name: "Experience", description: "Experience endpoints" },
+					{ name: "Stats", description: "Statistics endpoints" },
+					{ name: "Misc", description: "Miscellaneous endpoints" },
+				],
 			},
-			tags: [
-				{ name: "Category", description: "Category endpoints" },
-				{ name: "Experience", description: "Experience endpoints" },
-				{ name: "Stats", description: "Statistics endpoints" },
-				{ name: "Misc", description: "Miscellaneous endpoints" }
-			]
-		}
-	}))
+		}),
+	)
 	.use(logixlysia())
 	.use(
 		cors({
@@ -40,48 +45,49 @@ export const app = new Elysia()
 	.get("/", () => ({
 		status: "ok",
 		message: "Broken Experiences API",
-		version: "1.0.1", 
-		description: "API for reporting and managing broken experiences in digital products",
+		version: "1.0.1",
+		description:
+			"API for reporting and managing broken experiences in digital products",
 		timestamp: new Date().toISOString(),
 		environment: process.env.NODE_ENV || "development",
 		endpoints: {
 			health: {
 				url: "/health",
-				description: "Health check endpoint"
+				description: "Health check endpoint",
 			},
 			documentation: {
 				url: "/swagger",
-				description: "Interactive API documentation"
+				description: "Interactive API documentation",
 			},
 			categories: {
 				url: "/category",
 				description: "Manage experience categories",
-				methods: ["GET", "POST"]
+				methods: ["GET", "POST"],
 			},
 			experiences: {
-				url: "/experience", 
+				url: "/experience",
 				description: "Create and retrieve broken experiences",
-				methods: ["GET", "POST", "PATCH", "DELETE"]
+				methods: ["GET", "POST", "PATCH", "DELETE"],
 			},
 			statistics: {
 				url: "/stats",
 				description: "Get platform statistics and analytics",
-				methods: ["GET"]
+				methods: ["GET"],
 			},
 			authentication: {
 				url: "/api/auth",
 				description: "User authentication and authorization",
-				methods: ["GET", "POST"]
-			}
+				methods: ["GET", "POST"],
+			},
 		},
 		cors: {
 			enabled: true,
-			allowedOrigins: corsOrigins
-		}
+			allowedOrigins: corsOrigins,
+		},
 	}))
 	.get("/health", () => ({
 		status: "ok",
-		timestamp: new Date().toISOString()
+		timestamp: new Date().toISOString(),
 	}))
 	// Removed Better Auth handler - using Supabase Auth
 	.use(appRouter);

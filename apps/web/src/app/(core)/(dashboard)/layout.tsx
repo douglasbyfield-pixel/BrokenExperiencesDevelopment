@@ -1,14 +1,14 @@
 "use client";
 
-import LeftSidebar from "./home/features/left-sidebar";
-import RightSidebar from "./home/features/right-sidebar";
-import MobileNav from "./home/features/mobile-nav";
 import { BottomNavigation } from "@web/components/bottom-navigation";
 import { OfflineBanner } from "@web/components/offline-banner";
-import { eden } from "@web/lib/eden";
-import { useEffect, useState } from "react";
 import { SearchProvider } from "@web/context/SearchContext";
 import { useExperiences } from "@web/hooks/use-experiences";
+import { eden } from "@web/lib/eden";
+import { useEffect, useState } from "react";
+import LeftSidebar from "./home/features/left-sidebar";
+import MobileNav from "./home/features/mobile-nav";
+import RightSidebar from "./home/features/right-sidebar";
 
 export default function HomeLayout({
 	children,
@@ -18,10 +18,9 @@ export default function HomeLayout({
 	const [stats, setStats] = useState<any>(null);
 	const [trendingCategories, setTrendingCategories] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
-	
+
 	// Get recent experiences for live activity
 	const { data: experiences = [] } = useExperiences();
-	
 
 	// Dummy search function for layout - will be overridden by page-level search
 	const handleSearch = (searchTerm: string) => {
@@ -33,7 +32,7 @@ export default function HomeLayout({
 			try {
 				const [statsResult, trendingResult] = await Promise.all([
 					eden.stats.get(),
-					eden.stats.trending.get()
+					eden.stats.trending.get(),
 				]);
 				setStats(statsResult?.data);
 				setTrendingCategories(trendingResult?.data);
@@ -50,17 +49,17 @@ export default function HomeLayout({
 	return (
 		<SearchProvider onSearch={handleSearch}>
 			<OfflineBanner />
-			<div className="min-h-screen bg-white md:mx-24 mx-0">
+			<div className="mx-0 min-h-screen bg-white md:mx-24">
 				{/* Keep original mobile nav for larger screens/special features */}
-				<MobileNav 
+				<MobileNav
 					stats={stats}
 					userStats={null}
 					trendingCategories={trendingCategories}
 				/>
-				<div className="mx-auto max-w-screen-xl min-h-screen">
+				<div className="mx-auto min-h-screen max-w-screen-xl">
 					<div className="flex min-h-screen">
 						<LeftSidebar />
-						<main className="flex-1 min-w-0 lg:border-x lg:border-gray-200 pb-16 lg:pb-0">
+						<main className="min-w-0 flex-1 pb-16 lg:border-gray-200 lg:border-x lg:pb-0">
 							{children}
 						</main>
 						<RightSidebar

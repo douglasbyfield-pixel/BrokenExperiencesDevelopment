@@ -1,4 +1,11 @@
-import { boolean, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+	boolean,
+	integer,
+	pgTable,
+	text,
+	timestamp,
+	uuid,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const userAchievements = pgTable("user_achievements", {
@@ -20,11 +27,12 @@ export const achievements = pgTable("achievements", {
 	points: integer("points").notNull(),
 	requirement: integer("requirement").notNull(),
 	requirementType: text("requirement_type").notNull(), // 'fixes_count', 'reports_count', 'sponsorships_count', 'community_actions'
-	rarity: text("rarity", { enum: ["common", "rare", "epic", "legendary"] }).default("common"),
+	rarity: text("rarity", {
+		enum: ["common", "rare", "epic", "legendary"],
+	}).default("common"),
 	isHidden: boolean("is_hidden").default(false),
 	createdAt: timestamp("created_at").defaultNow(),
 });
-
 
 export const activityPoints = pgTable("activity_points", {
 	id: uuid("id").defaultRandom().primaryKey(),
@@ -57,7 +65,10 @@ export const LEVELING_CONFIG = {
 	// Calculate experience required for a specific level
 	calculateExperienceForLevel: (level: number): number => {
 		if (level <= 1) return 0;
-		return Math.floor(LEVELING_CONFIG.BASE_EXPERIENCE * Math.pow(LEVELING_CONFIG.EXPERIENCE_MULTIPLIER, level - 2));
+		return Math.floor(
+			LEVELING_CONFIG.BASE_EXPERIENCE *
+				LEVELING_CONFIG.EXPERIENCE_MULTIPLIER ** (level - 2),
+		);
 	},
 	// Calculate total experience required to reach a level
 	calculateTotalExperienceForLevel: (level: number): number => {
@@ -71,29 +82,39 @@ export const LEVELING_CONFIG = {
 	calculateLevelFromExperience: (totalExperience: number): number => {
 		let level = 1;
 		let requiredExp = 0;
-		
+
 		while (level < LEVELING_CONFIG.MAX_LEVEL) {
-			const expForNextLevel = LEVELING_CONFIG.calculateExperienceForLevel(level + 1);
+			const expForNextLevel = LEVELING_CONFIG.calculateExperienceForLevel(
+				level + 1,
+			);
 			if (totalExperience < requiredExp + expForNextLevel) {
 				break;
 			}
 			requiredExp += expForNextLevel;
 			level++;
 		}
-		
+
 		return level;
 	},
 	// Calculate experience needed for next level
-	calculateExperienceToNextLevel: (currentLevel: number, totalExperience: number): number => {
-		const expForCurrentLevel = LEVELING_CONFIG.calculateTotalExperienceForLevel(currentLevel);
-		const expForNextLevel = LEVELING_CONFIG.calculateTotalExperienceForLevel(currentLevel + 1);
+	calculateExperienceToNextLevel: (
+		currentLevel: number,
+		totalExperience: number,
+	): number => {
+		const expForCurrentLevel =
+			LEVELING_CONFIG.calculateTotalExperienceForLevel(currentLevel);
+		const expForNextLevel = LEVELING_CONFIG.calculateTotalExperienceForLevel(
+			currentLevel + 1,
+		);
 		return expForNextLevel - totalExperience;
-	}
+	},
 } as const;
 
 // Zod schemas for validation
-export const insertUserAchievementsSchema = createInsertSchema(userAchievements);
-export const selectUserAchievementsSchema = createSelectSchema(userAchievements);
+export const insertUserAchievementsSchema =
+	createInsertSchema(userAchievements);
+export const selectUserAchievementsSchema =
+	createSelectSchema(userAchievements);
 export const insertAchievementsSchema = createInsertSchema(achievements);
 export const selectAchievementsSchema = createSelectSchema(achievements);
 export const insertActivityPointsSchema = createInsertSchema(activityPoints);

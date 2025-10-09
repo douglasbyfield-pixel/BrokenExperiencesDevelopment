@@ -1,9 +1,9 @@
 import { useForm } from "@tanstack/react-form";
+import { useAuth } from "@web/components/auth-provider";
 import GoogleLogo from "@web/components/icons/google-logo";
 import { Button } from "@web/components/ui/button";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
-import { useAuth } from "@web/components/auth-provider";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -79,7 +79,7 @@ export default function SignUpForm({
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
-									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 text-black placeholder:text-gray-400 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
+									className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 text-black transition-all duration-200 placeholder:text-gray-400 focus:border-black focus:ring-2 focus:ring-black"
 								/>
 								{field.state.meta.errors.map((error) => (
 									<p key={error?.message} className="mt-1 text-red-500 text-sm">
@@ -112,7 +112,7 @@ export default function SignUpForm({
 										setServerEmailError(null);
 										field.handleChange(e.target.value);
 									}}
-									className={`h-12 w-full rounded-xl border-2 bg-white px-4 text-black placeholder:text-gray-400 transition-all duration-200 focus:ring-2 focus:ring-black ${serverEmailError ? "border-red-500" : "border-gray-300 focus:border-black"}`}
+									className={`h-12 w-full rounded-xl border-2 bg-white px-4 text-black transition-all duration-200 placeholder:text-gray-400 focus:ring-2 focus:ring-black ${serverEmailError ? "border-red-500" : "border-gray-300 focus:border-black"}`}
 								/>
 								{field.state.meta.errors.map((error) => (
 									<p key={error?.message} className="mt-1 text-red-500 text-sm">
@@ -148,7 +148,7 @@ export default function SignUpForm({
 										value={field.state.value}
 										onBlur={field.handleBlur}
 										onChange={(e) => field.handleChange(e.target.value)}
-										className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 pr-12 text-black placeholder:text-gray-400 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black"
+										className="h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 pr-12 text-black transition-all duration-200 placeholder:text-gray-400 focus:border-black focus:ring-2 focus:ring-black"
 									/>
 									<button
 										type="button"
@@ -197,7 +197,7 @@ export default function SignUpForm({
 				<span className="text-gray-600">I already have an account. </span>
 				<button
 					onClick={onSwitchToSignIn}
-					className="font-medium text-black underline bg-transparent border-none cursor-pointer hover:text-gray-700"
+					className="cursor-pointer border-none bg-transparent font-medium text-black underline hover:text-gray-700"
 				>
 					Log in
 				</button>

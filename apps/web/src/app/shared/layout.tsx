@@ -1,14 +1,14 @@
 "use client";
 
-import LeftSidebar from "../(core)/(dashboard)/home/features/left-sidebar";
-import RightSidebar from "../(core)/(dashboard)/home/features/right-sidebar";
-import MobileNav from "../(core)/(dashboard)/home/features/mobile-nav";
-import { eden } from "@web/lib/eden";
-import { useEffect, useState } from "react";
-import { SearchProvider } from "@web/context/SearchContext";
 import { Button } from "@web/components/ui/button";
+import { SearchProvider } from "@web/context/SearchContext";
+import { eden } from "@web/lib/eden";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import LeftSidebar from "../(core)/(dashboard)/home/features/left-sidebar";
+import MobileNav from "../(core)/(dashboard)/home/features/mobile-nav";
+import RightSidebar from "../(core)/(dashboard)/home/features/right-sidebar";
 
 export default function SharedLayout({
 	children,
@@ -29,7 +29,7 @@ export default function SharedLayout({
 			try {
 				const [statsResult, trendingResult] = await Promise.all([
 					eden.stats.get(),
-					eden.stats.trending.get()
+					eden.stats.trending.get(),
 				]);
 				setStats(statsResult?.data);
 				setTrendingCategories(trendingResult?.data);
@@ -45,17 +45,17 @@ export default function SharedLayout({
 
 	return (
 		<SearchProvider onSearch={handleSearch}>
-			<div className="min-h-screen bg-white md:mx-24 mx-0">
-				<MobileNav 
+			<div className="mx-0 min-h-screen bg-white md:mx-24">
+				<MobileNav
 					stats={stats}
 					userStats={null}
 					trendingCategories={trendingCategories}
 				/>
 				<div className="mx-auto flex max-w-screen-2xl">
 					<LeftSidebar />
-					<main className="flex-1 min-w-0 lg:border-x lg:border-gray-200">
+					<main className="min-w-0 flex-1 lg:border-gray-200 lg:border-x">
 						{/* Back Navigation */}
-						<div className="p-4 border-b border-gray-200 bg-white">
+						<div className="border-gray-200 border-b bg-white p-4">
 							<Link href="/">
 								<Button variant="ghost" size="sm" className="gap-2">
 									<ArrowLeft className="h-4 w-4" />

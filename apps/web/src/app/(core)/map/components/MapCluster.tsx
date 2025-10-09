@@ -1,23 +1,23 @@
 interface MapClusterProps {
-  cluster: {
-    count: number;
-    experiences: any[];
-  };
-  onClick: (experiences: any[]) => void;
+	cluster: {
+		count: number;
+		experiences: any[];
+	};
+	onClick: (experiences: any[]) => void;
 }
 
 export function MapCluster({ cluster, onClick }: MapClusterProps) {
-  return (
-    <div 
-      className="cluster-marker cursor-pointer transform hover:scale-110 transition-all duration-200"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick(cluster.experiences);
-      }}
-    >
-      <div className="relative drop-shadow-lg w-12 h-12 rounded-full flex items-center justify-center border-4 border-white shadow-2xl bg-gray-700">
-        <div className="text-white font-bold text-sm">{cluster.count}</div>
-      </div>
-    </div>
-  );
+	return (
+		<div
+			className="cluster-marker transform cursor-pointer transition-all duration-200 hover:scale-110"
+			onClick={(e) => {
+				e.stopPropagation();
+				onClick(cluster.experiences);
+			}}
+		>
+			<div className="relative flex h-12 w-12 items-center justify-center rounded-full border-4 border-white bg-gray-700 shadow-2xl drop-shadow-lg">
+				<div className="font-bold text-sm text-white">{cluster.count}</div>
+			</div>
+		</div>
+	);
 }

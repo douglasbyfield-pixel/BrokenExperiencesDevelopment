@@ -1,5 +1,5 @@
 "use client";
-import { Home, MapPin, Settings, User, Trophy, Award } from "lucide-react";
+import { Award, Home, MapPin, Settings, Trophy, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";

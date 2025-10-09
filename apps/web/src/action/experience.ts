@@ -1,178 +1,211 @@
 "use server";
 import { eden } from "@web/lib/eden";
-import { authActionClient, actionClient } from "@web/lib/safe-action";
+import { actionClient, authActionClient } from "@web/lib/safe-action";
 import { z } from "zod";
 
 export const createExperienceAction = actionClient
-  .inputSchema(
-    z.object({
-      categoryId: z.string(),
-      title: z.string().optional(),
-      description: z.string().min(1, "Please describe your experience"),
-      latitude: z.string(),
-      longitude: z.string(),
-      address: z.string(),
-      imageUrls: z.array(z.string()).optional(),
-    }),
-  )
-  .action(async ({ parsedInput }) => {
-    console.log("🚀 Creating experience with input:", parsedInput);
+	.inputSchema(
+		z.object({
+			categoryId: z.string(),
+			title: z.string().optional(),
+			description: z.string().min(1, "Please describe your experience"),
+			latitude: z.string(),
+			longitude: z.string(),
+			address: z.string(),
+			imageUrls: z.array(z.string()).optional(),
+		}),
+	)
+	.action(async ({ parsedInput }) => {
+		console.log("🚀 Creating experience with input:", parsedInput);
 
-    // Get Supabase session for authentication
-    const { createClient } = await import("@web/lib/supabase/server");
-    const supabase = await createClient();
-    
-    // ⚠️ CRITICAL FIX: Use getUser() instead of getSession()
-    // getUser() validates the token with Supabase Auth server
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    console.log("🔐 Supabase user check:", {
-      hasUser: !!user,
-      userId: user?.id,
-      userName: user?.user_metadata?.name,
-      userEmail: user?.email,
-      fullMetadata: user?.user_metadata,
-      error: userError,
-    });
+		// Get Supabase session for authentication
+		const { createClient } = await import("@web/lib/supabase/server");
+		const supabase = await createClient();
 
-    if (!user || userError) {
-      throw new Error("You must be logged in to create an experience");
-    }
+		// ⚠️ CRITICAL FIX: Use getUser() instead of getSession()
+		// getUser() validates the token with Supabase Auth server
+		const {
+			data: { user },
+			error: userError,
+		} = await supabase.auth.getUser();
 
-    // Get the access token from the session
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.access_token) {
-      throw new Error("No access token available");
-    }
+		console.log("🔐 Supabase user check:", {
+			hasUser: !!user,
+			userId: user?.id,
+			userName: user?.user_metadata?.name,
+			userEmail: user?.email,
+			fullMetadata: user?.user_metadata,
+			error: userError,
+		});
 
-    // Ensure title meets server requirements (min 5 chars)
-    const title = parsedInput.title && parsedInput.title.length >= 5
-      ? parsedInput.title
-      : parsedInput.description.length >= 5
-      ? parsedInput.description.substring(0, 100)
-      : "Experience Report";
+		if (!user || userError) {
+			throw new Error("You must be logged in to create an experience");
+		}
 
-    const payload = {
-      categoryId: parsedInput.categoryId,
-      title: title,
-      description: parsedInput.description,
-      latitude: parsedInput.latitude,
-      longitude: parsedInput.longitude,
-      address: parsedInput.address,
-      imageUrls: parsedInput.imageUrls || [],
-    };
+		// Get the access token from the session
+		const {
+			data: { session },
+		} = await supabase.auth.getSession();
 
-    console.log("🚀 Creating experience with payload:", payload);
-    console.log("📸 Image URLs being sent:", parsedInput.imageUrls);
-    console.log("📸 Image URLs count:", parsedInput.imageUrls?.length || 0);
-    console.log("🔑 Sending Authorization header:", `Bearer ${session.access_token.substring(0, 20)}...`);
+		if (!session?.access_token) {
+			throw new Error("No access token available");
+		}
 
-    // Use direct fetch instead of Eden Treaty to ensure headers are sent correctly
-    const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
-    const response = await fetch(`${apiUrl}/experience`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify(payload),
-    });
+		// Ensure title meets server requirements (min 5 chars)
+		const title =
+			parsedInput.title && parsedInput.title.length >= 5
+				? parsedInput.title
+				: parsedInput.description.length >= 5
+					? parsedInput.description.substring(0, 100)
+					: "Experience Report";
 
-    console.log("📡 Response status:", response.status);
-    const responseData = await response.json();
-    console.log("📡 Response data:", responseData);
-    console.log("📸 Response images:", responseData?.experienceImages || responseData?.experience?.experienceImages);
-    console.log("📸 Response structure check:", {
-        hasExperienceImages: !!responseData?.experienceImages,
-        hasExperienceImage: !!responseData?.experienceImage,
-        experienceImagesType: Array.isArray(responseData?.experienceImages) ? 'array' : typeof responseData?.experienceImages,
-        experienceImagesLength: responseData?.experienceImages?.length || 0
-    });
+		const payload = {
+			categoryId: parsedInput.categoryId,
+			title: title,
+			description: parsedInput.description,
+			latitude: parsedInput.latitude,
+			longitude: parsedInput.longitude,
+			address: parsedInput.address,
+			imageUrls: parsedInput.imageUrls || [],
+		};
 
-    if (!response.ok) {
-      throw new Error(`Failed to create experience: ${JSON.stringify(responseData)}`);
-    }
+		console.log("🚀 Creating experience with payload:", payload);
+		console.log("📸 Image URLs being sent:", parsedInput.imageUrls);
+		console.log("📸 Image URLs count:", parsedInput.imageUrls?.length || 0);
+		console.log(
+			"🔑 Sending Authorization header:",
+			`Bearer ${session.access_token.substring(0, 20)}...`,
+		);
 
-    return responseData;
-  });
+		// Use direct fetch instead of Eden Treaty to ensure headers are sent correctly
+		const apiUrl =
+			process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
+		const response = await fetch(`${apiUrl}/experience`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${session.access_token}`,
+			},
+			body: JSON.stringify(payload),
+		});
+
+		console.log("📡 Response status:", response.status);
+		const responseData = await response.json();
+		console.log("📡 Response data:", responseData);
+		console.log(
+			"📸 Response images:",
+			responseData?.experienceImages ||
+				responseData?.experience?.experienceImages,
+		);
+		console.log("📸 Response structure check:", {
+			hasExperienceImages: !!responseData?.experienceImages,
+			hasExperienceImage: !!responseData?.experienceImage,
+			experienceImagesType: Array.isArray(responseData?.experienceImages)
+				? "array"
+				: typeof responseData?.experienceImages,
+			experienceImagesLength: responseData?.experienceImages?.length || 0,
+		});
+
+		if (!response.ok) {
+			throw new Error(
+				`Failed to create experience: ${JSON.stringify(responseData)}`,
+			);
+		}
+
+		return responseData;
+	});
 
 export const voteOnExperienceAction = actionClient
-  .inputSchema(
-    z.object({
-      experienceId: z.string(),
-      vote: z.boolean(),
-    }),
-  )
-  .action(async ({ parsedInput }) => {
-    // Get Supabase session for authentication
-    const { createClient } = await import("@web/lib/supabase/server");
-    const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
+	.inputSchema(
+		z.object({
+			experienceId: z.string(),
+			vote: z.boolean(),
+		}),
+	)
+	.action(async ({ parsedInput }) => {
+		// Get Supabase session for authentication
+		const { createClient } = await import("@web/lib/supabase/server");
+		const supabase = await createClient();
+		const {
+			data: { session },
+		} = await supabase.auth.getSession();
 
-    if (!session?.access_token) {
-      throw new Error("You must be logged in to vote");
-    }
+		if (!session?.access_token) {
+			throw new Error("You must be logged in to vote");
+		}
 
-    const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
-    const response = await fetch(`${apiUrl}/experience/${parsedInput.experienceId}/vote`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ vote: parsedInput.vote }),
-    });
+		const apiUrl =
+			process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
+		const response = await fetch(
+			`${apiUrl}/experience/${parsedInput.experienceId}/vote`,
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${session.access_token}`,
+				},
+				body: JSON.stringify({ vote: parsedInput.vote }),
+			},
+		);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Failed to vote: ${JSON.stringify(errorData)}`);
-    }
+		if (!response.ok) {
+			const errorData = await response.json();
+			throw new Error(`Failed to vote: ${JSON.stringify(errorData)}`);
+		}
 
-    return await response.json();
-  });
+		return await response.json();
+	});
 
 export const deleteExperienceAction = actionClient
-  .inputSchema(
-    z.object({
-      experienceId: z.string(),
-    }),
-  )
-  .action(async ({ parsedInput }) => {
-    console.log("🗑️ Deleting experience:", parsedInput.experienceId);
+	.inputSchema(
+		z.object({
+			experienceId: z.string(),
+		}),
+	)
+	.action(async ({ parsedInput }) => {
+		console.log("🗑️ Deleting experience:", parsedInput.experienceId);
 
-    // Get Supabase session for authentication
-    const { createClient } = await import("@web/lib/supabase/server");
-    const supabase = await createClient();
+		// Get Supabase session for authentication
+		const { createClient } = await import("@web/lib/supabase/server");
+		const supabase = await createClient();
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+		const {
+			data: { user },
+			error: userError,
+		} = await supabase.auth.getUser();
 
-    if (!user || userError) {
-      throw new Error("You must be logged in to delete");
-    }
+		if (!user || userError) {
+			throw new Error("You must be logged in to delete");
+		}
 
-    // Get the access token from the session
-    const { data: { session } } = await supabase.auth.getSession();
+		// Get the access token from the session
+		const {
+			data: { session },
+		} = await supabase.auth.getSession();
 
-    if (!session?.access_token) {
-      throw new Error("No access token available");
-    }
+		if (!session?.access_token) {
+			throw new Error("No access token available");
+		}
 
-    // Use direct fetch to call the delete endpoint
-    const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
-    const response = await fetch(`${apiUrl}/experience/${parsedInput.experienceId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${session.access_token}`,
-      },
-    });
+		// Use direct fetch to call the delete endpoint
+		const apiUrl =
+			process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
+		const response = await fetch(
+			`${apiUrl}/experience/${parsedInput.experienceId}`,
+			{
+				method: "DELETE",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${session.access_token}`,
+				},
+			},
+		);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to delete experience");
-    }
+		if (!response.ok) {
+			const errorData = await response.json();
+			throw new Error(errorData.message || "Failed to delete experience");
+		}
 
-    const result = await response.json();
-    return result;
-  });
+		const result = await response.json();
+		return result;
+	});

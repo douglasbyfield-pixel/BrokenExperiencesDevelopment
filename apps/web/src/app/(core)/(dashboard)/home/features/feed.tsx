@@ -16,7 +16,9 @@ export default function Feed({ experiences }: FeedProps) {
 				))
 			) : (
 				<div className="p-8 text-center">
-					<p className="text-gray-600">No experiences yet. Be the first to share!</p>
+					<p className="text-gray-600">
+						No experiences yet. Be the first to share!
+					</p>
 				</div>
 			)}
 		</div>

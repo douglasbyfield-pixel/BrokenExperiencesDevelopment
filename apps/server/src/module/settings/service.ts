@@ -1,12 +1,12 @@
 import { db } from "@server/db";
-import { 
-	userSettings, 
-	type FrontendSettings, 
-	type UserSettings, 
-	dbToFrontendFormat, 
-	frontendToDbFormat 
-} from "@server/db/schema/user-settings";
 import { user } from "@server/db/schema";
+import {
+	dbToFrontendFormat,
+	type FrontendSettings,
+	frontendToDbFormat,
+	type UserSettings,
+	userSettings,
+} from "@server/db/schema/user-settings";
 import { eq } from "drizzle-orm";
 
 export class SettingsService {
@@ -58,7 +58,7 @@ export class SettingsService {
 	 */
 	static async updateUserSettings(
 		userId: string,
-		updates: Partial<FrontendSettings>
+		updates: Partial<FrontendSettings>,
 	): Promise<FrontendSettings> {
 		try {
 			const dbUpdates = frontendToDbFormat(updates, userId);
@@ -91,9 +91,7 @@ export class SettingsService {
 	 */
 	static async deleteUserSettings(userId: string): Promise<void> {
 		try {
-			await db
-				.delete(userSettings)
-				.where(eq(userSettings.userId, userId));
+			await db.delete(userSettings).where(eq(userSettings.userId, userId));
 		} catch (error) {
 			console.error("Error deleting user settings:", error);
 			throw new Error("Failed to delete user settings");
@@ -108,12 +106,10 @@ export class SettingsService {
 			// Delete the user from the database
 			// This will CASCADE delete all related data:
 			// - experiences (reportedBy)
-			// - votes (userId) 
+			// - votes (userId)
 			// - user_settings (userId)
 			// - any other tables with CASCADE foreign keys
-			await db
-				.delete(user)
-				.where(eq(user.id, userId));
+			await db.delete(user).where(eq(user.id, userId));
 		} catch (error) {
 			console.error("Error deleting user account:", error);
 			throw new Error("Failed to delete user account");
@@ -123,7 +119,9 @@ export class SettingsService {
 	/**
 	 * Create default settings for a new user
 	 */
-	static async createDefaultSettings(userId: string): Promise<FrontendSettings> {
+	static async createDefaultSettings(
+		userId: string,
+	): Promise<FrontendSettings> {
 		try {
 			const defaultSettings = {
 				userId,

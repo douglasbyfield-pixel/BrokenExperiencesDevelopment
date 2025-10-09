@@ -1,16 +1,31 @@
 "use client";
 
-import { Button } from "@web/components/ui/button";
+import {
+	canInstallPWA,
+	triggerPWAInstall,
+} from "@web/components/add-to-home-screen";
 import { useAuth } from "@web/components/auth-provider";
+import { Button } from "@web/components/ui/button";
 import { useSearch } from "@web/context/SearchContext";
-import SearchInput from "./search-input";
-import Link from "next/link";
-import { useState, useEffect } from "react";
-import { LogOut, Search, Menu, X, Home, MapPin, User as UserIcon, Trophy, Award, Settings, Download } from "lucide-react";
-import type { Stats, UserStats, TrendingCategory } from "@web/types";
 import { getCategoryStyling } from "@web/lib/category-config";
 import { eden } from "@web/lib/eden";
-import { triggerPWAInstall, canInstallPWA } from "@web/components/add-to-home-screen";
+import type { Stats, TrendingCategory, UserStats } from "@web/types";
+import {
+	Award,
+	Download,
+	Home,
+	LogOut,
+	MapPin,
+	Menu,
+	Search,
+	Settings,
+	Trophy,
+	User as UserIcon,
+	X,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import SearchInput from "./search-input";
 
 interface MobileNavProps {
 	stats?: Stats | null;
@@ -18,10 +33,16 @@ interface MobileNavProps {
 	trendingCategories?: TrendingCategory[] | null;
 }
 
-export default function MobileNav({ stats, userStats, trendingCategories }: MobileNavProps) {
+export default function MobileNav({
+	stats,
+	userStats,
+	trendingCategories,
+}: MobileNavProps) {
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
-	const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+	const [categories, setCategories] = useState<
+		Array<{ id: string; name: string }>
+	>([]);
 	const [canInstall, setCanInstall] = useState(false);
 	const { signOut, user } = useAuth();
 	const { onSearch, onSearchChange, onCategoryFilter } = useSearch();
@@ -38,57 +59,63 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 	useEffect(() => {
 		const fetchCategories = async () => {
 			try {
-				const result = await eden.category.get({ $query: { limit: 50, offset: 0 } });
+				const result = await eden.category.get({
+					$query: { limit: 50, offset: 0 },
+				});
 				if (Array.isArray(result?.data)) {
 					// Sort categories alphabetically
-					const sorted = result.data.sort((a: any, b: any) => a.name.localeCompare(b.name));
+					const sorted = result.data.sort((a: any, b: any) =>
+						a.name.localeCompare(b.name),
+					);
 					setCategories(sorted);
 				}
 			} catch (error) {
-				console.error('Failed to fetch categories:', error);
+				console.error("Failed to fetch categories:", error);
 			}
 		};
-		
+
 		fetchCategories();
 	}, []);
 
 	return (
 		<>
 			{/* Mobile Header - Hide on small screens, show on medium+ */}
-			<div className="sticky top-0 z-50 hidden md:block lg:hidden bg-white border-b border-gray-200">
+			<div className="sticky top-0 z-50 hidden border-gray-200 border-b bg-white md:block lg:hidden">
 				<div className="flex items-center justify-between p-4">
 					<button
 						onClick={() => setIsMenuOpen(!isMenuOpen)}
-						className="p-2 rounded-lg hover:bg-gray-100"
+						className="rounded-lg p-2 hover:bg-gray-100"
 					>
-						<Menu className="w-6 h-6" />
+						<Menu className="h-6 w-6" />
 					</button>
-					<button 
+					<button
 						onClick={canInstall ? triggerPWAInstall : undefined}
-						className={`flex items-center space-x-2 ${canInstall ? 'cursor-pointer group' : 'cursor-default'}`}
+						className={`flex items-center space-x-2 ${canInstall ? "group cursor-pointer" : "cursor-default"}`}
 						title={canInstall ? "Install App" : ""}
 					>
-						<div className={`flex h-8 w-8 items-center justify-center rounded-lg border-2 border-black bg-white p-1 relative ${canInstall ? 'group-hover:scale-110 transition-transform' : ''}`}>
+						<div
+							className={`relative flex h-8 w-8 items-center justify-center rounded-lg border-2 border-black bg-white p-1 ${canInstall ? "transition-transform group-hover:scale-110" : ""}`}
+						>
 							<img
 								src="/images/logo.png"
 								alt="Broken Experiences"
 								className="h-full w-full object-contain"
 							/>
 							{canInstall && (
-								<div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-black text-white flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity">
-									<Download className="w-2 h-2" />
+								<div className="-top-1 -right-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-black text-white opacity-60 transition-opacity group-hover:opacity-100">
+									<Download className="h-2 w-2" />
 								</div>
 							)}
 						</div>
-						<h1 className="font-bold text-lg text-black">
+						<h1 className="font-bold text-black text-lg">
 							Broken<span className="text-gray-600">Experiences</span>
 						</h1>
 					</button>
 					<button
 						onClick={() => setIsSearchOpen(!isSearchOpen)}
-						className="p-2 rounded-lg hover:bg-gray-100"
+						className="rounded-lg p-2 hover:bg-gray-100"
 					>
-						<Search className="w-6 h-6" />
+						<Search className="h-6 w-6" />
 					</button>
 				</div>
 			</div>
@@ -96,95 +123,104 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 			{/* Mobile Menu Overlay (Left Sidebar) */}
 			{isMenuOpen && (
 				<div className="fixed inset-0 z-50 lg:hidden">
-					<div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsMenuOpen(false)} />
-					<div className="absolute left-0 top-0 h-full w-80 bg-white shadow-xl">
-						<div className="p-4 border-b border-gray-200">
+					<div
+						className="absolute inset-0 bg-black bg-opacity-50"
+						onClick={() => setIsMenuOpen(false)}
+					/>
+					<div className="absolute top-0 left-0 h-full w-80 bg-white shadow-xl">
+						<div className="border-gray-200 border-b p-4">
 							<div className="flex items-center justify-between">
-								<h2 className="font-bold text-xl text-black">Navigation</h2>
+								<h2 className="font-bold text-black text-xl">Navigation</h2>
 								<button
 									onClick={() => setIsMenuOpen(false)}
-									className="p-2 rounded-lg hover:bg-gray-100"
+									className="rounded-lg p-2 hover:bg-gray-100"
 								>
-									<X className="w-6 h-6" />
+									<X className="h-6 w-6" />
 								</button>
 							</div>
 						</div>
-						<nav className="p-4 space-y-2">
+						<nav className="space-y-2 p-4">
 							<Link
 								href="/home"
-								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
+								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black transition-colors hover:bg-gray-100"
 								onClick={() => setIsMenuOpen(false)}
 							>
-								<Home className="w-5 h-5" />
+								<Home className="h-5 w-5" />
 								<span className="font-medium">Home</span>
 							</Link>
 							<Link
 								href="/map"
-								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
+								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black transition-colors hover:bg-gray-100"
 								onClick={() => setIsMenuOpen(false)}
 							>
-								<MapPin className="w-5 h-5" />
+								<MapPin className="h-5 w-5" />
 								<span className="font-medium">Map</span>
 							</Link>
 							<Link
 								href="/profile"
-								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
+								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black transition-colors hover:bg-gray-100"
 								onClick={() => setIsMenuOpen(false)}
 							>
-								<UserIcon className="w-5 h-5" />
+								<UserIcon className="h-5 w-5" />
 								<span className="font-medium">Profile</span>
 							</Link>
 							<Link
 								href="/leaderboard"
-								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
+								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black transition-colors hover:bg-gray-100"
 								onClick={() => setIsMenuOpen(false)}
 							>
-								<Trophy className="w-5 h-5" />
+								<Trophy className="h-5 w-5" />
 								<span className="font-medium">Leaderboard</span>
 							</Link>
 							<Link
 								href="/achievements"
-								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
+								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black transition-colors hover:bg-gray-100"
 								onClick={() => setIsMenuOpen(false)}
 							>
-								<Award className="w-5 h-5" />
+								<Award className="h-5 w-5" />
 								<span className="font-medium">Achievements</span>
 							</Link>
 							<Link
 								href="/settings"
-								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black hover:bg-gray-100 transition-colors"
+								className="flex items-center gap-3 rounded-lg px-3 py-3 text-black transition-colors hover:bg-gray-100"
 								onClick={() => setIsMenuOpen(false)}
 							>
-								<Settings className="w-5 h-5" />
+								<Settings className="h-5 w-5" />
 								<span className="font-medium">Settings</span>
 							</Link>
 						</nav>
-						
+
 						{/* User Profile Section */}
 						{user && (
-							<div className="mt-auto p-4 border-t border-gray-200">
+							<div className="mt-auto border-gray-200 border-t p-4">
 								<div className="flex items-center space-x-3 rounded-lg p-2 hover:bg-gray-100">
-									<div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-										<span className="text-sm font-medium text-gray-700">
-											{user?.user_metadata?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+									<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200">
+										<span className="font-medium text-gray-700 text-sm">
+											{user?.user_metadata?.name?.charAt(0) ||
+												user?.email?.charAt(0) ||
+												"U"}
 										</span>
 									</div>
 									<div className="min-w-0 flex-1">
-										<p className="font-medium text-sm text-black">{user?.user_metadata?.name || user?.email}</p>
-										<p className="text-gray-500 text-xs truncate">{user?.email}</p>
+										<p className="font-medium text-black text-sm">
+											{user?.user_metadata?.name || user?.email}
+										</p>
+										<p className="truncate text-gray-500 text-xs">
+											{user?.email}
+										</p>
 									</div>
-							<Button
-								variant="ghost"
+									<Button
+										variant="ghost"
 										size="sm"
-								onClick={async () => {
-									await signOut();
-									setIsMenuOpen(false);
-								}}
-										className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50"
+										onClick={async () => {
+											await signOut();
+											setIsMenuOpen(false);
+										}}
+										className="h-8 w-8 p-0 text-gray-500 hover:bg-red-50 hover:text-red-600"
 										title="Sign out"
-							>
+									>
 										<LogOut className="h-4 w-4" />
-							</Button>
+									</Button>
 								</div>
 							</div>
 						)}
@@ -195,67 +231,92 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 			{/* Mobile Search Overlay (Right Sidebar) */}
 			{isSearchOpen && (
 				<div className="fixed inset-0 z-50 lg:hidden">
-					<div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsSearchOpen(false)} />
-					<div className="absolute right-0 top-0 h-full w-80 bg-white shadow-xl overflow-y-auto">
-						<div className="p-4 border-b border-gray-200">
+					<div
+						className="absolute inset-0 bg-black bg-opacity-50"
+						onClick={() => setIsSearchOpen(false)}
+					/>
+					<div className="absolute top-0 right-0 h-full w-80 overflow-y-auto bg-white shadow-xl">
+						<div className="border-gray-200 border-b p-4">
 							<div className="flex items-center justify-between">
-								<h2 className="font-bold text-xl text-black">Search & More</h2>
+								<h2 className="font-bold text-black text-xl">Search & More</h2>
 								<button
 									onClick={() => setIsSearchOpen(false)}
-									className="p-2 rounded-lg hover:bg-gray-100"
+									className="rounded-lg p-2 hover:bg-gray-100"
 								>
-									<X className="w-6 h-6" />
+									<X className="h-6 w-6" />
 								</button>
 							</div>
 						</div>
-						<div className="p-4 space-y-6">
+						<div className="space-y-6 p-4">
 							{/* Search */}
 							<div>
-								<h3 className="font-semibold text-black mb-3">Search Experiences</h3>
-								<SearchInput onSearch={onSearch} onSearchChange={onSearchChange} placeholder="Search experiences..." />
+								<h3 className="mb-3 font-semibold text-black">
+									Search Experiences
+								</h3>
+								<SearchInput
+									onSearch={onSearch}
+									onSearchChange={onSearchChange}
+									placeholder="Search experiences..."
+								/>
 							</div>
 
 							{/* Community Stats */}
 							{stats && (
-								<div className="bg-gray-50 rounded-lg p-4">
-									<h3 className="font-semibold text-black mb-3">Community Stats</h3>
+								<div className="rounded-lg bg-gray-50 p-4">
+									<h3 className="mb-3 font-semibold text-black">
+										Community Stats
+									</h3>
 									<div className="grid grid-cols-2 gap-3 text-center">
-										<div className="bg-white rounded-lg p-3">
-											<div className="text-lg font-bold text-black">{stats.totalExperiences || 0}</div>
-											<p className="text-xs text-gray-600">Total Reports</p>
+										<div className="rounded-lg bg-white p-3">
+											<div className="font-bold text-black text-lg">
+												{stats.totalExperiences || 0}
+											</div>
+											<p className="text-gray-600 text-xs">Total Reports</p>
 										</div>
-										<div className="bg-white rounded-lg p-3">
-											<div className="text-lg font-bold text-green-600">{stats.resolvedExperiences || 0}</div>
-											<p className="text-xs text-gray-600">Resolved</p>
+										<div className="rounded-lg bg-white p-3">
+											<div className="font-bold text-green-600 text-lg">
+												{stats.resolvedExperiences || 0}
+											</div>
+											<p className="text-gray-600 text-xs">Resolved</p>
 										</div>
 									</div>
 									<div className="mt-3 text-center">
-										<div className="text-lg font-bold text-black">{stats.activeUsers || 0}</div>
-										<p className="text-xs text-gray-600">Active Contributors</p>
+										<div className="font-bold text-black text-lg">
+											{stats.activeUsers || 0}
+										</div>
+										<p className="text-gray-600 text-xs">Active Contributors</p>
 									</div>
 								</div>
 							)}
 
 							{/* User Stats */}
 							{userStats && (
-								<div className="bg-gray-50 rounded-lg p-4">
-									<h3 className="font-semibold text-black mb-3">Your Impact</h3>
+								<div className="rounded-lg bg-gray-50 p-4">
+									<h3 className="mb-3 font-semibold text-black">Your Impact</h3>
 									<div className="text-center">
-										<div className="text-2xl font-bold text-black">{userStats.impactScore || 0}</div>
-										<p className="text-sm text-gray-600">Impact Score</p>
+										<div className="font-bold text-2xl text-black">
+											{userStats.impactScore || 0}
+										</div>
+										<p className="text-gray-600 text-sm">Impact Score</p>
 									</div>
-									<div className="grid grid-cols-3 gap-2 mt-3 text-center">
+									<div className="mt-3 grid grid-cols-3 gap-2 text-center">
 										<div>
-											<div className="text-lg font-semibold text-black">{userStats.totalReports || 0}</div>
-											<p className="text-xs text-gray-600">Reports</p>
+											<div className="font-semibold text-black text-lg">
+												{userStats.totalReports || 0}
+											</div>
+											<p className="text-gray-600 text-xs">Reports</p>
 										</div>
 										<div>
-											<div className="text-lg font-semibold text-green-600">{userStats.resolvedReports || 0}</div>
-											<p className="text-xs text-gray-600">Resolved</p>
+											<div className="font-semibold text-green-600 text-lg">
+												{userStats.resolvedReports || 0}
+											</div>
+											<p className="text-gray-600 text-xs">Resolved</p>
 										</div>
 										<div>
-											<div className="text-lg font-semibold text-orange-600">{userStats.inProgressReports || 0}</div>
-											<p className="text-xs text-gray-600">In Progress</p>
+											<div className="font-semibold text-lg text-orange-600">
+												{userStats.inProgressReports || 0}
+											</div>
+											<p className="text-gray-600 text-xs">In Progress</p>
 										</div>
 									</div>
 								</div>
@@ -263,28 +324,32 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 
 							{/* Map Legend / Categories - Dynamically loaded from database */}
 							<div>
-								<h3 className="font-semibold text-black mb-3">Issue Categories</h3>
+								<h3 className="mb-3 font-semibold text-black">
+									Issue Categories
+								</h3>
 								<div className="space-y-2">
 									{categories.map((category) => {
 										const styling = getCategoryStyling(category.name);
 										const IconComponent = styling.icon;
-										
+
 										return (
-											<button 
+											<button
 												key={category.id}
 												onClick={() => {
 													onCategoryFilter(category.name);
 													setIsSearchOpen(false);
 												}}
-												className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors w-full text-left"
+												className="flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors hover:bg-gray-100"
 											>
-												<div 
-													className="w-6 h-6 rounded-full flex items-center justify-center"
+												<div
+													className="flex h-6 w-6 items-center justify-center rounded-full"
 													style={{ backgroundColor: styling.color }}
 												>
-													<IconComponent className="w-4 h-4 text-white" />
+													<IconComponent className="h-4 w-4 text-white" />
 												</div>
-												<span className="text-sm font-medium text-black">{category.name}</span>
+												<span className="font-medium text-black text-sm">
+													{category.name}
+												</span>
 											</button>
 										);
 									})}
@@ -294,7 +359,9 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 							{/* Trending Categories */}
 							{trendingCategories && trendingCategories.length > 0 && (
 								<div>
-									<h3 className="font-semibold text-black mb-3">Trending Categories</h3>
+									<h3 className="mb-3 font-semibold text-black">
+										Trending Categories
+									</h3>
 									<div className="space-y-2">
 										{trendingCategories.slice(0, 5).map((category, index) => (
 											<button
@@ -303,13 +370,19 @@ export default function MobileNav({ stats, userStats, trendingCategories }: Mobi
 													onCategoryFilter(category.name);
 													setIsSearchOpen(false);
 												}}
-												className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left"
+												className="flex w-full items-center justify-between rounded-lg bg-gray-50 p-2 text-left transition-colors hover:bg-gray-100"
 											>
 												<div className="flex items-center gap-2">
-													<span className="text-xs text-gray-500">#{index + 1}</span>
-													<span className="text-sm text-gray-700">#{category.name}</span>
+													<span className="text-gray-500 text-xs">
+														#{index + 1}
+													</span>
+													<span className="text-gray-700 text-sm">
+														#{category.name}
+													</span>
 												</div>
-												<span className="text-xs text-gray-500">{category.count || 0} reports</span>
+												<span className="text-gray-500 text-xs">
+													{category.count || 0} reports
+												</span>
 											</button>
 										))}
 									</div>

@@ -1,6 +1,10 @@
-import { db } from "../../db";
-import { report, reportVerification, reportImage } from "../../db/schema/report";
 import { eq } from "drizzle-orm";
+import { db } from "../../db";
+import {
+	report,
+	reportImage,
+	reportVerification,
+} from "../../db/schema/report";
 import type { ReportCreate } from "./model";
 
 export async function createReport({ data }: { data: ReportCreate }) {
@@ -58,7 +62,9 @@ export async function getReport({ id }: { id: string }) {
 			.where(eq(reportVerification.reportId, id));
 
 		// Check if report is verified (has at least one verified verification)
-		const isVerified = verifications.some(v => v.verificationStatus === "verified");
+		const isVerified = verifications.some(
+			(v) => v.verificationStatus === "verified",
+		);
 
 		return {
 			success: true,

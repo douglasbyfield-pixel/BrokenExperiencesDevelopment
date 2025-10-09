@@ -1,10 +1,15 @@
 import { db } from "@server/db";
-import { experience, experienceImage, vote } from "@server/db/schema";
+import {
+	category,
+	experience,
+	experienceImage,
+	user,
+	vote,
+} from "@server/db/schema";
 import { decrement, increment } from "@server/db/utils";
-import { user, category } from "@server/db/schema";
-import { eq, ilike, or, desc, inArray } from "drizzle-orm";
 import { sendNewIssueNotification } from "@server/lib/email";
 import { ScoringService } from "@server/module/scoring/service";
+import { desc, eq, ilike, inArray, or } from "drizzle-orm";
 import type {
 	ExperienceCreate,
 	ExperienceQuery,
@@ -12,56 +17,69 @@ import type {
 	ExperienceVote,
 } from "./schema";
 
-export const getExperiences = async (options: { query: ExperienceQuery; userId?: string }) => {
+export const getExperiences = async (options: {
+	query: ExperienceQuery;
+	userId?: string;
+}) => {
 	// Optimized query - only select essential fields for map loading
-	const experiences = await db.select({
-		id: experience.id,
-		reportedBy: experience.reportedBy,
-		categoryId: experience.categoryId,
-		title: experience.title,
-		description: experience.description,
-		latitude: experience.latitude,
-		longitude: experience.longitude,
-		address: experience.address,
-		status: experience.status,
-		priority: experience.priority,
-		createdAt: experience.createdAt,
-		resolvedAt: experience.resolvedAt,
-		upvotes: experience.upvotes,
-		downvotes: experience.downvotes,
-	}).from(experience).orderBy(desc(experience.createdAt)).limit(100); // Add limit for performance
+	const experiences = await db
+		.select({
+			id: experience.id,
+			reportedBy: experience.reportedBy,
+			categoryId: experience.categoryId,
+			title: experience.title,
+			description: experience.description,
+			latitude: experience.latitude,
+			longitude: experience.longitude,
+			address: experience.address,
+			status: experience.status,
+			priority: experience.priority,
+			createdAt: experience.createdAt,
+			resolvedAt: experience.resolvedAt,
+			upvotes: experience.upvotes,
+			downvotes: experience.downvotes,
+		})
+		.from(experience)
+		.orderBy(desc(experience.createdAt))
+		.limit(100); // Add limit for performance
 
-	console.log('📤 Retrieved experiences count:', experiences.length);
+	console.log("📤 Retrieved experiences count:", experiences.length);
 	if (experiences.length > 0) {
-		console.log('📤 First experience:', experiences[0]);
+		console.log("📤 First experience:", experiences[0]);
 	}
 
 	// Get images separately
-	const experienceIds = experiences.map(exp => exp.id);
-	const images = await db.select().from(experienceImage).where(inArray(experienceImage.experienceId, experienceIds));
+	const experienceIds = experiences.map((exp) => exp.id);
+	const images = await db
+		.select()
+		.from(experienceImage)
+		.where(inArray(experienceImage.experienceId, experienceIds));
 
 	// Get users separately
-	const userIds = [...new Set(experiences.map(exp => exp.reportedBy))];
+	const userIds = [...new Set(experiences.map((exp) => exp.reportedBy))];
 	const users = await db.select().from(user).where(inArray(user.id, userIds));
 
 	// Get categories separately
-	const categoryIds = [...new Set(experiences.map(exp => exp.categoryId))];
-	const categories = await db.select().from(category).where(inArray(category.id, categoryIds));
+	const categoryIds = [...new Set(experiences.map((exp) => exp.categoryId))];
+	const categories = await db
+		.select()
+		.from(category)
+		.where(inArray(category.id, categoryIds));
 
 	// Group by experience ID
 	const imagesByExperience = new Map();
-	images.forEach(img => {
+	images.forEach((img) => {
 		if (!imagesByExperience.has(img.experienceId)) {
 			imagesByExperience.set(img.experienceId, []);
 		}
 		imagesByExperience.get(img.experienceId).push(img);
 	});
 
-	const usersById = new Map(users.map(u => [u.id, u]));
-	const categoriesById = new Map(categories.map(c => [c.id, c]));
+	const usersById = new Map(users.map((u) => [u.id, u]));
+	const categoriesById = new Map(categories.map((c) => [c.id, c]));
 
 	// Combine everything
-	const result = experiences.map(exp => ({
+	const result = experiences.map((exp) => ({
 		...exp,
 		experienceImages: imagesByExperience.get(exp.id) || [],
 		reportedBy: usersById.get(exp.reportedBy) || null,
@@ -69,7 +87,7 @@ export const getExperiences = async (options: { query: ExperienceQuery; userId?:
 		userVote: null,
 	}));
 
-	console.log('📤 Final result preview:', result.slice(0, 2));
+	console.log("📤 Final result preview:", result.slice(0, 2));
 
 	// If userId is provided, fetch their votes and add to experiences
 	if (options.userId) {
@@ -77,11 +95,9 @@ export const getExperiences = async (options: { query: ExperienceQuery; userId?:
 			where: (vote, { eq }) => eq(vote.userId, options.userId as string),
 		});
 
-		const voteMap = new Map(
-			userVotes.map(v => [v.experienceId, v.vote])
-		);
+		const voteMap = new Map(userVotes.map((v) => [v.experienceId, v.vote]));
 
-		return result.map(exp => ({
+		return result.map((exp) => ({
 			...exp,
 			userVote: voteMap.get(exp.id) ?? null,
 		}));
@@ -90,13 +106,16 @@ export const getExperiences = async (options: { query: ExperienceQuery; userId?:
 	return result;
 };
 
-export const searchExperiences = async (searchTerm: string, userId?: string) => {
+export const searchExperiences = async (
+	searchTerm: string,
+	userId?: string,
+) => {
 	const searchPattern = `%${searchTerm}%`;
 	const searchResults = await db.query.experience.findMany({
 		where: or(
 			ilike(experience.title, searchPattern),
 			ilike(experience.description, searchPattern),
-			ilike(experience.address, searchPattern)
+			ilike(experience.address, searchPattern),
 		),
 		with: { experienceImages: true, reportedBy: true, category: true },
 		orderBy: (experience, { desc }) => [desc(experience.createdAt)],
@@ -109,17 +128,15 @@ export const searchExperiences = async (searchTerm: string, userId?: string) => 
 			where: (vote, { eq }) => eq(vote.userId, userId),
 		});
 
-		const voteMap = new Map(
-			userVotes.map(v => [v.experienceId, v.vote])
-		);
+		const voteMap = new Map(userVotes.map((v) => [v.experienceId, v.vote]));
 
-		return searchResults.map(exp => ({
+		return searchResults.map((exp) => ({
 			...exp,
 			userVote: voteMap.get(exp.id) ?? null,
 		}));
 	}
 
-	return searchResults.map(exp => ({
+	return searchResults.map((exp) => ({
 		...exp,
 		userVote: null,
 	}));
@@ -127,17 +144,19 @@ export const searchExperiences = async (searchTerm: string, userId?: string) => 
 
 export const getMapMarkers = async () => {
 	// Ultra-lightweight query for map markers only
-	const markers = await db.select({
-		id: experience.id,
-		latitude: experience.latitude,
-		longitude: experience.longitude,
-		status: experience.status,
-		priority: experience.priority,
-		title: experience.title,
-	}).from(experience)
-	.where(eq(experience.status, 'pending')) // Only show pending issues
-	.orderBy(desc(experience.createdAt))
-	.limit(50); // Limit for performance
+	const markers = await db
+		.select({
+			id: experience.id,
+			latitude: experience.latitude,
+			longitude: experience.longitude,
+			status: experience.status,
+			priority: experience.priority,
+			title: experience.title,
+		})
+		.from(experience)
+		.where(eq(experience.status, "pending")) // Only show pending issues
+		.orderBy(desc(experience.createdAt))
+		.limit(50); // Limit for performance
 
 	return markers;
 };
@@ -151,41 +170,54 @@ export const getNearbyExperiences = async (options: {
 
 export const createExperience = async (options: {
 	userId: string;
-	userData: { id: string; email: string; name: string; image?: string; emailVerified: boolean };
+	userData: {
+		id: string;
+		email: string;
+		name: string;
+		image?: string;
+		emailVerified: boolean;
+	};
 	data: ExperienceCreate;
 }) => {
 	console.log("📝 createExperience called with:", {
 		userId: options.userId,
-		data: options.data
+		data: options.data,
 	});
-	
+
 	try {
 		const { data } = options;
 
 		const createdExperience = await db.transaction(async (tx) => {
 			// Ensure user exists in the database and update their info if needed
 			const existingUser = await tx.query.user.findFirst({
-				where: (user, { eq }) => eq(user.id, options.userId)
+				where: (user, { eq }) => eq(user.id, options.userId),
 			});
 
 			if (!existingUser) {
-				console.log("⚠️ User doesn't exist in DB, creating with real data:", options.userData);
-				await tx.insert(user).values({
-					id: options.userData.id,
-					name: options.userData.name,
-					email: options.userData.email,
-					image: options.userData.image,
-					emailVerified: options.userData.emailVerified,
-				}).onConflictDoNothing();
+				console.log(
+					"⚠️ User doesn't exist in DB, creating with real data:",
+					options.userData,
+				);
+				await tx
+					.insert(user)
+					.values({
+						id: options.userData.id,
+						name: options.userData.name,
+						email: options.userData.email,
+						image: options.userData.image,
+						emailVerified: options.userData.emailVerified,
+					})
+					.onConflictDoNothing();
 			} else {
 				// Update user info to keep it in sync with Supabase auth
 				console.log("✅ User exists, updating with latest data:", {
 					oldName: existingUser.name,
 					newName: options.userData.name,
 					oldImage: existingUser.image,
-					newImage: options.userData.image
+					newImage: options.userData.image,
 				});
-				await tx.update(user)
+				await tx
+					.update(user)
 					.set({
 						name: options.userData.name,
 						email: options.userData.email,
@@ -201,23 +233,23 @@ export const createExperience = async (options: {
 					title: data.title,
 					reportedBy: options.userId,
 					description: data.description,
-					latitude: String(data.latitude), 
-					longitude: String(data.longitude), 
+					latitude: String(data.latitude),
+					longitude: String(data.longitude),
 					address: data.address,
 					categoryId: data.categoryId,
-					status: data.status || 'pending', 
-					priority: data.priority || 'medium',
+					status: data.status || "pending",
+					priority: data.priority || "medium",
 				})
 				.returning();
 
 			// Save multiple images if provided
-			let savedImages = [];
-			console.log('📸 Processing images for experience:', newExperience.id);
-			console.log('📸 Image URLs received:', data.imageUrls);
-			
+			const savedImages = [];
+			console.log("📸 Processing images for experience:", newExperience.id);
+			console.log("📸 Image URLs received:", data.imageUrls);
+
 			if (data.imageUrls && data.imageUrls.length > 0) {
 				for (const imageUrl of data.imageUrls) {
-					console.log('💾 Saving image URL:', imageUrl);
+					console.log("💾 Saving image URL:", imageUrl);
 					const [savedImage] = await tx
 						.insert(experienceImage)
 						.values({
@@ -226,17 +258,17 @@ export const createExperience = async (options: {
 						})
 						.returning();
 					savedImages.push(savedImage);
-					console.log('✅ Image saved to DB:', savedImage.id);
+					console.log("✅ Image saved to DB:", savedImage.id);
 				}
 			} else {
-				console.log('⚠️ No image URLs provided');
+				console.log("⚠️ No image URLs provided");
 			}
 			// Note: No placeholder images - only save real uploaded images
 
-			console.log('📤 Returning experience with images:', {
+			console.log("📤 Returning experience with images:", {
 				experienceId: newExperience.id,
 				imageCount: savedImages.length,
-				images: savedImages.map(img => ({ id: img.id, url: img.imageUrl }))
+				images: savedImages.map((img) => ({ id: img.id, url: img.imageUrl })),
 			});
 
 			return {
@@ -252,17 +284,21 @@ export const createExperience = async (options: {
 				activityType: "add_experience",
 				experienceId: createdExperience.experience.id,
 			});
-			console.log('🎯 Awarded points for adding experience');
+			console.log("🎯 Awarded points for adding experience");
 		} catch (error) {
-			console.error('Failed to award points for adding experience:', error);
+			console.error("Failed to award points for adding experience:", error);
 			// Don't fail the request if scoring fails
 		}
 
 		// Send email notification only if user has email notifications enabled
 		try {
-			const { SettingsService } = await import("@server/module/settings/service");
-			const userSettings = await SettingsService.getUserSettings(options.userId);
-			
+			const { SettingsService } = await import(
+				"@server/module/settings/service"
+			);
+			const userSettings = await SettingsService.getUserSettings(
+				options.userId,
+			);
+
 			// Only send email if user has email notifications enabled
 			if (userSettings.notifications.email) {
 				sendNewIssueNotification({
@@ -272,52 +308,65 @@ export const createExperience = async (options: {
 					address: createdExperience.experience.address || undefined,
 					reportedBy: {
 						name: options.userData.name,
-						email: options.userData.email
-					}
-				}).catch(error => {
-					console.error('Failed to send email notification:', error);
+						email: options.userData.email,
+					},
+				}).catch((error) => {
+					console.error("Failed to send email notification:", error);
 					// Don't fail the request if email fails
 				});
 			} else {
-				console.log('📧 Email notification skipped - user has disabled email notifications');
+				console.log(
+					"📧 Email notification skipped - user has disabled email notifications",
+				);
 			}
 		} catch (error) {
-			console.error('Failed to check user notification settings:', error);
+			console.error("Failed to check user notification settings:", error);
 			// Don't fail the request if settings check fails
 		}
 
 		// Send proximity-based push notifications to nearby users
 		try {
-			console.log('📍 Triggering proximity notifications for experience:', createdExperience.experience.id);
-			
+			console.log(
+				"📍 Triggering proximity notifications for experience:",
+				createdExperience.experience.id,
+			);
+
 			// Call the proximity notification API endpoint asynchronously
-			const apiUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || 'http://localhost:3000';
-			const proximityUrl = `${apiUrl.startsWith('http') ? apiUrl : `https://${apiUrl}`}/api/notifications/proximity`;
-			
+			const apiUrl =
+				process.env.NEXT_PUBLIC_SITE_URL ||
+				process.env.VERCEL_URL ||
+				"http://localhost:3000";
+			const proximityUrl = `${apiUrl.startsWith("http") ? apiUrl : `https://${apiUrl}`}/api/notifications/proximity`;
+
 			fetch(proximityUrl, {
-				method: 'POST',
+				method: "POST",
 				headers: {
-					'Content-Type': 'application/json',
-					'x-admin-token': process.env.ADMIN_TOKEN || '',
+					"Content-Type": "application/json",
+					"x-admin-token": process.env.ADMIN_TOKEN || "",
 				},
 				body: JSON.stringify({
 					experienceId: createdExperience.experience.id,
 					proximityRadius: 5, // 5km radius
 				}),
-			}).then(response => {
-				if (response.ok) {
-					response.json().then(data => {
-						console.log('✅ Proximity notifications triggered:', data);
-					});
-				} else {
-					console.error('❌ Failed to trigger proximity notifications:', response.status, response.statusText);
-				}
-			}).catch(error => {
-				console.error('❌ Error triggering proximity notifications:', error);
-			});
-			
+			})
+				.then((response) => {
+					if (response.ok) {
+						response.json().then((data) => {
+							console.log("✅ Proximity notifications triggered:", data);
+						});
+					} else {
+						console.error(
+							"❌ Failed to trigger proximity notifications:",
+							response.status,
+							response.statusText,
+						);
+					}
+				})
+				.catch((error) => {
+					console.error("❌ Error triggering proximity notifications:", error);
+				});
 		} catch (error) {
-			console.error('❌ Failed to trigger proximity notifications:', error);
+			console.error("❌ Failed to trigger proximity notifications:", error);
 			// Don't fail the request if proximity notifications fail
 		}
 
@@ -372,7 +421,8 @@ export const voteOnExperience = async (options: {
 	if (voteAlreadyExists && voteAlreadyExists.vote !== options.data.vote) {
 		const votedExperience = await db.transaction(async (tx) => {
 			// Update the vote
-			await tx.update(vote)
+			await tx
+				.update(vote)
 				.set({ vote: options.data.vote })
 				.where(eq(vote.id, voteAlreadyExists.id));
 
@@ -381,14 +431,14 @@ export const voteOnExperience = async (options: {
 				.update(experience)
 				.set(
 					voteAlreadyExists.vote
-						? { 
-							upvotes: decrement(experience.upvotes),
-							downvotes: increment(experience.downvotes)
-						}
-						: { 
-							upvotes: increment(experience.upvotes),
-							downvotes: decrement(experience.downvotes)
-						},
+						? {
+								upvotes: decrement(experience.upvotes),
+								downvotes: increment(experience.downvotes),
+							}
+						: {
+								upvotes: increment(experience.upvotes),
+								downvotes: decrement(experience.downvotes),
+							},
 				)
 				.where(eq(experience.id, options.id))
 				.returning();
@@ -432,7 +482,10 @@ export const updateExperience = async (options?: {
 	return options?.id;
 };
 
-export const deleteExperience = async (options: { id: string; userId: string }) => {
+export const deleteExperience = async (options: {
+	id: string;
+	userId: string;
+}) => {
 	// First verify the user owns this experience
 	const existingExperience = await db.query.experience.findFirst({
 		where: (experience, { eq }) => eq(experience.id, options.id),

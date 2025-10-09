@@ -1,14 +1,14 @@
 "use client";
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { SettingsProvider } from "@web/context/SettingsContext";
+import { useState } from "react";
 import { AuthProvider } from "./auth-provider";
+import { OfflineNotification } from "./offline-notification";
 import { SettingsNotifications } from "./settings-notifications";
 import { ThemeProvider } from "./theme-provider";
 import { Toaster } from "./ui/sonner";
-import { OfflineNotification } from "./offline-notification";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useState } from "react";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
 	const [queryClient] = useState(
@@ -32,7 +32,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 						retry: 1,
 					},
 				},
-			})
+			}),
 	);
 
 	return (

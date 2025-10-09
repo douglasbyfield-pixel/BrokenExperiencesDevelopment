@@ -1,9 +1,9 @@
 "use client";
 
+import type { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@web/lib/supabase/client";
-import { type User, type Session } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 interface AuthContextType {
 	user: User | null;
@@ -30,7 +30,10 @@ interface AuthProviderProps {
 	requireAuth?: boolean;
 }
 
-export function AuthProvider({ children, requireAuth = false }: AuthProviderProps) {
+export function AuthProvider({
+	children,
+	requireAuth = false,
+}: AuthProviderProps) {
 	const [user, setUser] = useState<User | null>(null);
 	const [session, setSession] = useState<Session | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -39,23 +42,27 @@ export function AuthProvider({ children, requireAuth = false }: AuthProviderProp
 
 	useEffect(() => {
 		// Get initial session
-		supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
-			setSession(session);
-			setUser(session?.user ?? null);
-			setIsLoading(false);
-			
-			if (requireAuth && !session) {
-				router.push('/login');
-			}
-		});
+		supabase.auth
+			.getSession()
+			.then(({ data: { session } }: { data: { session: Session | null } }) => {
+				setSession(session);
+				setUser(session?.user ?? null);
+				setIsLoading(false);
+
+				if (requireAuth && !session) {
+					router.push("/login");
+				}
+			});
 
 		// Listen for auth changes
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange((_event: any, session: Session | null) => {
-			setSession(session);
-			setUser(session?.user ?? null);
-		});
+		} = supabase.auth.onAuthStateChange(
+			(_event: any, session: Session | null) => {
+				setSession(session);
+				setUser(session?.user ?? null);
+			},
+		);
 
 		return () => subscription.unsubscribe();
 	}, [requireAuth, router, supabase.auth]);
@@ -83,7 +90,7 @@ export function AuthProvider({ children, requireAuth = false }: AuthProviderProp
 			console.error("Sign in error:", error);
 			throw error;
 		}
-		router.push('/home');
+		router.push("/home");
 	};
 
 	const signUpEmail = async (email: string, password: string, name: string) => {
@@ -98,7 +105,7 @@ export function AuthProvider({ children, requireAuth = false }: AuthProviderProp
 			console.error("Sign up error:", error);
 			throw error;
 		}
-		router.push('/home');
+		router.push("/home");
 	};
 
 	const signOut = async () => {
@@ -107,7 +114,7 @@ export function AuthProvider({ children, requireAuth = false }: AuthProviderProp
 			console.error("Sign out error:", error);
 			throw error;
 		}
-		router.push('/login');
+		router.push("/login");
 	};
 
 	if (isLoading) {

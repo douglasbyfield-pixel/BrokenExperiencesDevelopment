@@ -39,7 +39,8 @@ export const achievementData = [
 	{
 		id: "rebuilder",
 		name: "Rebuilder",
-		description: "Earned for fixing a high volume of issues, proving strong commitment.",
+		description:
+			"Earned for fixing a high volume of issues, proving strong commitment.",
 		icon: "",
 		category: "fixer",
 		points: 500,
@@ -50,7 +51,8 @@ export const achievementData = [
 	{
 		id: "city_saver",
 		name: "City Saver",
-		description: "Ultimate badge for fixing a landmark number of issues in the app.",
+		description:
+			"Ultimate badge for fixing a landmark number of issues in the app.",
 		icon: "",
 		category: "fixer",
 		points: 1000,
@@ -107,7 +109,8 @@ export const achievementData = [
 	{
 		id: "urban_detective",
 		name: "Urban Detective",
-		description: "Elite badge for reporting and verifying a landmark number of issues.",
+		description:
+			"Elite badge for reporting and verifying a landmark number of issues.",
 		icon: "",
 		category: "reporter",
 		points: 500,
@@ -153,7 +156,8 @@ export const achievementData = [
 	{
 		id: "investor",
 		name: "Investor",
-		description: "Awarded for being a leading contributor to issue sponsorship.",
+		description:
+			"Awarded for being a leading contributor to issue sponsorship.",
 		icon: "",
 		category: "sponsor",
 		points: 800,
@@ -177,7 +181,8 @@ export const achievementData = [
 	{
 		id: "cheerleader",
 		name: "Cheerleader",
-		description: "Awarded for liking or voting on your first broken experience.",
+		description:
+			"Awarded for liking or voting on your first broken experience.",
 		icon: "",
 		category: "community",
 		points: 10,
@@ -210,7 +215,8 @@ export const achievementData = [
 	{
 		id: "influencer",
 		name: "Influencer",
-		description: "Earned for high engagement across multiple broken experiences.",
+		description:
+			"Earned for high engagement across multiple broken experiences.",
 		icon: "",
 		category: "community",
 		points: 125,
@@ -221,7 +227,8 @@ export const achievementData = [
 	{
 		id: "community_hero",
 		name: "Community Hero",
-		description: "Ultimate badge for consistently driving community participation.",
+		description:
+			"Ultimate badge for consistently driving community participation.",
 		icon: "",
 		category: "community",
 		points: 250,
@@ -233,15 +240,17 @@ export const achievementData = [
 
 export async function seedAchievements() {
 	console.log("🌱 Seeding achievements...");
-	
+
 	try {
 		// Clear existing achievements
 		await db.delete(achievements);
-		
+
 		// Insert all achievements
 		await db.insert(achievements).values(achievementData);
-		
-		console.log(`✅ Successfully seeded ${achievementData.length} achievements`);
+
+		console.log(
+			`✅ Successfully seeded ${achievementData.length} achievements`,
+		);
 	} catch (error) {
 		console.error("❌ Error seeding achievements:", error);
 		throw error;

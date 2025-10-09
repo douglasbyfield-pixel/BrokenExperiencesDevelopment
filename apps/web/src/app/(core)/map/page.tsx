@@ -1,18 +1,14 @@
 "use client";
 
+import { useMapMarkers } from "@web/hooks/use-experiences";
 import { eden } from "@web/lib/eden";
 import { createClient } from "@web/lib/supabase/client";
 import { useEffect, useState } from "react";
 import MapClient from "./features/map-client";
-import { useMapMarkers } from "@web/hooks/use-experiences";
 
 export default function MapPage() {
 	// Use TanStack Query for map markers - much faster with caching!
-	const { 
-		data: experiences = [], 
-		isLoading: loading, 
-		error 
-	} = useMapMarkers();
+	const { data: experiences = [], isLoading: loading, error } = useMapMarkers();
 
 	if (error) {
 		console.error("Error fetching map markers:", error);
@@ -20,7 +16,7 @@ export default function MapPage() {
 
 	if (loading) {
 		return (
-			<div className="min-h-screen flex items-center justify-center">
+			<div className="flex min-h-screen items-center justify-center">
 				<div className="text-black">Loading map...</div>
 			</div>
 		);

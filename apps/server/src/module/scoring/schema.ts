@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 export const awardPointsSchema = z.object({
-	activityType: z.enum(["add_experience", "fix_experience", "verify_experience", "sponsor_experience"]),
+	activityType: z.enum([
+		"add_experience",
+		"fix_experience",
+		"verify_experience",
+		"sponsor_experience",
+	]),
 	experienceId: z.string().uuid().optional(),
 });
 

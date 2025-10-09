@@ -1,3 +1,4 @@
+import { useAuth } from "@web/components/auth-provider";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -6,7 +7,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@web/components/ui/dropdown-menu";
-import { useAuth } from "@web/components/auth-provider";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";

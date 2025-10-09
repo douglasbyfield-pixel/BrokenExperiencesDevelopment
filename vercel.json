@@ -1,9 +1,9 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "bun run build",
-  "installCommand": "bun install",
-  "framework": "nextjs",
-  "cleanUrls": true,
-  "trailingSlash": false,
-  "regions": ["iad1"]
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"buildCommand": "bun run build",
+	"installCommand": "bun install",
+	"framework": "nextjs",
+	"cleanUrls": true,
+	"trailingSlash": false,
+	"regions": ["iad1"]
 }

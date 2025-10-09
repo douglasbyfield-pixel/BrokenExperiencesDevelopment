@@ -1,14 +1,14 @@
 import { useForm } from "@tanstack/react-form";
+import { useAuth } from "@web/components/auth-provider";
 import GoogleLogo from "@web/components/icons/google-logo";
 import { Button } from "@web/components/ui/button";
 import { Dialog } from "@web/components/ui/dialog";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
-import { useAuth } from "@web/components/auth-provider";
+import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react";
 import z from "zod";
 
 export default function SignInForm({
@@ -21,20 +21,19 @@ export default function SignInForm({
 	const [showPassword, setShowPassword] = useState(false);
 	const { signInEmail, signIn } = useAuth();
 
-
 	const form = useForm({
 		defaultValues: {
 			email: "",
 			password: "",
 		},
 		onSubmit: async ({ value }) => {
-            try {
-                await signInEmail(value.email, value.password);
-                toast.success("Sign in successful");
-            } catch (error: any) {
-                toast.error(error.message || "Sign in failed");
-            }
-        },
+			try {
+				await signInEmail(value.email, value.password);
+				toast.success("Sign in successful");
+			} catch (error: any) {
+				toast.error(error.message || "Sign in failed");
+			}
+		},
 		validators: {
 			onSubmit: z.object({
 				email: z.email("Invalid email address"),
@@ -42,7 +41,6 @@ export default function SignInForm({
 			}),
 		},
 	});
-
 
 	return (
 		<div className="w-full">
@@ -188,7 +186,7 @@ export default function SignInForm({
 					<span className="text-gray-600">Don't have an account? </span>
 					<button
 						onClick={onSwitchToSignUp}
-						className="font-medium text-black underline transition-colors duration-200 hover:text-gray-700 bg-transparent border-none cursor-pointer"
+						className="cursor-pointer border-none bg-transparent font-medium text-black underline transition-colors duration-200 hover:text-gray-700"
 					>
 						Sign up
 					</button>
@@ -229,7 +227,7 @@ function ForgotPasswordDialog({
 						value={email}
 						onBlur={() => setTouched(true)}
 						onChange={(e) => setEmail(e.target.value)}
-						className={`h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 text-black placeholder:text-gray-400 transition-all duration-200 focus:border-black focus:ring-2 focus:ring-black ${showError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
+						className={`h-12 w-full rounded-xl border-2 border-gray-300 bg-white px-4 text-black transition-all duration-200 placeholder:text-gray-400 focus:border-black focus:ring-2 focus:ring-black ${showError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
 					/>
 					{showError ? (
 						<p className="text-red-500 text-sm">Enter a valid email address</p>

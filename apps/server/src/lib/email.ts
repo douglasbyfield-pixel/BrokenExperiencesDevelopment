@@ -1,7 +1,7 @@
-import { Resend } from 'resend';
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-const resend = new Resend('re_4GVnYGhL_9BDPvtDJGPUVtRiZuaX6RsH1');
+const resend = new Resend("re_4GVnYGhL_9BDPvtDJGPUVtRiZuaX6RsH1");
 
 // Create Ethereal Email transporter for testing
 let testTransporter: any = null;
@@ -19,7 +19,7 @@ async function getTestTransporter() {
 	if (!testTransporter) {
 		const testAccount = await nodemailer.createTestAccount();
 		testTransporter = nodemailer.createTransport({
-			host: 'smtp.ethereal.email',
+			host: "smtp.ethereal.email",
 			port: 587,
 			secure: false,
 			auth: {
@@ -27,10 +27,10 @@ async function getTestTransporter() {
 				pass: testAccount.pass,
 			},
 		});
-		console.log('🧪 Ethereal Email Test Account Created:');
-		console.log('📧 View emails at: https://ethereal.email/');
-		console.log('👤 Username:', testAccount.user);
-		console.log('🔑 Password:', testAccount.pass);
+		console.log("🧪 Ethereal Email Test Account Created:");
+		console.log("📧 View emails at: https://ethereal.email/");
+		console.log("👤 Username:", testAccount.user);
+		console.log("🔑 Password:", testAccount.pass);
 	}
 	return testTransporter;
 }
@@ -39,37 +39,36 @@ async function getTestTransporter() {
  * Send email using either Resend (production) or Ethereal (testing)
  */
 export async function sendEmail(data: EmailData): Promise<boolean> {
-	const isProduction = process.env.NODE_ENV === 'production';
-	
+	const isProduction = process.env.NODE_ENV === "production";
+
 	try {
 		if (isProduction) {
 			// Use Resend for production
 			const emailData = await resend.emails.send({
-				from: 'BrokenExperiences <onboarding@resend.dev>',
+				from: "BrokenExperiences <onboarding@resend.dev>",
 				to: data.to,
 				subject: data.subject,
 				html: data.html,
 			});
 
-			console.log('📧 Email sent via Resend:', emailData.data?.id);
-			return true;
-		} else {
-			// Use Ethereal for testing
-			const transporter = await getTestTransporter();
-			const info = await transporter.sendMail({
-				from: 'BrokenExperiences <test@brokenexperiences.com>',
-				to: data.to,
-				subject: data.subject,
-				html: data.html,
-			});
-
-			console.log('🧪 Test email sent!');
-			console.log('📧 Preview URL:', nodemailer.getTestMessageUrl(info));
-			console.log('📬 To view: https://ethereal.email/');
+			console.log("📧 Email sent via Resend:", emailData.data?.id);
 			return true;
 		}
+		// Use Ethereal for testing
+		const transporter = await getTestTransporter();
+		const info = await transporter.sendMail({
+			from: "BrokenExperiences <test@brokenexperiences.com>",
+			to: data.to,
+			subject: data.subject,
+			html: data.html,
+		});
+
+		console.log("🧪 Test email sent!");
+		console.log("📧 Preview URL:", nodemailer.getTestMessageUrl(info));
+		console.log("📬 To view: https://ethereal.email/");
+		return true;
 	} catch (error) {
-		console.error('Failed to send email:', error);
+		console.error("Failed to send email:", error);
 		return false;
 	}
 }
@@ -103,12 +102,16 @@ export async function sendNewIssueNotification(experience: {
 						<h2 style="color: #1f2937; margin: 0 0 15px 0; font-size: 20px;">${experience.title}</h2>
 						<p style="color: #4b5563; margin: 0 0 15px 0; line-height: 1.6;">${experience.description}</p>
 						
-						${experience.address ? `
+						${
+							experience.address
+								? `
 						<div style="margin: 15px 0; padding: 10px; background: white; border-radius: 6px;">
 							<strong style="color: #374151;">📍 Location:</strong>
 							<span style="color: #6b7280;">${experience.address}</span>
 						</div>
-						` : ''}
+						`
+								: ""
+						}
 						
 						<div style="margin: 15px 0; padding: 10px; background: white; border-radius: 6px;">
 							<strong style="color: #374151;">👤 Reported by:</strong>
@@ -117,7 +120,7 @@ export async function sendNewIssueNotification(experience: {
 					</div>
 					
 					<div style="text-align: center; margin-top: 30px;">
-						<a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/shared/experience/${experience.id}" 
+						<a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/shared/experience/${experience.id}" 
 						   style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; transition: background-color 0.3s;">
 							🔍 View Issue Details
 						</a>
@@ -136,7 +139,7 @@ export async function sendNewIssueNotification(experience: {
 	return await sendEmail({
 		to: experience.reportedBy.email, // Send to the user who created the issue
 		subject: `✅ Issue Reported: ${experience.title}`,
-		html: emailHtml
+		html: emailHtml,
 	});
 }
 
@@ -147,7 +150,7 @@ export async function getNotificationRecipients(): Promise<string[]> {
 	// For now, return admin emails
 	// Later, you could query users who have enabled email notifications
 	return [
-		'admin@brokenexperiences.com',
+		"admin@brokenexperiences.com",
 		// Add more admin emails as needed
 	];
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Button } from "@web/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export default function BiometricsPermissionPage() {
 	const router = useRouter();

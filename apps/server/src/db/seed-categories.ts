@@ -12,25 +12,30 @@ const categories = [
 	{ name: "Roads" },
 	{ name: "Safety" },
 	{ name: "Digital Aids" },
-	{ name: "Other" }
+	{ name: "Other" },
 ];
 
 async function seedCategories() {
 	try {
 		console.log("🌱 Seeding categories...");
-		
+
 		// Check if categories already exist
 		const existingCategories = await db.select().from(category);
-		
+
 		if (existingCategories.length > 0) {
 			console.log("✅ Categories already exist, skipping seed");
 			return;
 		}
-		
+
 		// Insert categories
-		const insertedCategories = await db.insert(category).values(categories).returning();
-		
-		console.log(`✅ Successfully seeded ${insertedCategories.length} categories`);
+		const insertedCategories = await db
+			.insert(category)
+			.values(categories)
+			.returning();
+
+		console.log(
+			`✅ Successfully seeded ${insertedCategories.length} categories`,
+		);
 	} catch (error) {
 		console.error("❌ Error seeding categories:", error);
 		process.exit(1);

@@ -1,11 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "mapbox-gl/dist/mapbox-gl.css";
+import {
+	Popover,
+	PopoverPopup,
+	PopoverPortal,
+	PopoverPositioner,
+	PopoverTrigger,
+} from "@web/components/animate-ui/primitives/base/popover";
+import { BackButton } from "@web/components/ui/back-button";
 import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
-import { BackButton } from "@web/components/ui/back-button";
 import {
 	Card,
 	CardContent,
@@ -13,22 +20,10 @@ import {
 	CardTitle,
 } from "@web/components/ui/card";
 import { Input } from "@web/components/ui/input";
-import {
-	Popover,
-	PopoverTrigger,
-	PopoverPortal,
-	PopoverPositioner,
-	PopoverPopup,
-} from "@web/components/animate-ui/primitives/base/popover";
-import type { Experience } from "@web/types";
 // Removed useVoteExperience - voting not available on map
 import { useShare } from "@web/hooks/use-share";
-import { getCategoryStyling, CATEGORY_STYLING } from "@web/lib/category-config";
-import { mapOperations } from "../utils/mapOperations";
-import { applyFilters } from "../utils/filterUtils";
-import { locationActions } from "../utils/locationActions";
-import { createReactMarker, createReactCluster } from "../utils/markerUtils";
-import { MAP_CONFIG } from "../constants/mapConstants";
+import { CATEGORY_STYLING, getCategoryStyling } from "@web/lib/category-config";
+import type { Experience } from "@web/types";
 import {
 	AlertCircle,
 	ArrowLeft,
@@ -45,8 +40,8 @@ import {
 	Facebook,
 	Filter,
 	Info,
-	Link,
 	Lightbulb,
+	Link,
 	MapPin,
 	MessageCircle,
 	Navigation,
@@ -63,6 +58,11 @@ import {
 	X,
 	Zap,
 } from "lucide-react";
+import { MAP_CONFIG } from "../constants/mapConstants";
+import { applyFilters } from "../utils/filterUtils";
+import { locationActions } from "../utils/locationActions";
+import { mapOperations } from "../utils/mapOperations";
+import { createReactCluster, createReactMarker } from "../utils/markerUtils";
 
 // Using Elysia API backend (which connects to Supabase underneath)
 
@@ -148,9 +148,13 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const mapContainerRef = useRef<HTMLDivElement>(null);
 	const [map, setMap] = useState<any>(null);
 	const [mapLoaded, setMapLoaded] = useState(false);
-	const [filteredExperiences, setFilteredExperiences] = useState<Experience[]>(experiences);
-	const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
-	const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+	const [filteredExperiences, setFilteredExperiences] =
+		useState<Experience[]>(experiences);
+	const [selectedExperience, setSelectedExperience] =
+		useState<Experience | null>(null);
+	const [categories, setCategories] = useState<
+		Array<{ id: string; name: string }>
+	>([]);
 	const searchParams = useSearchParams();
 	const [userLocation, setUserLocation] = useState<{
 		lat: number;
@@ -179,36 +183,50 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const [currentRoute, setCurrentRoute] = useState<any>(null);
 	const [isNavigating, setIsNavigating] = useState(false);
 	const [navPanelMinimized, setNavPanelMinimized] = useState(false);
-	const [clusters, setClusters] = useState<Array<{
-		id: string;
-		lat: number;
-		lng: number;
-		experiences: Experience[];
-		count: number;
-	}>>([]);
-	const [selectedCluster, setSelectedCluster] = useState<Experience[] | null>(null);
+	const [clusters, setClusters] = useState<
+		Array<{
+			id: string;
+			lat: number;
+			lng: number;
+			experiences: Experience[];
+			count: number;
+		}>
+	>([]);
+	const [selectedCluster, setSelectedCluster] = useState<Experience[] | null>(
+		null,
+	);
 	const router = useRouter();
-	const { copyToClipboard, shareToWhatsApp, shareToTwitter, shareToFacebook, shareViaWebShare } = useShare();
+	const {
+		copyToClipboard,
+		shareToWhatsApp,
+		shareToTwitter,
+		shareToFacebook,
+		shareViaWebShare,
+	} = useShare();
 
 	// Fetch categories from database - memoized to prevent refetching
 	const categoriesMemo = useMemo(() => {
 		let isMounted = true;
-		
+
 		const fetchCategories = async () => {
 			try {
 				const { eden } = await import("@web/lib/eden");
-				const result = await eden.category.get({ $query: { limit: 50, offset: 0 } });
+				const result = await eden.category.get({
+					$query: { limit: 50, offset: 0 },
+				});
 				if (Array.isArray(result?.data) && isMounted) {
-					const sorted = result.data.sort((a: any, b: any) => a.name.localeCompare(b.name));
+					const sorted = result.data.sort((a: any, b: any) =>
+						a.name.localeCompare(b.name),
+					);
 					setCategories(sorted);
 				}
 			} catch (error) {
-				console.error('Failed to fetch categories:', error);
+				console.error("Failed to fetch categories:", error);
 			}
 		};
-		
+
 		fetchCategories();
-		
+
 		return () => {
 			isMounted = false;
 		};
@@ -287,22 +305,24 @@ export default function MapClient({ experiences }: MapClientProps) {
 	useEffect(() => {
 		if (!map || !mapLoaded || !experiences.length) return;
 
-		const lat = searchParams.get('lat');
-		const lng = searchParams.get('lng');
-		const zoom = searchParams.get('zoom');
-		const focusId = searchParams.get('focus');
+		const lat = searchParams.get("lat");
+		const lng = searchParams.get("lng");
+		const zoom = searchParams.get("zoom");
+		const focusId = searchParams.get("focus");
 
 		if (lat && lng) {
 			// Fly to the specified coordinates
 			map.flyTo({
-				center: [parseFloat(lng), parseFloat(lat)],
-				zoom: zoom ? parseFloat(zoom) : 16,
+				center: [Number.parseFloat(lng), Number.parseFloat(lat)],
+				zoom: zoom ? Number.parseFloat(zoom) : 16,
 				duration: 1500,
 			});
 
 			// If there's a focus ID, find and select that experience
 			if (focusId) {
-				const targetExperience = experiences.find(exp => exp.id.toString() === focusId);
+				const targetExperience = experiences.find(
+					(exp) => exp.id.toString() === focusId,
+				);
 				if (targetExperience) {
 					// Delay the selection to ensure the map has moved
 					setTimeout(() => {
@@ -339,80 +359,80 @@ export default function MapClient({ experiences }: MapClientProps) {
 	// Share handlers
 	const handleNativeShare = async () => {
 		if (!selectedExperience) return;
-		
+
 		try {
 			const baseUrl = window.location.origin;
 			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
 			const shareText = `Check out this issue: ${selectedExperience.title}`;
-			
+
 			const success = await shareViaWebShare(shareText, shareText, shareUrl);
 			if (!success) {
 				// Fallback to copy to clipboard
 				await handleCopyLink();
 			}
 		} catch (error) {
-			console.error('Failed to share natively:', error);
-			alert('Failed to share');
+			console.error("Failed to share natively:", error);
+			alert("Failed to share");
 		}
 	};
 
 	const handleCopyLink = async () => {
 		if (!selectedExperience) return;
-		
+
 		try {
 			const baseUrl = window.location.origin;
 			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
-			
+
 			const success = await copyToClipboard(shareUrl);
 			if (success) {
-				alert('Share link copied to clipboard!');
+				alert("Share link copied to clipboard!");
 			} else {
-				alert('Failed to copy to clipboard');
+				alert("Failed to copy to clipboard");
 			}
 		} catch (error) {
-			console.error('Failed to copy link:', error);
-			alert('Failed to copy link');
+			console.error("Failed to copy link:", error);
+			alert("Failed to copy link");
 		}
 	};
 
 	const handleWhatsAppShare = async () => {
 		if (!selectedExperience) return;
-		
+
 		try {
 			const baseUrl = window.location.origin;
 			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
 			const shareText = `Check out this issue: ${selectedExperience.title}`;
 			shareToWhatsApp(shareText, shareUrl);
 		} catch (error) {
-			console.error('Failed to share to WhatsApp:', error);
-			alert('Failed to share to WhatsApp');
+			console.error("Failed to share to WhatsApp:", error);
+			alert("Failed to share to WhatsApp");
 		}
 	};
 
 	const handleTwitterShare = async () => {
 		if (!selectedExperience) return;
-		
+
 		try {
 			const baseUrl = window.location.origin;
 			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
 			const shareText = `Check out this issue: ${selectedExperience.title}`;
 			shareToTwitter(shareText, shareUrl);
 		} catch (error) {
-			console.error('Failed to share to Twitter:', error);
-			alert('Failed to share to Twitter');
+			console.error("Failed to share to Twitter:", error);
+			alert("Failed to share to Twitter");
 		}
 	};
 
 	const handleFacebookShare = async () => {
 		if (!selectedExperience) return;
-		
+
 		try {
 			const baseUrl = window.location.origin;
 			const shareUrl = `${baseUrl}/shared/experience/${selectedExperience.id}`;
 			shareToFacebook(shareUrl);
 		} catch (error) {
-			console.error('Failed to share to Facebook:', error);
-			alert('Failed to share to Facebook');
+			console.error("Failed to share to Facebook:", error);
+			alert("Failed to share to Facebook");
 		}
 	};
 
@@ -566,7 +586,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 								layer.layout &&
 								layer.layout["text-field"],
 						)?.id;
-						
+
 						if (labelLayerId) {
 							mapInstance.addLayer(
 								{
@@ -650,32 +670,32 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 					// Add popup for location features with enhanced quick actions
 					geolocate.on("geolocate", (e: any) => {
-					console.log("📍 Geolocate triggered:", e);
+						console.log("📍 Geolocate triggered:", e);
 
-					if (e.coords) {
-						const newLocation = {
-							lat: e.coords.latitude,
-							lng: e.coords.longitude,
-						};
+						if (e.coords) {
+							const newLocation = {
+								lat: e.coords.latitude,
+								lng: e.coords.longitude,
+							};
 
-						setUserLocation(newLocation);
-						setLocationAccuracy(e.coords?.accuracy || null);
+							setUserLocation(newLocation);
+							setLocationAccuracy(e.coords?.accuracy || null);
 
-						mapInstance.flyTo({
-							center: [newLocation.lng, newLocation.lat],
-							zoom: 16,
-							pitch: 68,
-							bearing: 0,
-							duration: 1500,
-						});
+							mapInstance.flyTo({
+								center: [newLocation.lng, newLocation.lat],
+								zoom: 16,
+								pitch: 68,
+								bearing: 0,
+								duration: 1500,
+							});
 
-						const popup = new mapboxgl.Popup({
-							offset: 25,
-							closeOnClick: false,
-							className: "location-popup",
-						})
-							.setLngLat([newLocation.lng, newLocation.lat])
-							.setHTML(`
+							const popup = new mapboxgl.Popup({
+								offset: 25,
+								closeOnClick: false,
+								className: "location-popup",
+							})
+								.setLngLat([newLocation.lng, newLocation.lat])
+								.setHTML(`
 						<div class="p-4 min-w-[220px] bg-white dark:bg-gray-800 rounded-lg shadow-lg">
 							<div class="flex items-center gap-2 mb-3">
 								<div class="w-3 h-3 bg-blue-500 rounded-full"></div>
@@ -704,32 +724,41 @@ export default function MapClient({ experiences }: MapClientProps) {
 							</div>
 						</div>
 						`)
-							.addTo(mapInstance);
+								.addTo(mapInstance);
 
-						(window as any).reportIssueHere = () => {
-							locationActions.reportIssueHere(newLocation);
-							popup.remove();
-						};
+							(window as any).reportIssueHere = () => {
+								locationActions.reportIssueHere(newLocation);
+								popup.remove();
+							};
 
-						(window as any).findNearbyIssues = () => {
-							locationActions.findNearbyIssues(newLocation, filteredExperiences, mapInstance);
-							popup.remove();
-						};
+							(window as any).findNearbyIssues = () => {
+								locationActions.findNearbyIssues(
+									newLocation,
+									filteredExperiences,
+									mapInstance,
+								);
+								popup.remove();
+							};
 
-						(window as any).showClosestIssue = () => {
-							locationActions.showClosestIssue(newLocation, filteredExperiences, mapInstance, setSelectedExperience);
-							popup.remove();
-						};
+							(window as any).showClosestIssue = () => {
+								locationActions.showClosestIssue(
+									newLocation,
+									filteredExperiences,
+									mapInstance,
+									setSelectedExperience,
+								);
+								popup.remove();
+							};
 
-						(window as any).shareLocation = () => {
-							locationActions.shareLocation(newLocation);
-							popup.remove();
-						};
+							(window as any).shareLocation = () => {
+								locationActions.shareLocation(newLocation);
+								popup.remove();
+							};
 
-						setTimeout(() => {
-							if (popup.isOpen()) popup.remove();
-						}, 15000);
-					}
+							setTimeout(() => {
+								if (popup.isOpen()) popup.remove();
+							}, 15000);
+						}
 					});
 
 					// Trigger geolocation after a shorter delay
@@ -781,9 +810,9 @@ export default function MapClient({ experiences }: MapClientProps) {
 	};
 
 	// Clustering function to group nearby markers
-	const createClusters = (experiences: Experience[], currentZoom: number = 15) => {
+	const createClusters = (experiences: Experience[], currentZoom = 15) => {
 		if (!experiences.length) return [];
-		
+
 		// Only cluster when zoomed out - show individual markers when zoomed in
 		if (currentZoom >= 14) {
 			// Zoomed in enough - show individual markers
@@ -792,13 +821,14 @@ export default function MapClient({ experiences }: MapClientProps) {
 				lat: Number(experience.latitude),
 				lng: Number(experience.longitude),
 				experiences: [experience],
-				count: 1
+				count: 1,
 			}));
 		}
-		
+
 		// Zoomed out - create clusters
-		const clusterDistance = currentZoom > 12 ? 0.15 : currentZoom > 10 ? 0.3 : 0.5; // km
-		
+		const clusterDistance =
+			currentZoom > 12 ? 0.15 : currentZoom > 10 ? 0.3 : 0.5; // km
+
 		const clusters: Array<{
 			id: string;
 			lat: number;
@@ -806,82 +836,92 @@ export default function MapClient({ experiences }: MapClientProps) {
 			experiences: Experience[];
 			count: number;
 		}> = [];
-		
+
 		const processedExperiences = new Set<string>();
-		
+
 		experiences.forEach((experience, index) => {
 			if (processedExperiences.has(experience.id)) return;
-			
+
 			const lat = Number(experience.latitude);
 			const lng = Number(experience.longitude);
-			
+
 			if (isNaN(lat) || isNaN(lng)) return;
-			
+
 			// Find nearby experiences
 			const nearbyExperiences = experiences.filter((otherExp, otherIndex) => {
-				if (processedExperiences.has(otherExp.id) || otherIndex === index) return false;
-				
+				if (processedExperiences.has(otherExp.id) || otherIndex === index)
+					return false;
+
 				const otherLat = Number(otherExp.latitude);
 				const otherLng = Number(otherExp.longitude);
-				
+
 				if (isNaN(otherLat) || isNaN(otherLng)) return false;
-				
+
 				const distance = getDistance(lat, lng, otherLat, otherLng);
 				return distance <= clusterDistance;
 			});
-			
+
 			// Create cluster with this experience and nearby ones
 			const clusterExperiences = [experience, ...nearbyExperiences];
-			
+
 			// Mark all experiences in this cluster as processed
-			clusterExperiences.forEach(exp => processedExperiences.add(exp.id));
-			
+			clusterExperiences.forEach((exp) => processedExperiences.add(exp.id));
+
 			// Calculate cluster center (average position)
-			const centerLat = clusterExperiences.reduce((sum, exp) => sum + Number(exp.latitude), 0) / clusterExperiences.length;
-			const centerLng = clusterExperiences.reduce((sum, exp) => sum + Number(exp.longitude), 0) / clusterExperiences.length;
-			
+			const centerLat =
+				clusterExperiences.reduce((sum, exp) => sum + Number(exp.latitude), 0) /
+				clusterExperiences.length;
+			const centerLng =
+				clusterExperiences.reduce(
+					(sum, exp) => sum + Number(exp.longitude),
+					0,
+				) / clusterExperiences.length;
+
 			clusters.push({
 				id: `cluster-${index}`,
 				lat: centerLat,
 				lng: centerLng,
 				experiences: clusterExperiences,
-				count: clusterExperiences.length
+				count: clusterExperiences.length,
 			});
 		});
-		
+
 		return clusters;
 	};
 
 	// Memoized marker creation function for better performance
-	const createMarkers = useCallback(async (experiences: Experience[], zoom: number) => {
-		if (!map || !experiences.length) return;
+	const createMarkers = useCallback(
+		async (experiences: Experience[], zoom: number) => {
+			if (!map || !experiences.length) return;
 
-		// Create clusters
-		const newClusters = createClusters(experiences, zoom);
-		setClusters(newClusters);
+			// Create clusters
+			const newClusters = createClusters(experiences, zoom);
+			setClusters(newClusters);
 
-		// Remove existing markers efficiently
-		const existingMarkers = document.querySelectorAll(".custom-marker, .cluster-marker");
-		existingMarkers.forEach((marker) => marker.remove());
+			// Remove existing markers efficiently
+			const existingMarkers = document.querySelectorAll(
+				".custom-marker, .cluster-marker",
+			);
+			existingMarkers.forEach((marker) => marker.remove());
 
-		// Dynamically import mapboxgl for markers
-		const { default: mapboxgl } = await import("mapbox-gl");
-		
-		// Create markers for each cluster
-		newClusters.forEach((cluster) => {
-			if (cluster.count === 1) {
-				// Single marker - show individual experience
-				const experience = cluster.experiences[0];
-				const markerEl = createReactMarker(experience, setSelectedExperience);
-				
-				new mapboxgl.Marker(markerEl)
-					.setLngLat([cluster.lng, cluster.lat])
-					.addTo(map);
-			} else {
-				// Cluster marker - simple design matching original style
-				const markerEl = document.createElement("div");
-				markerEl.className = "cluster-marker";
-				markerEl.innerHTML = `
+			// Dynamically import mapboxgl for markers
+			const { default: mapboxgl } = await import("mapbox-gl");
+
+			// Create markers for each cluster
+			newClusters.forEach((cluster) => {
+				if (cluster.count === 1) {
+					// Single marker - show individual experience
+					const experience = cluster.experiences[0];
+					const markerEl = createReactMarker(experience, setSelectedExperience);
+
+					new mapboxgl.Marker(markerEl)
+						.setLngLat([cluster.lng, cluster.lat])
+						.addTo(map);
+				} else {
+					// Cluster marker - simple design matching original style
+					const markerEl = document.createElement("div");
+					markerEl.className = "cluster-marker";
+					markerEl.innerHTML = `
 					<div class="relative drop-shadow-lg">
 						<div class="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform hover:scale-110 transition-all duration-200 border-4 border-white shadow-2xl"
 							 style="background-color: #374151;">
@@ -890,17 +930,19 @@ export default function MapClient({ experiences }: MapClientProps) {
 					</div>
 				`;
 
-				markerEl.addEventListener("click", (e) => {
-					e.stopPropagation();
-					setSelectedCluster(cluster.experiences);
-				});
-				
-				new mapboxgl.Marker(markerEl)
-					.setLngLat([cluster.lng, cluster.lat])
-					.addTo(map);
-			}
-		});
-	}, [map]);
+					markerEl.addEventListener("click", (e) => {
+						e.stopPropagation();
+						setSelectedCluster(cluster.experiences);
+					});
+
+					new mapboxgl.Marker(markerEl)
+						.setLngLat([cluster.lng, cluster.lat])
+						.addTo(map);
+				}
+			});
+		},
+		[map],
+	);
 
 	// Create markers when map loads and we have issues - optimized
 	useEffect(() => {
@@ -915,7 +957,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 		if (!map) return;
 
 		let timeoutId: NodeJS.Timeout;
-		
+
 		const handleZoomEnd = () => {
 			clearTimeout(timeoutId);
 			timeoutId = setTimeout(() => {
@@ -924,12 +966,12 @@ export default function MapClient({ experiences }: MapClientProps) {
 			}, 150); // Debounce zoom changes
 		};
 
-		map.on('zoomend', handleZoomEnd);
+		map.on("zoomend", handleZoomEnd);
 
 		return () => {
 			clearTimeout(timeoutId);
 			if (map) {
-				map.off('zoomend', handleZoomEnd);
+				map.off("zoomend", handleZoomEnd);
 			}
 		};
 	}, [map, filteredExperiences, createMarkers]);
@@ -1000,65 +1042,76 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 	if (mapError) {
 		// Check if it's a location permission error
-		const isLocationError = mapError.includes('Location access denied') || mapError.includes('denied');
-		
+		const isLocationError =
+			mapError.includes("Location access denied") ||
+			mapError.includes("denied");
+
 		return (
 			<div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-				<Card className="w-full max-w-lg backdrop-blur-sm bg-white/95 border-0 shadow-2xl">
-					<CardHeader className="text-center pb-4">
-						<div className="mx-auto mb-4 w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+				<Card className="w-full max-w-lg border-0 bg-white/95 shadow-2xl backdrop-blur-sm">
+					<CardHeader className="pb-4 text-center">
+						<div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600">
 							<MapPin className="h-10 w-10 text-white" />
 						</div>
-						<CardTitle className="text-2xl font-bold text-gray-900">
-							{isLocationError ? 'Unlock Your Local Experience' : 'Map Unavailable'}
+						<CardTitle className="font-bold text-2xl text-gray-900">
+							{isLocationError
+								? "Unlock Your Local Experience"
+								: "Map Unavailable"}
 						</CardTitle>
 					</CardHeader>
-					<CardContent className="text-center space-y-6">
+					<CardContent className="space-y-6 text-center">
 						{isLocationError ? (
 							<>
 								<div className="space-y-4">
-									<p className="text-lg text-gray-700 leading-relaxed">
-										🌟 <strong>You're missing out!</strong> Enable location access to unlock the full Broken Experiences magic.
+									<p className="text-gray-700 text-lg leading-relaxed">
+										🌟 <strong>You're missing out!</strong> Enable location
+										access to unlock the full Broken Experiences magic.
 									</p>
-									
-									<div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
-										<h3 className="font-semibold text-blue-900 mb-3">✨ What you'll get with location:</h3>
-										<div className="grid grid-cols-1 gap-2 text-sm text-blue-800">
+
+									<div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
+										<h3 className="mb-3 font-semibold text-blue-900">
+											✨ What you'll get with location:
+										</h3>
+										<div className="grid grid-cols-1 gap-2 text-blue-800 text-sm">
 											<div className="flex items-center gap-2">
-												<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+												<div className="h-2 w-2 rounded-full bg-blue-500" />
 												<span>📍 Find issues happening right around you</span>
 											</div>
 											<div className="flex items-center gap-2">
-												<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+												<div className="h-2 w-2 rounded-full bg-blue-500" />
 												<span>🎯 Get personalized local recommendations</span>
 											</div>
 											<div className="flex items-center gap-2">
-												<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-												<span>🚀 Report issues with precise GPS coordinates</span>
+												<div className="h-2 w-2 rounded-full bg-blue-500" />
+												<span>
+													🚀 Report issues with precise GPS coordinates
+												</span>
 											</div>
 											<div className="flex items-center gap-2">
-												<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+												<div className="h-2 w-2 rounded-full bg-blue-500" />
 												<span>🌈 Navigate to nearby community reports</span>
 											</div>
 										</div>
 									</div>
-									
-									<div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+
+									<div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
 										<p className="text-amber-800 text-sm">
-											<strong>⚠️ Without location:</strong> You'll only see a basic map without the personalized, location-aware features that make this app powerful.
+											<strong>⚠️ Without location:</strong> You'll only see a
+											basic map without the personalized, location-aware
+											features that make this app powerful.
 										</p>
 									</div>
 								</div>
-								
+
 								<div className="space-y-3">
-									<Button 
-										onClick={() => window.location.reload()} 
-										className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 text-lg font-semibold shadow-lg"
+									<Button
+										onClick={() => window.location.reload()}
+										className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 py-3 font-semibold text-lg text-white shadow-lg hover:from-blue-700 hover:to-indigo-700"
 									>
 										🔓 Enable Location & Retry
 									</Button>
-									
-									<p className="text-xs text-gray-500">
+
+									<p className="text-gray-500 text-xs">
 										Click "Allow" when your browser asks for location permission
 									</p>
 								</div>
@@ -1066,9 +1119,9 @@ export default function MapClient({ experiences }: MapClientProps) {
 						) : (
 							<>
 								<p className="text-gray-600">{mapError}</p>
-								<Button 
-									onClick={() => window.location.reload()} 
-									className="w-full bg-gray-900 hover:bg-gray-800 text-white"
+								<Button
+									onClick={() => window.location.reload()}
+									className="w-full bg-gray-900 text-white hover:bg-gray-800"
 								>
 									Try Again
 								</Button>
@@ -1082,7 +1135,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 	return (
 		<div
-			className={`mobile-map-page h-screen w-full fixed inset-0 ${showSearchPanel ? "search-visible" : ""}`}
+			className={`mobile-map-page fixed inset-0 h-screen w-full ${showSearchPanel ? "search-visible" : ""}`}
 		>
 			{/* Loading Overlay - only show for initial load */}
 			{isLoading && (
@@ -1090,8 +1143,12 @@ export default function MapClient({ experiences }: MapClientProps) {
 					<div className="flex flex-col items-center gap-4 rounded-xl bg-white p-8 shadow-2xl">
 						<div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
 						<div className="text-center">
-							<h3 className="text-lg font-semibold text-gray-900">Loading Map</h3>
-							<p className="text-sm text-gray-600">Preparing your local experience...</p>
+							<h3 className="font-semibold text-gray-900 text-lg">
+								Loading Map
+							</h3>
+							<p className="text-gray-600 text-sm">
+								Preparing your local experience...
+							</p>
 						</div>
 					</div>
 				</div>
@@ -1103,11 +1160,11 @@ export default function MapClient({ experiences }: MapClientProps) {
 			{/* Search & Quick Actions Buttons */}
 			{!showSearchPanel && !showQuickActions && (
 				<div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-					<BackButton 
+					<BackButton
 						fallbackUrl="/home"
 						variant="default"
 						size="icon"
-						className="backdrop-blur-sm shadow-lg"
+						className="shadow-lg backdrop-blur-sm"
 					/>
 					<Button
 						size="icon"
@@ -1199,7 +1256,15 @@ export default function MapClient({ experiences }: MapClientProps) {
 										}
 									});
 
-									mapOperations.flyToWithPitch(map, [Number(closestExperience.longitude), Number(closestExperience.latitude)], 17, 68);
+									mapOperations.flyToWithPitch(
+										map,
+										[
+											Number(closestExperience.longitude),
+											Number(closestExperience.latitude),
+										],
+										17,
+										68,
+									);
 
 									setSelectedExperience(closestExperience);
 									setShowQuickActions(false);
@@ -1229,23 +1294,24 @@ export default function MapClient({ experiences }: MapClientProps) {
 							className="flex h-auto flex-col items-center gap-1 p-3 text-xs"
 							onClick={() => {
 								const recentIssues = filteredExperiences
-									.sort(
-										(a, b) => {
-											const dateA = new Date(a.createdAt);
-											const dateB = new Date(b.createdAt);
-											if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
-												return 0; // Keep original order if dates are invalid
-											}
-											return dateB.getTime() - dateA.getTime();
+									.sort((a, b) => {
+										const dateA = new Date(a.createdAt);
+										const dateB = new Date(b.createdAt);
+										if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+											return 0; // Keep original order if dates are invalid
 										}
-									)
+										return dateB.getTime() - dateA.getTime();
+									})
 									.slice(0, 10);
 
 								if (recentIssues.length > 0) {
 									import("mapbox-gl").then(({ default: mapboxgl }) => {
 										const bounds = new mapboxgl.LngLatBounds();
 										recentIssues.forEach((experience) => {
-											bounds.extend([Number(experience.longitude), Number(experience.latitude)]);
+											bounds.extend([
+												Number(experience.longitude),
+												Number(experience.latitude),
+											]);
 										});
 
 										map?.fitBounds(bounds, {
@@ -1286,7 +1352,10 @@ export default function MapClient({ experiences }: MapClientProps) {
 									import("mapbox-gl").then(({ default: mapboxgl }) => {
 										const bounds = new mapboxgl.LngLatBounds();
 										filteredExperiences.forEach((experience) => {
-											bounds.extend([Number(experience.longitude), Number(experience.latitude)]);
+											bounds.extend([
+												Number(experience.longitude),
+												Number(experience.latitude),
+											]);
 										});
 
 										map.fitBounds(bounds, {
@@ -1432,7 +1501,10 @@ export default function MapClient({ experiences }: MapClientProps) {
 										setSelectedExperience(experience);
 										if (map) {
 											map.flyTo({
-												center: [Number(experience.longitude), Number(experience.latitude)],
+												center: [
+													Number(experience.longitude),
+													Number(experience.latitude),
+												],
 												zoom: 16,
 												duration: 1000,
 											});
@@ -1454,7 +1526,9 @@ export default function MapClient({ experiences }: MapClientProps) {
 			{selectedCluster && (
 				<div className="absolute right-4 bottom-4 left-4 z-20 mx-auto max-w-md rounded-lg bg-white p-4 shadow-lg dark:bg-gray-900">
 					<div className="mb-3 flex items-center justify-between">
-						<h3 className="font-semibold text-lg">{selectedCluster.length} Issues in this area</h3>
+						<h3 className="font-semibold text-lg">
+							{selectedCluster.length} Issues in this area
+						</h3>
 						<Button
 							size="icon"
 							variant="ghost"
@@ -1465,37 +1539,44 @@ export default function MapClient({ experiences }: MapClientProps) {
 						</Button>
 					</div>
 
-					<div className="max-h-64 overflow-y-auto space-y-2">
+					<div className="max-h-64 space-y-2 overflow-y-auto">
 						{selectedCluster.map((experience) => {
-							const categoryName = experience.category?.name || 'Other';
+							const categoryName = experience.category?.name || "Other";
 							const categoryStyling = getCategoryStyling(categoryName);
 							const IconComponent = categoryStyling.icon;
-							
+
 							return (
 								<div
 									key={experience.id}
-									className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+									className="flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
 									onClick={() => {
 										setSelectedExperience(experience);
 										setSelectedCluster(null);
 										if (map) {
 											map.flyTo({
-												center: [Number(experience.longitude), Number(experience.latitude)],
+												center: [
+													Number(experience.longitude),
+													Number(experience.latitude),
+												],
 												zoom: 17,
 												duration: 1000,
 											});
 										}
 									}}
 								>
-									<div 
-										className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+									<div
+										className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
 										style={{ backgroundColor: categoryStyling.color }}
 									>
-										<IconComponent className="w-4 h-4 text-white" />
+										<IconComponent className="h-4 w-4 text-white" />
 									</div>
-									<div className="flex-1 min-w-0">
-										<h4 className="font-medium text-sm truncate">{experience.title}</h4>
-										<p className="text-gray-600 dark:text-gray-400 text-xs truncate">{experience.description}</p>
+									<div className="min-w-0 flex-1">
+										<h4 className="truncate font-medium text-sm">
+											{experience.title}
+										</h4>
+										<p className="truncate text-gray-600 text-xs dark:text-gray-400">
+											{experience.description}
+										</p>
 									</div>
 								</div>
 							);
@@ -1525,7 +1606,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 							<X className="h-4 w-4" />
 						</Button>
 					</div>
-{/* 
+					{/* 
 					<div className="mb-3 flex items-center gap-2">
 						<Badge
 							variant={
@@ -1560,7 +1641,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 
 					<div className="flex items-center justify-between">
 						{/* Removed voting from map - users can vote from feed/details pages */}
-						<div></div>
+						<div />
 
 						<div className="flex items-center gap-2">
 							<Button
@@ -1582,11 +1663,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 								<Route className="mr-1 h-3 w-3" />
 								{isNavigating ? "Clear Route" : "Get Directions"}
 							</Button>
-							<Button
-								size="sm"
-								variant="outline"
-								onClick={handleCopyLink}
-							>
+							<Button size="sm" variant="outline" onClick={handleCopyLink}>
 								<Share2 className="mr-1 h-3 w-3" />
 								Share
 							</Button>
@@ -1598,17 +1675,15 @@ export default function MapClient({ experiences }: MapClientProps) {
 							try {
 								const date = new Date(selectedExperience.createdAt);
 								if (isNaN(date.getTime())) {
-									return 'Unknown date';
+									return "Unknown date";
 								}
 								return date.toLocaleDateString();
 							} catch (error) {
-								return 'Unknown date';
+								return "Unknown date";
 							}
 						})()}
-						{selectedExperience.status === 'resolved' && (
-							<span className="ml-2">
-								• Resolved
-							</span>
+						{selectedExperience.status === "resolved" && (
+							<span className="ml-2">• Resolved</span>
 						)}
 					</div>
 				</div>

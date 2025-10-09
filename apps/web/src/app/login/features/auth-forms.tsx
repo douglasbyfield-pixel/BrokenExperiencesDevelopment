@@ -15,11 +15,11 @@ export default function AuthForms() {
 				<div className="flex justify-center">
 					<div className="text-center">
 						<div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-black bg-white p-3">
-				<img
-					src="/images/logo.png"
-					alt="Broken Experiences"
-					className="h-full w-full object-contain"
-				/>
+							<img
+								src="/images/logo.png"
+								alt="Broken Experiences"
+								className="h-full w-full object-contain"
+							/>
 						</div>
 						<h1 className="font-bold text-2xl text-black">
 							Broken Experiences
@@ -35,11 +35,11 @@ export default function AuthForms() {
 			<div className="hidden flex-shrink-0 px-12 pt-12 pb-8 lg:block">
 				<div className="flex items-center space-x-3">
 					<div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-black bg-white p-2">
-					<img
-						src="/images/logo.png"
-						alt="Broken Experiences"
-						className="h-full w-full object-contain"
-					/>
+						<img
+							src="/images/logo.png"
+							alt="Broken Experiences"
+							className="h-full w-full object-contain"
+						/>
 					</div>
 					<span className="font-bold text-black text-xl">
 						Broken Experiences

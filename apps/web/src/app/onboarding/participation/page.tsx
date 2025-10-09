@@ -1,9 +1,9 @@
 "use client";
 
+import { Button } from "@web/components/ui/button";
 import { Globe, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@web/components/ui/button";
 
 type Role = "reporter" | "organiser";
 
@@ -22,11 +22,11 @@ export default function ParticipationPage() {
 				{/* Logo */}
 				<div className="mb-8 animate-fade-in text-center">
 					<div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-black bg-white p-3 shadow-lg transition-transform duration-300 hover:rotate-6">
-					<img
-						src="/images/logo.png"
-						alt="Broken Experiences"
-						className="h-full w-full object-contain"
-					/>
+						<img
+							src="/images/logo.png"
+							alt="Broken Experiences"
+							className="h-full w-full object-contain"
+						/>
 					</div>
 					<h1 className="animate-slide-up font-bold text-2xl text-black">
 						Choose how you want to participate

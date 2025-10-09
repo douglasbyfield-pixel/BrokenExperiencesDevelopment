@@ -12,7 +12,7 @@
 		"build": "bun run --filter '*' build",
 		"check-types": "bun run --filter '*' check-types",
 		"dev:native": "bun run --filter native dev",
-    "dev:mobile": "bun run --filter mobile dev",
+		"dev:mobile": "bun run --filter mobile dev",
 		"dev:web": "bun run --filter web dev",
 		"dev:server": "bun run --filter server dev",
 		"db:push": "bun run --filter server db:push",

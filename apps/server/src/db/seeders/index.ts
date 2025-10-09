@@ -2,10 +2,10 @@ import { seedAchievements } from "./achievements";
 
 export async function runAllSeeders() {
 	console.log("🚀 Starting database seeding...");
-	
+
 	try {
 		await seedAchievements();
-		
+
 		console.log("✅ All seeders completed successfully!");
 	} catch (error) {
 		console.error("❌ Seeding failed:", error);

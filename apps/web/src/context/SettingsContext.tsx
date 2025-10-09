@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuth } from "@web/components/auth-provider";
+import { useTheme } from "next-themes";
 import {
 	createContext,
 	type ReactNode,
@@ -7,8 +9,6 @@ import {
 	useEffect,
 	useState,
 } from "react";
-import { useAuth } from "@web/components/auth-provider";
-import { useTheme } from "next-themes";
 
 interface UserSettings {
 	notifications: {
@@ -110,15 +110,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 						`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`,
 						{
 							headers: {
-								'Authorization': `Bearer ${session.access_token}`,
-								'Content-Type': 'application/json',
+								Authorization: `Bearer ${session.access_token}`,
+								"Content-Type": "application/json",
 							},
-						}
+						},
 					);
 					if (response.ok) {
 						const data = await response.json();
 						setSettings(data);
-						localStorage.setItem(`userSettings_${user.id}`, JSON.stringify(data));
+						localStorage.setItem(
+							`userSettings_${user.id}`,
+							JSON.stringify(data),
+						);
 						setTheme(data.display.theme);
 					} else if (response.status === 404) {
 						// No settings found, use defaults and create them
@@ -174,7 +177,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
 		// Save to localStorage (browser only)
 		if (typeof window !== "undefined") {
-			localStorage.setItem(`userSettings_${user.id}`, JSON.stringify(updatedSettings));
+			localStorage.setItem(
+				`userSettings_${user.id}`,
+				JSON.stringify(updatedSettings),
+			);
 		}
 
 		// Apply theme if it changed using next-themes
@@ -185,15 +191,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 		// Send to API with authentication (browser only)
 		if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_SERVER_URL) {
 			try {
-				const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`, {
-					method: "PATCH",
-					headers: {
-						'Authorization': `Bearer ${session.access_token}`,
-						"Content-Type": "application/json",
+				const response = await fetch(
+					`${process.env.NEXT_PUBLIC_SERVER_URL}/settings`,
+					{
+						method: "PATCH",
+						headers: {
+							Authorization: `Bearer ${session.access_token}`,
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify(newSettings),
 					},
-					body: JSON.stringify(newSettings),
-				});
-				
+				);
+
 				if (!response.ok) {
 					console.error("Failed to save settings to API:", response.statusText);
 				}

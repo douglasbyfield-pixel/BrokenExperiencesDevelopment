@@ -3,137 +3,151 @@ import { createClient } from "@web/lib/supabase/client";
 import type { BadgeData } from "./badge-card";
 
 interface BadgesResponse {
-  success: boolean;
-  data?: BadgeData[];
-  error?: string;
+	success: boolean;
+	data?: BadgeData[];
+	error?: string;
 }
 
 interface ObtainedBadgesResponse {
-  success: boolean;
-  data?: BadgeData[];
-  error?: string;
+	success: boolean;
+	data?: BadgeData[];
+	error?: string;
 }
 
 export function useBadges(userId: string | undefined) {
-  return useQuery({
-    queryKey: ["badges", userId],
-    queryFn: async (): Promise<BadgeData[]> => {
-      if (!userId) {
-        throw new Error("User ID is required");
-      }
+	return useQuery({
+		queryKey: ["badges", userId],
+		queryFn: async (): Promise<BadgeData[]> => {
+			if (!userId) {
+				throw new Error("User ID is required");
+			}
 
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.access_token) {
-        throw new Error("Authentication required");
-      }
+			const supabase = createClient();
+			const {
+				data: { session },
+			} = await supabase.auth.getSession();
 
-      const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
-      const response = await fetch(`${apiUrl}/achievements`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+			if (!session?.access_token) {
+				throw new Error("Authentication required");
+			}
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch badges: ${response.statusText}`);
-      }
+			const apiUrl =
+				process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
+			const response = await fetch(`${apiUrl}/achievements`, {
+				method: "GET",
+				headers: {
+					Authorization: `Bearer ${session.access_token}`,
+					"Content-Type": "application/json",
+				},
+			});
 
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || "Failed to fetch badges");
-      }
+			if (!response.ok) {
+				throw new Error(`Failed to fetch badges: ${response.statusText}`);
+			}
 
-      return result.data || [];
-    },
-    enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
-  });
+			const result = await response.json();
+			if (!result.success) {
+				throw new Error(result.error || "Failed to fetch badges");
+			}
+
+			return result.data || [];
+		},
+		enabled: !!userId,
+		staleTime: 5 * 60 * 1000, // 5 minutes
+		retry: 2,
+	});
 }
 
 export function useObtainedBadges(userId: string | undefined) {
-  return useQuery({
-    queryKey: ["badges", "obtained", userId],
-    queryFn: async (): Promise<BadgeData[]> => {
-      if (!userId) {
-        throw new Error("User ID is required");
-      }
+	return useQuery({
+		queryKey: ["badges", "obtained", userId],
+		queryFn: async (): Promise<BadgeData[]> => {
+			if (!userId) {
+				throw new Error("User ID is required");
+			}
 
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.access_token) {
-        throw new Error("Authentication required");
-      }
+			const supabase = createClient();
+			const {
+				data: { session },
+			} = await supabase.auth.getSession();
 
-      const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
-      const response = await fetch(`${apiUrl}/achievements/obtained`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+			if (!session?.access_token) {
+				throw new Error("Authentication required");
+			}
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch obtained badges: ${response.statusText}`);
-      }
+			const apiUrl =
+				process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
+			const response = await fetch(`${apiUrl}/achievements/obtained`, {
+				method: "GET",
+				headers: {
+					Authorization: `Bearer ${session.access_token}`,
+					"Content-Type": "application/json",
+				},
+			});
 
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || "Failed to fetch obtained badges");
-      }
+			if (!response.ok) {
+				throw new Error(
+					`Failed to fetch obtained badges: ${response.statusText}`,
+				);
+			}
 
-      return result.data || [];
-    },
-    enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
-  });
+			const result = await response.json();
+			if (!result.success) {
+				throw new Error(result.error || "Failed to fetch obtained badges");
+			}
+
+			return result.data || [];
+		},
+		enabled: !!userId,
+		staleTime: 5 * 60 * 1000, // 5 minutes
+		retry: 2,
+	});
 }
 
-export function useBadgesByCategory(userId: string | undefined, category: string) {
-  return useQuery({
-    queryKey: ["badges", "category", category, userId],
-    queryFn: async (): Promise<BadgeData[]> => {
-      if (!userId) {
-        throw new Error("User ID is required");
-      }
+export function useBadgesByCategory(
+	userId: string | undefined,
+	category: string,
+) {
+	return useQuery({
+		queryKey: ["badges", "category", category, userId],
+		queryFn: async (): Promise<BadgeData[]> => {
+			if (!userId) {
+				throw new Error("User ID is required");
+			}
 
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.access_token) {
-        throw new Error("Authentication required");
-      }
+			const supabase = createClient();
+			const {
+				data: { session },
+			} = await supabase.auth.getSession();
 
-      const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
-      const response = await fetch(`${apiUrl}/achievements`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+			if (!session?.access_token) {
+				throw new Error("Authentication required");
+			}
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch badges: ${response.statusText}`);
-      }
+			const apiUrl =
+				process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
+			const response = await fetch(`${apiUrl}/achievements`, {
+				method: "GET",
+				headers: {
+					Authorization: `Bearer ${session.access_token}`,
+					"Content-Type": "application/json",
+				},
+			});
 
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || "Failed to fetch badges");
-      }
+			if (!response.ok) {
+				throw new Error(`Failed to fetch badges: ${response.statusText}`);
+			}
 
-      const badges = result.data || [];
-      return badges.filter((badge: BadgeData) => badge.category === category);
-    },
-    enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
-  });
+			const result = await response.json();
+			if (!result.success) {
+				throw new Error(result.error || "Failed to fetch badges");
+			}
+
+			const badges = result.data || [];
+			return badges.filter((badge: BadgeData) => badge.category === category);
+		},
+		enabled: !!userId,
+		staleTime: 5 * 60 * 1000, // 5 minutes
+		retry: 2,
+	});
 }

@@ -1,15 +1,15 @@
-import { createFileRoute, Outlet } from '@tanstack/react-router'
-import { MobileNavigation } from '@/components/mobile-navigation'
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { MobileNavigation } from "@/components/mobile-navigation";
 
-export const Route = createFileRoute('/_protected')({
-  component: RouteComponent,
-})
+export const Route = createFileRoute("/_protected")({
+	component: RouteComponent,
+});
 
 function RouteComponent() {
-  return (
-    <div className="pb-16">
-      <Outlet />
-      <MobileNavigation />
-    </div>
-  )
+	return (
+		<div className="pb-16">
+			<Outlet />
+			<MobileNavigation />
+		</div>
+	);
 }

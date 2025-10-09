@@ -1,7 +1,7 @@
 "use client";
 
-import { useAuth } from "@web/components/auth-provider";
 import { AddToHomeScreen } from "@web/components/add-to-home-screen";
+import { useAuth } from "@web/components/auth-provider";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -18,13 +18,14 @@ export default function CoreLayout(props: LayoutProps<"/">) {
 
 	// Register service worker for push notifications
 	useEffect(() => {
-		if ('serviceWorker' in navigator && user) {
-			navigator.serviceWorker.register('/sw.js')
+		if ("serviceWorker" in navigator && user) {
+			navigator.serviceWorker
+				.register("/sw.js")
 				.then((registration) => {
-					console.log('Service Worker registered:', registration);
+					console.log("Service Worker registered:", registration);
 				})
 				.catch((error) => {
-					console.error('Service Worker registration failed:', error);
+					console.error("Service Worker registration failed:", error);
 				});
 		}
 	}, [user]);

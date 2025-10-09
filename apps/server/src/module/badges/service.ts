@@ -26,7 +26,9 @@ export class BadgesService {
 	/**
 	 * Get all badges with user's achievement status
 	 */
-	static async getBadgesWithUserStatus(userId: string): Promise<BadgeWithStatus[]> {
+	static async getBadgesWithUserStatus(
+		userId: string,
+	): Promise<BadgeWithStatus[]> {
 		// Get all achievements
 		const allAchievements = await db.query.achievements.findMany({
 			orderBy: (achievements, { asc }) => [
@@ -42,13 +44,13 @@ export class BadgesService {
 
 		// Create a map of user achievements for quick lookup
 		const userAchievementsMap = new Map(
-			userAchievementsList.map(ua => [ua.achievementId, ua])
+			userAchievementsList.map((ua) => [ua.achievementId, ua]),
 		);
 
 		// Combine achievements with user status
-		return allAchievements.map(achievement => {
+		return allAchievements.map((achievement) => {
 			const userAchievement = userAchievementsMap.get(achievement.id);
-			
+
 			return {
 				id: achievement.id,
 				name: achievement.name,
@@ -71,13 +73,13 @@ export class BadgesService {
 		});
 	}
 
-
 	/**
 	 * Get user's obtained badges only
 	 */
-	static async getUserObtainedBadges(userId: string): Promise<BadgeWithStatus[]> {
-		const allBadges = await this.getBadgesWithUserStatus(userId);
-		return allBadges.filter(badge => badge.isObtained);
+	static async getUserObtainedBadges(
+		userId: string,
+	): Promise<BadgeWithStatus[]> {
+		const allBadges = await BadgesService.getBadgesWithUserStatus(userId);
+		return allBadges.filter((badge) => badge.isObtained);
 	}
-
 }

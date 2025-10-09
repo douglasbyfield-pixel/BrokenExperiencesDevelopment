@@ -1,13 +1,16 @@
 import { db } from "@server/db";
 import * as schema from "@server/db/schema/auth";
 import { env } from "@server/env";
+import { SettingsService } from "@server/module/settings/service";
 import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { SettingsService } from "@server/module/settings/service";
 
-const trustedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app,https://brokenexperiences-dev.vercel.app")
+const trustedOrigins = (
+	process.env.CORS_ORIGINS ??
+	"http://localhost:3000,http://localhost:3001,https://brokenexperiences.vercel.app,https://brokenexperiences-dev.vercel.app"
+)
 	.split(",")
-	.map(s => s.trim())
+	.map((s) => s.trim())
 	.filter(Boolean);
 
 export const auth = betterAuth<BetterAuthOptions>({
@@ -47,14 +50,23 @@ export const auth = betterAuth<BetterAuthOptions>({
 		after: async (ctx: any) => {
 			try {
 				// Create default settings for new users on sign-up
-				if ((ctx.path === "/sign-up/email" || ctx.path?.includes("/callback")) && ctx.user?.id) {
-					console.log("🎯 Creating default settings for new user:", ctx.user.id);
+				if (
+					(ctx.path === "/sign-up/email" || ctx.path?.includes("/callback")) &&
+					ctx.user?.id
+				) {
+					console.log(
+						"🎯 Creating default settings for new user:",
+						ctx.user.id,
+					);
 					await SettingsService.createDefaultSettings(ctx.user.id);
 					console.log("✅ Default settings created successfully");
 				}
-				
+
 				// Ensure settings exist for existing users on sign-in
-				if ((ctx.path === "/sign-in/email" || ctx.path?.includes("/callback")) && ctx.user?.id) {
+				if (
+					(ctx.path === "/sign-in/email" || ctx.path?.includes("/callback")) &&
+					ctx.user?.id
+				) {
 					console.log("🔍 Checking settings for user:", ctx.user.id);
 					await SettingsService.getUserSettings(ctx.user.id);
 					console.log("✅ User settings verified/created");

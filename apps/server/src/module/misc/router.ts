@@ -7,7 +7,7 @@ export const miscRouter = new Elysia({
 	.get("/", () => ({
 		status: "ok",
 		message: "Miscellaneous endpoints",
-		endpoints: ["/health", "/version"]
+		endpoints: ["/health", "/version"],
 	}))
 	.get("/health", () => {
 		return {

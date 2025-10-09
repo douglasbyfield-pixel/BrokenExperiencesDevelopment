@@ -1,16 +1,20 @@
 import * as p from "drizzle-orm/pg-core";
 
-export const user = p.pgTable("user", {
-	id: p.text().primaryKey(),
-	name: p.text().notNull(),
-	email: p.text().notNull().unique(),
-	emailVerified: p.boolean().notNull().default(false),
-	image: p.text(),
-	createdAt: p.timestamp().notNull().defaultNow(),
-	updatedAt: p.timestamp().notNull().defaultNow(),
-}, (table) => ({
-	userIdIdx: p.index("idx_user_id").on(table.id),
-}));
+export const user = p.pgTable(
+	"user",
+	{
+		id: p.text().primaryKey(),
+		name: p.text().notNull(),
+		email: p.text().notNull().unique(),
+		emailVerified: p.boolean().notNull().default(false),
+		image: p.text(),
+		createdAt: p.timestamp().notNull().defaultNow(),
+		updatedAt: p.timestamp().notNull().defaultNow(),
+	},
+	(table) => ({
+		userIdIdx: p.index("idx_user_id").on(table.id),
+	}),
+);
 
 export const session = p.pgTable("session", {
 	id: p.text().primaryKey(),

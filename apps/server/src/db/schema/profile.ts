@@ -20,7 +20,10 @@ export const userProfile = p.pgTable(
 		// Gamification fields
 		level: p.integer("level").notNull().default(1),
 		total_experience: p.integer("total_experience").notNull().default(0),
-		experience_to_next_level: p.integer("experience_to_next_level").notNull().default(100),
+		experience_to_next_level: p
+			.integer("experience_to_next_level")
+			.notNull()
+			.default(100),
 
 		created_at: p.timestamp().notNull().defaultNow(),
 		updated_at: p.timestamp().notNull().defaultNow(),
