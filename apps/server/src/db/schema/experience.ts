@@ -8,16 +8,14 @@ import { experienceFix } from "./experience-fix";
 import { experienceVerification } from "./experience-verification";
 
 export const ExperienceStatusEnum = {
-	pending: "pending",                    // Initial state when experience is reported
+	open: "open",                          // Initial state when experience is reported
 	claimed: "claimed",                    // Someone has claimed the experience
 	in_progress: "in_progress",            // Experience is being worked on
-	proof_uploaded: "proof_uploaded",      // Proof of fix has been uploaded
-	pending_creator_confirmation: "pending_creator_confirmation", // Waiting for original reporter to confirm
-	resolved_pending: "resolved_pending",  // Resolved but needs community verification
-	verified_resolved: "verified_resolved", // Community has verified it's resolved
-	verified_still_there: "verified_still_there", // Community has verified issue still exists
-	closed: "closed",                      // Fully resolved and closed
+	fixed: "fixed",                        // Problem is solved, proof uploaded and verified
+	verified: "verified",                  // Community has verified the fix
+	closed: "closed",                      // Fully processed and archived
 	disputed: "disputed",                  // There's a dispute about the resolution
+    abandoned: "abandoned",                // The experience was abandoned
 } as const;
 
 export const ExperiencePriorityEnum = {
@@ -48,7 +46,7 @@ export const experience = p.pgTable(
 			.varchar()
 			.notNull()
 			.$type<ExperienceStatus>()
-			.default(ExperienceStatusEnum.pending),
+			.default(ExperienceStatusEnum.open),
 		priority: p
 			.varchar()
 			.notNull()
