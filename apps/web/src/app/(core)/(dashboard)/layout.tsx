@@ -2,6 +2,7 @@
 
 import { BottomNavigation } from "@web/components/bottom-navigation";
 import { OfflineBanner } from "@web/components/offline-banner";
+import { CameraProvider } from "@web/context/CameraContext";
 import { SearchProvider } from "@web/context/SearchContext";
 import { useExperiences } from "@web/hooks/use-experiences";
 import { eden } from "@web/lib/eden";
@@ -47,32 +48,34 @@ export default function HomeLayout({
 	}, []);
 
 	return (
-		<SearchProvider onSearch={handleSearch}>
-			<OfflineBanner />
-			<div className="mx-0 min-h-screen bg-white md:mx-24">
-				{/* Keep original mobile nav for larger screens/special features */}
-				<MobileNav
-					stats={stats}
-					userStats={null}
-					trendingCategories={trendingCategories}
-				/>
-				<div className="mx-auto min-h-screen max-w-screen-xl">
-					<div className="flex min-h-screen">
-						<LeftSidebar />
-						<main className="min-w-0 flex-1 pb-16 lg:border-gray-200 lg:border-x lg:pb-0">
-							{children}
-						</main>
-						<RightSidebar
-							stats={stats}
-							userStats={null}
-							trendingCategories={trendingCategories}
-							recentExperiences={experiences}
-						/>
+		<CameraProvider>
+			<SearchProvider onSearch={handleSearch}>
+				<OfflineBanner />
+				<div className="mx-0 min-h-screen bg-white md:mx-24">
+					{/* Keep original mobile nav for larger screens/special features */}
+					<MobileNav
+						stats={stats}
+						userStats={null}
+						trendingCategories={trendingCategories}
+					/>
+					<div className="mx-auto min-h-screen max-w-screen-xl">
+						<div className="flex min-h-screen">
+							<LeftSidebar />
+							<main className="min-w-0 flex-1 pb-16 lg:border-gray-200 lg:border-x lg:pb-0">
+								{children}
+							</main>
+							<RightSidebar
+								stats={stats}
+								userStats={null}
+								trendingCategories={trendingCategories}
+								recentExperiences={experiences}
+							/>
+						</div>
 					</div>
+					{/* New Instagram-style bottom navigation */}
+					<BottomNavigation />
 				</div>
-				{/* New Instagram-style bottom navigation */}
-				<BottomNavigation />
-			</div>
-		</SearchProvider>
+			</SearchProvider>
+		</CameraProvider>
 	);
 }

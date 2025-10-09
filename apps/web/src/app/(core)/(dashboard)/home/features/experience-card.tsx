@@ -409,10 +409,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 							</span>
 						</div>
 
-						{/* Title - with proper truncation to prevent clashing */}
-						<h3 className="mb-2 truncate pr-16 font-semibold text-gray-900 text-xl leading-tight">
+						{/* Title hidden per user request */}
+						{/* <h3 className="mb-2 truncate pr-16 font-semibold text-gray-900 text-xl leading-tight">
 							{experience.title}
-						</h3>
+						</h3> */}
 
 						{/* Status editing section - only show when editing */}
 						{isEditingStatus && (

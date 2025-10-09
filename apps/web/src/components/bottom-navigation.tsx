@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@web/components/auth-provider";
+import { useCamera } from "@web/context/CameraContext";
 import { Home, MapPin, Search, Trophy, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -44,6 +45,7 @@ const navItems: NavItem[] = [
 export function BottomNavigation() {
 	const pathname = usePathname();
 	const { user } = useAuth();
+	const { isCameraActive } = useCamera();
 
 	const isActive = (href: string) => {
 		if (href === "/home") {
@@ -51,6 +53,11 @@ export function BottomNavigation() {
 		}
 		return pathname === href || pathname.startsWith(href + "/");
 	};
+
+	// Hide bottom navigation when camera is active
+	if (isCameraActive) {
+		return null;
+	}
 
 	return (
 		<div className="fixed right-0 bottom-0 left-0 z-40 lg:hidden">

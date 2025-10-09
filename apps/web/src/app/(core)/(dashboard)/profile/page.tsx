@@ -52,72 +52,67 @@ export default function ProfilePage() {
 		if (user) {
 			const fetchUserStats = async () => {
 				try {
-					// Optimized: Use user stats endpoint instead of fetching all experiences
 					console.log("🚀 Fetching user stats for profile...");
-					const userStatsResult = await eden.stats.user.get();
+					
+					const supabase = createClient();
+					const {
+						data: { session },
+					} = await supabase.auth.getSession();
 
-					if (userStatsResult.data) {
-						console.log("✅ User stats loaded:", userStatsResult.data);
-						setUserStats(userStatsResult.data);
+					if (!session?.user?.id) {
 						setLoadingStats(false);
-					} else {
-						// If user stats endpoint doesn't exist, fall back to optimized experience filtering
-						console.log(
-							"📊 Falling back to experience filtering with pagination...",
-						);
+						return;
+					}
 
-						// Fetch only limited experiences for fallback calculation
-						const userExperiences = await eden.experience.get({
-							$query: {
-								limit: 1000, // Reasonable limit to prevent overwhelming the client
+					const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
+					
+					// Fetch both data sources in parallel for accuracy
+					const [experienceStatsResult, scoringStatsResult] = await Promise.allSettled([
+						// Get actual report counts from experience table
+						eden.stats.user.get(),
+						// Get impact score from scoring system
+						fetch(`${apiUrl}/scoring/user/${session.user.id}`, {
+							headers: {
+								Authorization: `Bearer ${session.access_token}`,
+								"Content-Type": "application/json",
 							},
-						});
+						})
+					]);
 
-						if (userExperiences.data) {
-							// Filter by user email (still needed if backend doesn't support user filtering)
-							const filteredUserExperiences = userExperiences.data.filter(
-								(exp) => exp.reportedBy?.email === user.email,
-							);
+					let experienceStats = { totalReports: 0, resolvedReports: 0, impactScore: 0 };
+					let impactScore = 0;
 
-							// Calculate stats efficiently
-							const totalReports = filteredUserExperiences.length;
-							const resolvedReports = filteredUserExperiences.filter(
-								(exp) => exp.status === "resolved",
-							).length;
-							const inProgressReports = filteredUserExperiences.filter(
-								(exp) => exp.status === "in_progress",
-							).length;
-							const pendingReports = filteredUserExperiences.filter(
-								(exp) => exp.status === "pending",
-							).length;
+					// Process experience stats (actual reports/resolved counts)
+					if (experienceStatsResult.status === 'fulfilled' && experienceStatsResult.value.data) {
+						experienceStats = experienceStatsResult.value.data;
+						console.log("✅ Experience stats loaded:", experienceStats);
+					}
 
-							// Calculate impact score
-							const impactScore = totalReports * 10 + resolvedReports * 25;
-
-							setUserStats({
-								totalReports,
-								resolvedReports,
-								inProgressReports: inProgressReports + pendingReports,
-								impactScore,
-							});
-							setLoadingStats(false);
-						} else {
-							setUserStats({
-								totalReports: 0,
-								resolvedReports: 0,
-								inProgressReports: 0,
-								impactScore: 0,
-							});
-							setLoadingStats(false);
+					// Process scoring stats (impact score from leaderboard system)
+					if (scoringStatsResult.status === 'fulfilled') {
+						const response = scoringStatsResult.value;
+						if (response.ok) {
+							const result = await response.json();
+							if (result.success && result.data) {
+								impactScore = result.data.totalPoints || 0;
+								console.log("✅ Scoring data loaded - Impact Score:", impactScore);
+							}
 						}
 					}
+
+					// Combine the data: use experience stats for reports/resolved, scoring for impact
+					setUserStats({
+						totalReports: experienceStats.totalReports || 0,
+						resolvedReports: experienceStats.resolvedReports || 0,
+						impactScore: impactScore || experienceStats.impactScore || 0, // Prefer scoring system impact score
+					});
+
 				} catch (error) {
 					console.error("Failed to fetch user stats:", error);
 					// Fallback to zero stats on error
 					setUserStats({
 						totalReports: 0,
 						resolvedReports: 0,
-						inProgressReports: 0,
 						impactScore: 0,
 					});
 				} finally {
@@ -338,7 +333,11 @@ export default function ProfilePage() {
 						<p className="truncate text-gray-500 text-sm">{user.email}</p>
 						<div className="mt-2 flex items-center text-gray-400 text-sm">
 							<Calendar className="mr-1 h-3 w-3" />
-							Member since {new Date(user.created_at).toLocaleDateString()}
+							Member since {new Date(user.created_at).toLocaleDateString('en-US', { 
+								year: 'numeric', 
+								month: 'long', 
+								day: 'numeric' 
+							})}
 						</div>
 					</div>
 				</div>

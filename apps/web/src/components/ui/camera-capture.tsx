@@ -1,5 +1,6 @@
 "use client";
 
+import { useCamera } from "@web/context/CameraContext";
 import { Camera, X } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -14,6 +15,7 @@ export function CameraCapture({
 	onClose,
 	isOpen,
 }: CameraCaptureProps) {
+	const { setIsCameraActive } = useCamera();
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [stream, setStream] = useState<MediaStream | null>(null);
@@ -29,14 +31,16 @@ export function CameraCapture({
 		}
 	}, [stream]);
 
-	// Start camera when modal opens
+	// Start camera when modal opens and update camera context
 	useEffect(() => {
 		if (isOpen) {
 			startCamera();
+			setIsCameraActive(true);
 		} else {
 			stopCamera();
+			setIsCameraActive(false);
 		}
-	}, [isOpen]);
+	}, [isOpen, setIsCameraActive]);
 
 	const startCamera = async () => {
 		try {
@@ -106,6 +110,7 @@ export function CameraCapture({
 
 	const handleClose = () => {
 		stopCamera();
+		setIsCameraActive(false);
 		// Cleanup image URLs to prevent memory leaks
 		capturedImages.forEach((url) => URL.revokeObjectURL(url));
 		setCapturedImages([]);
