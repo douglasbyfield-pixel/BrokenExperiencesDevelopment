@@ -1,10 +1,11 @@
-import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
+import { user } from "./auth";
 
 export const userSettings = pgTable("user_settings", {
 	id: uuid("id").defaultRandom().primaryKey(),
-	userId: uuid("user_id").notNull().unique(),
+	userId: text("user_id").notNull().unique().references(() => user.id, { onDelete: "cascade" }),
 
 	// Notifications settings
 	emailNotifications: boolean("email_notifications").default(true),
@@ -24,6 +25,10 @@ export const userSettings = pgTable("user_settings", {
 
 	// App experience settings
 	pwaInstallPromptSeen: boolean("pwa_install_prompt_seen").default(false),
+
+	// Proximity settings
+	proximityNotifications: boolean("proximity_notifications").default(true),
+	proximityRadius: numeric("proximity_radius", { precision: 10, scale: 2 }).default("5.0"),
 
 	createdAt: timestamp("created_at").defaultNow(),
 	updatedAt: timestamp("updated_at").defaultNow(),

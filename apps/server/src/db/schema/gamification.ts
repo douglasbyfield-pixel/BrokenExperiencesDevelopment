@@ -6,11 +6,12 @@ import {
 	timestamp,
 	uuid,
 } from "drizzle-orm/pg-core";
+import { user } from "./auth";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const userAchievements = pgTable("user_achievements", {
 	id: uuid("id").defaultRandom().primaryKey(),
-	userId: uuid("user_id").notNull(),
+	userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
 	achievementId: text("achievement_id").notNull(),
 	unlockedAt: timestamp("unlocked_at").defaultNow(),
 	progress: integer("progress").default(0),

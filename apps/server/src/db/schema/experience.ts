@@ -4,11 +4,18 @@ import type { ExperiencePriority, ExperienceStatus } from "../../types";
 import { user } from "./auth";
 import { category } from "./category";
 import { experienceImage } from "./experience-image";
+import { experienceFix } from "./experience-fix";
+import { experienceVerification } from "./experience-verification";
 
 export const ExperienceStatusEnum = {
-	pending: "pending",
-	resolved: "resolved",
-	in_progress: "in_progress",
+	pending: "pending",                    // Initial state when experience is reported
+	claimed: "claimed",                    // Someone has claimed the experience
+	in_progress: "in_progress",            // Experience is being worked on
+	fixed: "fixed",                        // Problem is solved, proof uploaded and verified
+	verified: "verified",                  // Community has verified the fix
+	closed: "closed",                      // Fully processed and archived
+	disputed: "disputed",                  // There's a dispute about the resolution
+    abandoned: "abandoned",                // The experience was abandoned
 } as const;
 
 export const ExperiencePriorityEnum = {
@@ -50,6 +57,10 @@ export const experience = p.pgTable(
 		updatedAt: p.timestamp().notNull().defaultNow(),
 		upvotes: p.integer().notNull().default(0),
 		downvotes: p.integer().notNull().default(0),
+		
+		// Verification requirements
+		requiredVerifications: p.integer().notNull().default(2), // How many nearby users need to verify
+		verificationRadius: p.decimal().notNull().default("100"), // Radius in meters for verification
 	},
 	(table) => ({
 		// Performance indexes
@@ -65,6 +76,7 @@ export const experience = p.pgTable(
 		locationIdx: p
 			.index("idx_experience_location")
 			.on(table.latitude, table.longitude),
+		
 	}),
 );
 
@@ -78,4 +90,6 @@ export const experienceRelations = relations(experience, ({ one, many }) => ({
 		references: [category.id],
 	}),
 	experienceImages: many(experienceImage),
+	fixes: many(experienceFix),
+	verifications: many(experienceVerification),
 }));
