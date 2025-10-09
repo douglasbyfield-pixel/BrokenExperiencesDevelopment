@@ -1,0 +1,23 @@
+{
+  "name": "stress-tests",
+  "version": "1.0.0",
+  "description": "Playwright stress tests for Broken Experiences platform",
+  "scripts": {
+    "test": "playwright test",
+    "test:light": "playwright test --project=light-stress",
+    "test:medium": "playwright test --project=medium-stress",
+    "test:heavy": "playwright test --project=heavy-stress",
+    "test:mobile": "playwright test --project=mobile-stress",
+    "test:api": "playwright test --project=api-stress",
+    "test:all": "playwright test --project=light-stress --project=medium-stress --project=heavy-stress",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "install-browsers": "playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "dependencies": {
+    "fake-useragent": "^1.0.1"
+  }
+}
