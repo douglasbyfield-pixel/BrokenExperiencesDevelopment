@@ -267,33 +267,22 @@ export function useVoteExperience() {
             const currentVote = exp.userVote;
             const currentUpvotes = exp.upvotes || 0;
 
-            // Calculate new vote count
-            let newUpvotes = currentUpvotes;
-            if (currentVote === true && vote === 'up') {
-              // Unvote up
-              newUpvotes = Math.max(0, currentUpvotes - 1);
-            } else if (currentVote === false && vote === 'up') {
-              // Change from down to up
-              newUpvotes = currentUpvotes + 2;
-            } else if (currentVote === null && vote === 'up') {
-              // New upvote
-              newUpvotes = currentUpvotes + 1;
-            } else if (currentVote === true && vote === 'down') {
-              // Change from up to down
-              newUpvotes = Math.max(0, currentUpvotes - 1);
-            } else if (currentVote === false && vote === 'down') {
-              // Unvote down
-              newUpvotes = currentUpvotes;
-            } else if (currentVote === null && vote === 'down') {
-              // New downvote
-              newUpvotes = currentUpvotes;
+            // Simple toggle logic: true = endorsed, null = not endorsed
+            if (currentVote === true) {
+              // User is removing their endorsement
+              return {
+                ...exp,
+                upvotes: Math.max(0, currentUpvotes - 1),
+                userVote: null,
+              };
+            } else {
+              // User is adding their endorsement (from null or false)
+              return {
+                ...exp,
+                upvotes: currentUpvotes + 1,
+                userVote: true,
+              };
             }
-
-            return {
-              ...exp,
-              upvotes: newUpvotes,
-              userVote: currentVote === (vote === 'up') ? null : (vote === 'up'),
-            };
           }
           return exp;
         });
@@ -302,7 +291,7 @@ export function useVoteExperience() {
       // Return a context object with the snapshotted value
       return { previousExperiences };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousExperiences) {
         context.previousExperiences.forEach(([queryKey, data]) => {

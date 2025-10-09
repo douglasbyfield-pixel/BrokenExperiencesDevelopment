@@ -22,6 +22,7 @@ export default function ProfilePage() {
 	const router = useRouter();
 	const { user, signOut, isLoading } = useAuth();
 	const [userStats, setUserStats] = useState<any>(null);
+	const [loadingStats, setLoadingStats] = useState(true);
 	const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 	const [notificationStatus, setNotificationStatus] = useState<'default' | 'denied' | 'granted'>('default');
 
@@ -47,38 +48,56 @@ export default function ProfilePage() {
 		if (user) {
 			const fetchUserStats = async () => {
 				try {
-					// Fetch all experiences and filter by user email since backend auth migration is pending
-					const allExperiences = await eden.experience.get({ $query: {} });
+					// Optimized: Use user stats endpoint instead of fetching all experiences
+					console.log('🚀 Fetching user stats for profile...');
+					const userStatsResult = await eden.stats.user.get();
 					
-					if (allExperiences.data) {
-						// Filter experiences by user email
-						const filteredUserExperiences = allExperiences.data.filter(
-							exp => exp.reportedBy?.email === user.email
-						);
-						
-						// Calculate real stats from user's experiences
-						const totalReports = filteredUserExperiences.length;
-						const resolvedReports = filteredUserExperiences.filter(exp => exp.status === 'resolved').length;
-						const inProgressReports = filteredUserExperiences.filter(exp => exp.status === 'in_progress').length;
-						const pendingReports = filteredUserExperiences.filter(exp => exp.status === 'pending').length;
-						
-						// Calculate impact score based on the backend formula
-						const impactScore = totalReports * 10 + resolvedReports * 25;
-						
-						setUserStats({
-							totalReports,
-							resolvedReports,
-							inProgressReports: inProgressReports + pendingReports,
-							impactScore
-						});
+					if (userStatsResult.data) {
+						console.log('✅ User stats loaded:', userStatsResult.data);
+						setUserStats(userStatsResult.data);
+						setLoadingStats(false);
 					} else {
-						// Fallback to zero stats if no data
-						setUserStats({
-							totalReports: 0,
-							resolvedReports: 0,
-							inProgressReports: 0,
-							impactScore: 0
+						// If user stats endpoint doesn't exist, fall back to optimized experience filtering
+						console.log('📊 Falling back to experience filtering with pagination...');
+						
+						// Fetch only limited experiences for fallback calculation
+						const userExperiences = await eden.experience.get({ 
+							$query: { 
+								limit: 1000 // Reasonable limit to prevent overwhelming the client
+							} 
 						});
+						
+						if (userExperiences.data) {
+							// Filter by user email (still needed if backend doesn't support user filtering)
+							const filteredUserExperiences = userExperiences.data.filter(
+								exp => exp.reportedBy?.email === user.email
+							);
+							
+							// Calculate stats efficiently
+							const totalReports = filteredUserExperiences.length;
+							const resolvedReports = filteredUserExperiences.filter(exp => exp.status === 'resolved').length;
+							const inProgressReports = filteredUserExperiences.filter(exp => exp.status === 'in_progress').length;
+							const pendingReports = filteredUserExperiences.filter(exp => exp.status === 'pending').length;
+							
+							// Calculate impact score
+							const impactScore = totalReports * 10 + resolvedReports * 25;
+							
+							setUserStats({
+								totalReports,
+								resolvedReports,
+								inProgressReports: inProgressReports + pendingReports,
+								impactScore
+							});
+							setLoadingStats(false);
+						} else {
+							setUserStats({
+								totalReports: 0,
+								resolvedReports: 0,
+								inProgressReports: 0,
+								impactScore: 0
+							});
+							setLoadingStats(false);
+						}
 					}
 				} catch (error) {
 					console.error("Failed to fetch user stats:", error);
@@ -89,6 +108,8 @@ export default function ProfilePage() {
 						inProgressReports: 0,
 						impactScore: 0
 					});
+				} finally {
+					setLoadingStats(false);
 				}
 			};
 
@@ -246,22 +267,38 @@ export default function ProfilePage() {
 				</div>
 
 				{/* Stats */}
-				{userStats && (
-					<div className="grid grid-cols-3 gap-6">
-						<div className="text-center">
-							<div className="text-2xl font-medium text-gray-900">{userStats.totalReports}</div>
-							<p className="text-sm text-gray-500 mt-1">Reports</p>
+				<div className="grid grid-cols-3 gap-6">
+					<div className="text-center">
+						<div className="text-2xl font-medium text-gray-900">
+							{loadingStats ? (
+								<div className="h-8 w-16 mx-auto bg-gray-200 animate-pulse rounded"></div>
+							) : (
+								userStats?.totalReports || 0
+							)}
 						</div>
-						<div className="text-center">
-							<div className="text-2xl font-medium text-gray-900">{userStats.resolvedReports}</div>
-							<p className="text-sm text-gray-500 mt-1">Resolved</p>
-						</div>
-						<div className="text-center">
-							<div className="text-2xl font-medium text-gray-900">{userStats.impactScore}</div>
-							<p className="text-sm text-gray-500 mt-1">Impact Score</p>
-						</div>
+						<p className="text-sm text-gray-500 mt-1">Reports</p>
 					</div>
-				)}
+					<div className="text-center">
+						<div className="text-2xl font-medium text-gray-900">
+							{loadingStats ? (
+								<div className="h-8 w-16 mx-auto bg-gray-200 animate-pulse rounded"></div>
+							) : (
+								userStats?.resolvedReports || 0
+							)}
+						</div>
+						<p className="text-sm text-gray-500 mt-1">Resolved</p>
+					</div>
+					<div className="text-center">
+						<div className="text-2xl font-medium text-gray-900">
+							{loadingStats ? (
+								<div className="h-8 w-16 mx-auto bg-gray-200 animate-pulse rounded"></div>
+							) : (
+								userStats?.impactScore || 0
+							)}
+						</div>
+						<p className="text-sm text-gray-500 mt-1">Impact Score</p>
+					</div>
+				</div>
 
 				{/* Notifications */}
 				<Card className="border-gray-200">

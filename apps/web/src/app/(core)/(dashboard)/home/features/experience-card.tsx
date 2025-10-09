@@ -169,7 +169,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		console.log('🗳️ Processing endorse vote...');
 		voteOnExperience({
 			experienceId: experience.id,
-			vote: isLiked ? 'down' : 'up' // Toggle between up and down
+			vote: 'up' // Always send 'up' - the hook handles the toggle logic
 		});
 
 		// Reset debouncing after 1 second
@@ -643,7 +643,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 												: 'text-gray-600 hover:text-green-600'
 										} ${(isExecuting || isVoteDebouncing) ? 'opacity-70 cursor-not-allowed' : ''}`}
 									>
-										<CheckCircle className={`h-5 w-5 transition-all duration-200 ${isLiked ? 'fill-current' : ''}`} />
+										<CheckCircle className={`h-5 w-5 transition-all duration-200 ${isLiked ? 'text-green-600' : 'text-gray-600'}`} />
 										{likeCount > 0 && (
 											<span className="text-sm font-medium">
 												{likeCount}

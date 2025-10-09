@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useSearchExperiences } from "@web/hooks/use-experiences";
+import { useSearchExperiences, useExperiences } from "@web/hooks/use-experiences";
 import { BackButton } from "@web/components/ui/back-button";
 import { Search, MapPin, TrendingUp, Clock } from "lucide-react";
 import ExperienceCard from "../home/features/experience-card";
@@ -94,16 +94,16 @@ function ExperienceFeed({
 		return (
 			<div className="p-8 text-center">
 				<p className="text-gray-600">No experiences found for "{searchTerm}"</p>
-				<p className="text-gray-500 text-sm mt-2">Try different keywords or browse all experiences</p>
+				<p className="text-gray-500 text-sm mt-2">Try different keywords or clear search to see all experiences</p>
 			</div>
 		);
 	}
 
-	if (experiences.length === 0) {
+	if (experiences.length === 0 && !searchTerm) {
 		return (
 			<div className="p-8 text-center">
-				<p className="text-gray-600">No experiences found</p>
-				<p className="text-gray-500 text-sm mt-2">Try searching for something or check back later</p>
+				<p className="text-gray-600">No experiences available</p>
+				<p className="text-gray-500 text-sm mt-2">Be the first to report an issue!</p>
 			</div>
 		);
 	}
@@ -128,8 +128,13 @@ export default function SearchPage() {
 	const [activeTab, setActiveTab] = useState<TabType>("new");
 	const [searchTerm, setSearchTerm] = useState("");
 
-	// Get experiences based on search term
-	const { data: searchResults = [], isLoading } = useSearchExperiences(searchTerm);
+	// Get all experiences when no search term, search results when there is a search term
+	const { data: allExperiences = [], isLoading: isLoadingAll } = useExperiences();
+	const { data: searchResults = [], isLoading: isLoadingSearch } = useSearchExperiences(searchTerm);
+	
+	// Use search results if there's a search term, otherwise show all experiences
+	const experiences = searchTerm ? searchResults : allExperiences;
+	const isLoading = searchTerm ? isLoadingSearch : isLoadingAll;
 
 	const tabs = [
 		{ id: "new" as TabType, label: "Latest", icon: Clock },
@@ -139,9 +144,9 @@ export default function SearchPage() {
 
 	// Sort experiences based on active tab
 	const sortedExperiences = React.useMemo(() => {
-		if (!searchResults.length) return [];
+		if (!experiences.length) return [];
 		
-		const sorted = [...searchResults];
+		const sorted = [...experiences];
 		
 		switch (activeTab) {
 			case "new":
@@ -158,7 +163,7 @@ export default function SearchPage() {
 			default:
 				return sorted;
 		}
-	}, [searchResults, activeTab]);
+	}, [experiences, activeTab]);
 
 	return (
 		<>
@@ -174,21 +179,19 @@ export default function SearchPage() {
 					<SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
 				</div>
 				
-				{/* Navigation Tabs - Only show if we have search results */}
-				{searchTerm && (
-					<div className="flex border-b border-gray-200 overflow-x-auto">
-						{tabs.map((tab) => (
-							<TabButton
-								key={tab.id}
-								active={activeTab === tab.id}
-								onClick={() => setActiveTab(tab.id)}
-								icon={tab.icon}
-							>
-								{tab.label}
-							</TabButton>
-						))}
-					</div>
-				)}
+				{/* Navigation Tabs - Always show since we now display all experiences by default */}
+				<div className="flex border-b border-gray-200 overflow-x-auto">
+					{tabs.map((tab) => (
+						<TabButton
+							key={tab.id}
+							active={activeTab === tab.id}
+							onClick={() => setActiveTab(tab.id)}
+							icon={tab.icon}
+						>
+							{tab.label}
+						</TabButton>
+					))}
+				</div>
 			</div>
 
 			{/* Content */}

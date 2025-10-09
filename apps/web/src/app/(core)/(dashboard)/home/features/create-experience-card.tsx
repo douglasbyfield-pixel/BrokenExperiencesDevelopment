@@ -571,60 +571,66 @@ export default function CreateExperienceCard({
 					</>
 				)}
 				
-				<div className="ml-6 flex items-center justify-between gap-2">
-					<div className="flex items-center space-x-1 sm:space-x-2 flex-shrink min-w-0">
-						{/* Photo upload button - Always visible */}
-						<label className="cursor-pointer flex-shrink-0">
-							<div className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
-								<Picture className="h-4 w-4" />
-							</div>
-							<input
-								type="file"
-								accept="image/*"
-								multiple
-								className="hidden"
-								onChange={handlePhotoUpload}
-							/>
-						</label>
-						
-						{/* Camera button for mobile devices */}
-						{isMobile && (
-							<button
-								type="button"
-								onClick={() => setIsCameraOpen(true)}
-								className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors flex-shrink-0"
-							>
-								<Camera className="h-4 w-4" />
-							</button>
-						)}
-						
-						{/* Location button - hide when location is granted */}
-						{!(location && locationPermission === 'granted') && (
-							<Tooltip>
-								<TooltipTrigger 
-									render={
-										<button 
-											type="button" 
-											onClick={handleGetLocation}
-											disabled={isGettingLocation || locationPermission === 'denied'}
-											className={`flex items-center justify-center w-7 h-7 rounded-full transition-colors disabled:opacity-50 flex-shrink-0 ${
-												locationPermission === 'denied'
-													? 'bg-red-50 text-red-600 border border-red-200 cursor-not-allowed'
-													: 'hover:bg-blue-50 text-blue-600 hover:text-blue-700 border border-blue-200'
-											}`}
-										>
-											<MapPin className="h-4 w-4" />
-										</button>
-									}
+				{/* Mobile and Desktop Layout */}
+				<div className="ml-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-2">
+					{/* Top row on mobile: Action buttons */}
+					<div className="flex items-center justify-between sm:justify-start">
+						<div className="flex items-center space-x-2">
+							{/* Photo upload button - Always visible */}
+							<label className="cursor-pointer flex-shrink-0">
+								<div className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors">
+									<Picture className="h-4 w-4" />
+								</div>
+								<input
+									type="file"
+									accept="image/*"
+									multiple
+									className="hidden"
+									onChange={handlePhotoUpload}
 								/>
-								<TooltipPanel>
-									{locationPermission === 'denied'
-										? 'Enable location to post'
-										: 'Get location...'
-									}
-								</TooltipPanel>
-							</Tooltip>
-						)}
+							</label>
+							
+							{/* Camera button for mobile devices */}
+							{isMobile && (
+								<button
+									type="button"
+									onClick={() => setIsCameraOpen(true)}
+									className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors flex-shrink-0"
+								>
+									<Camera className="h-4 w-4" />
+								</button>
+							)}
+							
+							{/* Location button - hide when location is granted */}
+							{!(location && locationPermission === 'granted') && (
+								<Tooltip>
+									<TooltipTrigger 
+										render={
+											<button 
+												type="button" 
+												onClick={handleGetLocation}
+												disabled={isGettingLocation || locationPermission === 'denied'}
+												className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors disabled:opacity-50 flex-shrink-0 ${
+													locationPermission === 'denied'
+														? 'bg-red-50 text-red-600 border border-red-200 cursor-not-allowed'
+														: 'hover:bg-blue-50 text-blue-600 hover:text-blue-700 border border-blue-200'
+												}`}
+											>
+												<MapPin className="h-4 w-4" />
+											</button>
+										}
+									/>
+									<TooltipPanel>
+										{locationPermission === 'denied'
+											? 'Enable location to post'
+											: 'Get location...'
+										}
+									</TooltipPanel>
+								</Tooltip>
+							)}
+						</div>
+						
+						{/* Category selector - always on right side on mobile */}
 						<form.Field name="categoryId">
 							{(field) => (
 								<>
@@ -632,7 +638,7 @@ export default function CreateExperienceCard({
 										value={field.state.value}
 										onValueChange={field.handleChange}
 									>
-										<SelectTrigger className="w-[80px] sm:w-[100px] h-7 text-xs border-gray-200 bg-white text-gray-700 flex-shrink-0">
+										<SelectTrigger className="w-[90px] sm:w-[100px] h-8 text-xs border-gray-200 bg-white text-gray-700 flex-shrink-0">
 											<SelectValue placeholder="Category" />
 										</SelectTrigger>
 										<SelectContent>
@@ -644,7 +650,7 @@ export default function CreateExperienceCard({
 										</SelectContent>
 									</Select>
 									{field.state.meta.errors.length > 0 && (
-										<p className="text-xs text-red-500">
+										<p className="text-xs text-red-500 mt-1">
 											{typeof field.state.meta.errors[0] === 'string' 
 												? field.state.meta.errors[0] 
 												: field.state.meta.errors[0]?.message || "Error"}
@@ -655,12 +661,13 @@ export default function CreateExperienceCard({
 						</form.Field>
 					</div>
 					
-					<div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+					{/* Bottom row on mobile: Action buttons */}
+					<div className="flex items-center justify-end gap-2 mt-2 sm:mt-0">
 						{isExpanded && (
 							<Button
 								type="button"
 								onClick={handleCancel}
-								className="rounded-full bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 px-2 sm:px-3 py-1 text-sm"
+								className="rounded-full bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 px-4 py-2 text-sm"
 							>
 								Cancel
 							</Button>
@@ -669,7 +676,7 @@ export default function CreateExperienceCard({
 							{(state) => (
 								<Button
 									type="submit"
-									className="rounded-full bg-black font-medium text-white text-sm hover:bg-gray-800 disabled:opacity-50 px-3 sm:px-4 py-1"
+									className="rounded-full bg-black font-medium text-white text-sm hover:bg-gray-800 disabled:opacity-50 px-6 py-2"
 									disabled={!state.canSubmit || state.isSubmitting || isExecuting || !location || !location.latitude || !location.longitude}
 								>
 									{state.isSubmitting || isExecuting ? "Posting..." : "Post"}
