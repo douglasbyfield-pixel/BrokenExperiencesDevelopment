@@ -8,7 +8,7 @@ import { experienceFix } from "./experience-fix";
 import { experienceVerification } from "./experience-verification";
 
 export const ExperienceStatusEnum = {
-	open: "open",                          // Initial state when experience is reported
+	pending: "pending",                    // Initial state when experience is reported
 	claimed: "claimed",                    // Someone has claimed the experience
 	in_progress: "in_progress",            // Experience is being worked on
 	fixed: "fixed",                        // Problem is solved, proof uploaded and verified
@@ -46,7 +46,7 @@ export const experience = p.pgTable(
 			.varchar()
 			.notNull()
 			.$type<ExperienceStatus>()
-			.default(ExperienceStatusEnum.open),
+			.default(ExperienceStatusEnum.pending),
 		priority: p
 			.varchar()
 			.notNull()
@@ -54,7 +54,6 @@ export const experience = p.pgTable(
 			.default(ExperiencePriorityEnum.medium),
 		createdAt: p.timestamp().notNull().defaultNow(),
 		resolvedAt: p.timestamp(),
-		closedAt: p.timestamp(),
 		updatedAt: p.timestamp().notNull().defaultNow(),
 		upvotes: p.integer().notNull().default(0),
 		downvotes: p.integer().notNull().default(0),
