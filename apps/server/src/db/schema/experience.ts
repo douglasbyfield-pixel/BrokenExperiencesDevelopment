@@ -4,11 +4,20 @@ import type { ExperiencePriority, ExperienceStatus } from "../../types";
 import { user } from "./auth";
 import { category } from "./category";
 import { experienceImage } from "./experience-image";
+import { experienceFix } from "./experience-fix";
+import { experienceVerification } from "./experience-verification";
 
 export const ExperienceStatusEnum = {
-	pending: "pending",
-	resolved: "resolved",
-	in_progress: "in_progress",
+	pending: "pending",                    // Initial state when experience is reported
+	claimed: "claimed",                    // Someone has claimed the experience
+	in_progress: "in_progress",            // Experience is being worked on
+	proof_uploaded: "proof_uploaded",      // Proof of fix has been uploaded
+	pending_creator_confirmation: "pending_creator_confirmation", // Waiting for original reporter to confirm
+	resolved_pending: "resolved_pending",  // Resolved but needs community verification
+	verified_resolved: "verified_resolved", // Community has verified it's resolved
+	verified_still_there: "verified_still_there", // Community has verified issue still exists
+	closed: "closed",                      // Fully resolved and closed
+	disputed: "disputed",                  // There's a dispute about the resolution
 } as const;
 
 export const ExperiencePriorityEnum = {
@@ -47,9 +56,14 @@ export const experience = p.pgTable(
 			.default(ExperiencePriorityEnum.medium),
 		createdAt: p.timestamp().notNull().defaultNow(),
 		resolvedAt: p.timestamp(),
+		closedAt: p.timestamp(),
 		updatedAt: p.timestamp().notNull().defaultNow(),
 		upvotes: p.integer().notNull().default(0),
 		downvotes: p.integer().notNull().default(0),
+		
+		// Verification requirements
+		requiredVerifications: p.integer().notNull().default(2), // How many nearby users need to verify
+		verificationRadius: p.decimal().notNull().default("100"), // Radius in meters for verification
 	},
 	(table) => ({
 		// Performance indexes
@@ -65,6 +79,7 @@ export const experience = p.pgTable(
 		locationIdx: p
 			.index("idx_experience_location")
 			.on(table.latitude, table.longitude),
+		
 	}),
 );
 
@@ -78,4 +93,6 @@ export const experienceRelations = relations(experience, ({ one, many }) => ({
 		references: [category.id],
 	}),
 	experienceImages: many(experienceImage),
+	fixes: many(experienceFix),
+	verifications: many(experienceVerification),
 }));
