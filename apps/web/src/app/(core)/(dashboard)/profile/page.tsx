@@ -7,6 +7,7 @@ import { Card, CardContent } from "@web/components/ui/card";
 import { useAuth } from "@web/components/auth-provider";
 import { eden } from "@web/lib/eden";
 import { getInitials } from "@web/lib/utils";
+import { createClient } from "@web/lib/supabase/client";
 import { 
 	Calendar, 
 	CheckCircle, 
@@ -128,7 +129,13 @@ export default function ProfilePage() {
 		}
 
 		try {
-			const permission = await Notification.requestPermission();
+			let permission = Notification.permission;
+			
+			// Only request permission if not already granted
+			if (permission === 'default') {
+				permission = await Notification.requestPermission();
+			}
+			
 			setNotificationStatus(permission);
 			
 			if (permission === 'granted') {
@@ -141,28 +148,51 @@ export default function ProfilePage() {
 					
 					if ('pushManager' in registration) {
 						try {
+							// First, unsubscribe any existing subscription
+							const existingSubscription = await registration.pushManager.getSubscription();
+							if (existingSubscription) {
+								console.log('🔄 Removing existing subscription before creating new one');
+								await existingSubscription.unsubscribe();
+							}
+							
+							// Create new subscription
 							const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 							const subscription = await registration.pushManager.subscribe({
 								userVisibleOnly: true,
 								applicationServerKey: vapidKey ? urlBase64ToUint8Array(vapidKey) : undefined
 							});
 							
+							console.log('✅ Created new push subscription');
+							
 							// Send subscription to server
-							await fetch('/api/notifications/subscribe', {
+							const supabase = createClient();
+							const { data: { session } } = await supabase.auth.getSession();
+							
+							const response = await fetch('/api/notifications/subscribe', {
 								method: 'POST',
 								headers: {
 									'Content-Type': 'application/json',
+									'Authorization': `Bearer ${session?.access_token}`,
 								},
 								body: JSON.stringify(subscription),
 							});
 							
-							// Show test notification
-							new Notification('Notifications Enabled!', {
-								body: 'You will now receive updates about your reported issues.',
-								icon: '/images/logo.png'
-							});
+							if (response.ok) {
+								console.log('✅ Subscription saved to server');
+								// Show test notification
+								new Notification('Notifications Enabled!', {
+									body: 'You will now receive updates about your reported issues.',
+									icon: '/images/logo.png'
+								});
+							} else {
+								console.error('❌ Failed to save subscription to server:', response.status);
+								throw new Error(`Server error: ${response.status}`);
+							}
 						} catch (pushError) {
-							console.error('Push subscription failed:', pushError);
+							console.error('❌ Push subscription failed:', pushError);
+							setNotificationsEnabled(false);
+							localStorage.setItem('notifications-enabled', 'false');
+							alert('Failed to enable push notifications. Please try again.');
 						}
 					}
 				}
@@ -171,25 +201,47 @@ export default function ProfilePage() {
 				localStorage.setItem('notifications-enabled', 'false');
 			}
 		} catch (error) {
-			console.error('Error requesting notification permission:', error);
+			console.error('❌ Error requesting notification permission:', error);
+			setNotificationsEnabled(false);
+			localStorage.setItem('notifications-enabled', 'false');
 		}
 	};
 
-	const disableNotifications = () => {
+	const disableNotifications = async () => {
 		setNotificationsEnabled(false);
 		localStorage.setItem('notifications-enabled', 'false');
 		
 		// Unsubscribe from push notifications
 		if ('serviceWorker' in navigator) {
-			navigator.serviceWorker.ready.then(registration => {
+			try {
+				const registration = await navigator.serviceWorker.ready;
 				if ('pushManager' in registration) {
-					registration.pushManager.getSubscription().then(subscription => {
-						if (subscription) {
-							subscription.unsubscribe();
+					const subscription = await registration.pushManager.getSubscription();
+					if (subscription) {
+						// Unsubscribe from browser
+						await subscription.unsubscribe();
+						console.log('✅ Unsubscribed from browser push notifications');
+						
+						// Notify server to remove subscription from database
+						const supabase = createClient();
+						const { data: { session } } = await supabase.auth.getSession();
+						
+						if (session) {
+							await fetch('/api/notifications/unsubscribe', {
+								method: 'POST',
+								headers: {
+									'Content-Type': 'application/json',
+									'Authorization': `Bearer ${session.access_token}`,
+								},
+								body: JSON.stringify({ endpoint: subscription.endpoint }),
+							});
+							console.log('✅ Removed subscription from server');
 						}
-					});
+					}
 				}
-			});
+			} catch (error) {
+				console.error('❌ Error disabling notifications:', error);
+			}
 		}
 	};
 

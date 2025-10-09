@@ -286,6 +286,41 @@ export const createExperience = async (options: {
 			// Don't fail the request if settings check fails
 		}
 
+		// Send proximity-based push notifications to nearby users
+		try {
+			console.log('📍 Triggering proximity notifications for experience:', createdExperience.experience.id);
+			
+			// Call the proximity notification API endpoint asynchronously
+			const apiUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+			const proximityUrl = `${apiUrl.startsWith('http') ? apiUrl : `https://${apiUrl}`}/api/notifications/proximity`;
+			
+			fetch(proximityUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'x-admin-token': process.env.ADMIN_TOKEN || '',
+				},
+				body: JSON.stringify({
+					experienceId: createdExperience.experience.id,
+					proximityRadius: 5, // 5km radius
+				}),
+			}).then(response => {
+				if (response.ok) {
+					response.json().then(data => {
+						console.log('✅ Proximity notifications triggered:', data);
+					});
+				} else {
+					console.error('❌ Failed to trigger proximity notifications:', response.status, response.statusText);
+				}
+			}).catch(error => {
+				console.error('❌ Error triggering proximity notifications:', error);
+			});
+			
+		} catch (error) {
+			console.error('❌ Failed to trigger proximity notifications:', error);
+			// Don't fail the request if proximity notifications fail
+		}
+
 		return createdExperience;
 	} catch (error) {
 		console.error("❌ Error in createExperience:", error);
