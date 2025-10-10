@@ -3,14 +3,21 @@ import { supabaseSession } from "@server/lib/auth/view";
 import Elysia from "elysia";
 import { experienceModel } from "./schema";
 import {
+	claimExperienceFix,
+	closeExperience,
 	createExperience,
 	deleteExperience,
 	getExperience,
+	getExperienceFixes,
 	getExperiences,
 	getMapMarkers,
 	getNearbyExperiences,
+	getUserFixes,
 	searchExperiences,
 	updateExperience,
+	updateFixStatus,
+	uploadFixProof,
+	verifyFix,
 	voteOnExperience,
 } from "./service";
 
@@ -281,6 +288,238 @@ export const experienceRouter = new Elysia({
 			detail: {
 				summary: "Delete a experience by id",
 				description: "Deletes a experience by id from the database.",
+			},
+		},
+	)
+	.post(
+		"/:experienceId/claim-fix",
+		async (ctx: any) => {
+			try {
+				const authHeader =
+					ctx.request.headers.get("authorization") ||
+					ctx.request.headers.get("Authorization");
+
+				const user = await verifySupabaseToken(authHeader || undefined);
+
+				if (!user) {
+					ctx.set.status = 401;
+					return {
+						error: "Authentication required",
+						message: "You must be logged in to claim a fix",
+					};
+				}
+
+				const result = await claimExperienceFix({
+					experienceId: ctx.params.experienceId,
+					userId: user.id,
+					claimNotes: ctx.body?.claimNotes,
+				});
+				return result;
+			} catch (error) {
+				console.error("❌ Error in POST /experience/:experienceId/claim-fix:", error);
+				ctx.set.status = 500;
+				return {
+					error: "Server error",
+					message: error instanceof Error ? error.message : "Unknown error",
+				};
+			}
+		},
+		{
+			params: "experience.identifier.params",
+			detail: {
+				summary: "Claim a fix for an experience",
+				description: "Claims a fix for an experience, changing its status to in_progress.",
+			},
+		},
+	)
+	.get(
+		"/:experienceId/fixes",
+		async ({ params }) => {
+			const result = await getExperienceFixes(params.experienceId);
+			return result;
+		},
+		{
+			params: "experience.identifier.params",
+			detail: {
+				summary: "Get fixes for an experience",
+				description: "Returns all fix attempts for a specific experience.",
+			},
+		},
+	)
+	.get(
+		"/fixes/user/:userId",
+		async ({ params }) => {
+			const result = await getUserFixes(params.userId);
+			return result;
+		},
+		{
+			detail: {
+				summary: "Get user's fixes",
+				description: "Returns all fixes claimed by a specific user.",
+			},
+		},
+	)
+	.put(
+		"/fixes/:fixId/status",
+		async (ctx: any) => {
+			try {
+				const authHeader =
+					ctx.request.headers.get("authorization") ||
+					ctx.request.headers.get("Authorization");
+
+				const user = await verifySupabaseToken(authHeader || undefined);
+
+				if (!user) {
+					ctx.set.status = 401;
+					return {
+						error: "Authentication required",
+						message: "You must be logged in to update fix status",
+					};
+				}
+
+				const result = await updateFixStatus({
+					fixId: ctx.params.fixId,
+					userId: user.id,
+					status: ctx.body.status,
+					fixNotes: ctx.body.fixNotes,
+				});
+				return result;
+			} catch (error) {
+				console.error("❌ Error in PUT /fixes/:fixId/status:", error);
+				ctx.set.status = 500;
+				return {
+					error: "Server error",
+					message: error instanceof Error ? error.message : "Unknown error",
+				};
+			}
+		},
+		{
+			detail: {
+				summary: "Update fix status",
+				description: "Updates the status of a fix (in_progress, completed, abandoned).",
+			},
+		},
+	)
+	.post(
+		"/fixes/:fixId/proof",
+		async (ctx: any) => {
+			try {
+				const authHeader =
+					ctx.request.headers.get("authorization") ||
+					ctx.request.headers.get("Authorization");
+
+				const user = await verifySupabaseToken(authHeader || undefined);
+
+				if (!user) {
+					ctx.set.status = 401;
+					return {
+						error: "Authentication required",
+						message: "You must be logged in to upload proof",
+					};
+				}
+
+				const result = await uploadFixProof({
+					fixId: ctx.params.fixId,
+					userId: user.id,
+					imageUrls: ctx.body.imageUrls || [],
+					notes: ctx.body.notes,
+				});
+				return result;
+			} catch (error) {
+				console.error("❌ Error in POST /fixes/:fixId/proof:", error);
+				ctx.set.status = 500;
+				return {
+					error: "Server error",
+					message: error instanceof Error ? error.message : "Unknown error",
+				};
+			}
+		},
+		{
+			detail: {
+				summary: "Upload fix proof",
+				description: "Uploads proof images and marks fix as completed.",
+			},
+		},
+	)
+	.post(
+		"/:experienceId/verify",
+		async (ctx: any) => {
+			try {
+				const authHeader =
+					ctx.request.headers.get("authorization") ||
+					ctx.request.headers.get("Authorization");
+
+				const user = await verifySupabaseToken(authHeader || undefined);
+
+				if (!user) {
+					ctx.set.status = 401;
+					return {
+						error: "Authentication required",
+						message: "You must be logged in to verify fixes",
+					};
+				}
+
+				const result = await verifyFix({
+					experienceId: ctx.params.experienceId,
+					userId: user.id,
+					verified: ctx.body.verified,
+					notes: ctx.body.notes,
+				});
+				return result;
+			} catch (error) {
+				console.error("❌ Error in POST /:experienceId/verify:", error);
+				ctx.set.status = 500;
+				return {
+					error: "Server error",
+					message: error instanceof Error ? error.message : "Unknown error",
+				};
+			}
+		},
+		{
+			params: "experience.identifier.params",
+			detail: {
+				summary: "Verify a fix",
+				description: "Community verification of a completed fix.",
+			},
+		},
+	)
+	.post(
+		"/:experienceId/close",
+		async (ctx: any) => {
+			try {
+				const authHeader =
+					ctx.request.headers.get("authorization") ||
+					ctx.request.headers.get("Authorization");
+
+				const user = await verifySupabaseToken(authHeader || undefined);
+
+				if (!user) {
+					ctx.set.status = 401;
+					return {
+						error: "Authentication required",
+						message: "You must be logged in to close experiences",
+					};
+				}
+
+				const result = await closeExperience({
+					experienceId: ctx.params.experienceId,
+					userId: user.id,
+				});
+				return result;
+			} catch (error) {
+				console.error("❌ Error in POST /:experienceId/close:", error);
+				ctx.set.status = 500;
+				return {
+					error: "Server error",
+					message: error instanceof Error ? error.message : "Unknown error",
+				};
+			}
+		},
+		{
+			params: "experience.identifier.params",
+			detail: {
+				summary: "Close an experience",
+				description: "Closes a verified experience.",
 			},
 		},
 	);

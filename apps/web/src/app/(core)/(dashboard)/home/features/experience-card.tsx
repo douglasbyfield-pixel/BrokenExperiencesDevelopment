@@ -26,7 +26,9 @@ import { Button } from "@web/components/ui/button";
 import { Dialog } from "@web/components/ui/dialog";
 import { ImageModal } from "@web/components/ui/image-modal";
 import { useVoteExperience } from "@web/hooks/use-experiences";
+import { useUserFixes } from "@web/hooks/use-fixes";
 import { useShare } from "@web/hooks/use-share";
+import { createClient } from "@web/lib/supabase/client";
 import type { Experience } from "@web/types";
 import {
 	AlertTriangle,
@@ -38,6 +40,7 @@ import {
 	MoreHorizontal,
 	Share,
 	Trash2,
+	Wrench,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAction } from "next-safe-action/hooks";
@@ -97,6 +100,20 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	// Use the actual experience data instead of local state for better sync
 	const isLiked = experience.userVote === true;
 	const likeCount = experience.upvotes || 0;
+
+	// Check if user has already claimed this issue
+	const { data: userFixes } = useUserFixes(user?.id);
+	const hasClaimedFix = userFixes?.some(fix => fix.experienceId === experience.id);
+
+	// Debug logging to see why claim button might not show
+	console.log("🔍 Claim button debug:", {
+		experienceId: experience.id,
+		status: experience.status,
+		hasClaimedFix,
+		userFixesCount: userFixes?.length,
+		userId: user?.id,
+		userFixesForThisExperience: userFixes?.filter(fix => fix.experienceId === experience.id)
+	});
 
 	// Debug logging for vote state
 	console.log("🔍 Experience vote state:", {
@@ -320,6 +337,59 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
 	const handleCardClick = () => {
 		router.push(`/shared/experience/${experience.id}`);
+	};
+
+
+	// Navigate to claim fix thread page
+	const handleClaimFix = () => {
+		router.push(`/experience/${experience.id}/claim-fix`);
+	};
+
+	// Handle fix verification
+	const handleVerifyFix = async (verified: boolean) => {
+		if (!user) {
+			router.push("/login");
+			return;
+		}
+
+		try {
+			const supabase = createClient();
+			const { data: { session } } = await supabase.auth.getSession();
+			
+			if (!session?.access_token) {
+				throw new Error("No authentication token found");
+			}
+
+			const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
+			
+			const response = await fetch(`${apiUrl}/experience/${experience.id}/verify`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"Authorization": `Bearer ${session.access_token}`,
+				},
+				body: JSON.stringify({
+					verified
+				}),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({ message: "Failed to verify fix" }));
+				throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+			}
+
+			const result = await response.json();
+			console.log("Fix verification result:", result);
+			
+			// Show success message
+			alert(verified ? "Fix verified successfully!" : "Fix disputed successfully!");
+			
+			// Refresh the page to show updated status
+			window.location.reload();
+		} catch (error) {
+			console.error("Failed to verify fix:", error);
+			alert(error instanceof Error ? error.message : "Failed to verify fix. Please try again.");
+		}
 	};
 
 	const formatRelativeTime = (dateString: string | Date) => {
@@ -677,6 +747,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 							</div>
 						)}
 
+
 						{/* Action Buttons - Separate Row */}
 						<div className="flex items-center justify-between">
 							<div /> {/* Spacer */}
@@ -798,6 +869,50 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 									</PopoverPortal>
 								</Popover>
 
+								{/* Verify Fix Button - Show for fixed issues */}
+								{experience.status === "fixed" && !hasClaimedFix && (
+									<Tooltip delay={300}>
+										<TooltipTrigger
+											onClick={(e) => {
+												e.stopPropagation();
+												handleVerifyFix(true);
+											}}
+											className="action-button flex items-center gap-1.5 text-green-600 hover:text-green-700"
+										>
+											<CheckCircle className="h-5 w-5 transition-all duration-200" />
+										</TooltipTrigger>
+										<TooltipPanel className="animate-tooltip-bounce rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 text-xs shadow-lg">
+											Verify Fix
+										</TooltipPanel>
+									</Tooltip>
+								)}
+
+								{/* Claim Fix Button - Show for all unresolved issues */}
+								{experience.status !== "fixed" && experience.status !== "verified" && experience.status !== "closed" && (
+									<Tooltip delay={300}>
+										<TooltipTrigger
+											onClick={(e) => {
+												e.stopPropagation();
+												if (hasClaimedFix) {
+													router.push('/my-fixes');
+												} else {
+													handleClaimFix();
+												}
+											}}
+											className={`action-button flex items-center gap-1.5 transition-all duration-200 ${
+												hasClaimedFix 
+													? "text-green-600 font-bold hover:text-green-700" 
+													: "text-gray-600 hover:text-gray-900"
+											}`}
+										>
+											<Wrench className="h-5 w-5 transition-all duration-200" />
+										</TooltipTrigger>
+										<TooltipPanel className="animate-tooltip-bounce rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 text-xs shadow-lg">
+											{hasClaimedFix ? "View My Fixes" : "Claim to Fix"}
+										</TooltipPanel>
+									</Tooltip>
+								)}
+
 								{/* Report to Authority Button with Tooltip */}
 								{likeCount >= 5 && (
 									<Tooltip delay={300}>
@@ -916,6 +1031,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 					</div>
 				</div>
 			</Dialog>
+
 		</>
 	);
 }

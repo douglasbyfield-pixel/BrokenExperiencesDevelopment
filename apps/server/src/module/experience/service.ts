@@ -3,6 +3,7 @@ import {
 	category,
 	experience,
 	experienceImage,
+	experienceFix,
 	user,
 	vote,
 } from "@server/db/schema";
@@ -503,4 +504,319 @@ export const deleteExperience = async (options: {
 	await db.delete(experience).where(eq(experience.id, options.id));
 
 	return { success: true, id: options.id };
+};
+
+// Fix Management Functions
+export const claimExperienceFix = async (options: {
+	experienceId: string;
+	userId: string;
+	claimNotes?: string;
+}) => {
+	// Check if experience exists and is not already resolved
+	const existingExperience = await db.query.experience.findFirst({
+		where: (experience, { eq }) => eq(experience.id, options.experienceId),
+	});
+
+	if (!existingExperience) {
+		throw new Error("Experience not found");
+	}
+
+	if (existingExperience.status === "fixed" || existingExperience.status === "verified" || existingExperience.status === "closed") {
+		throw new Error("Experience is already resolved");
+	}
+
+	// Check if user already has an active claim on this experience
+	const existingClaim = await db.query.experienceFix.findFirst({
+		where: (fix, { eq, and }) => 
+			and(
+				eq(fix.experienceId, options.experienceId),
+				eq(fix.claimedBy, options.userId)
+			),
+	});
+
+	if (existingClaim && existingClaim.status !== "abandoned") {
+		throw new Error("You have already claimed this experience");
+	}
+
+	// Create the fix claim
+	const [newFix] = await db
+		.insert(experienceFix)
+		.values({
+			experienceId: options.experienceId,
+			claimedBy: options.userId,
+			claimNotes: options.claimNotes,
+			status: "claimed",
+		})
+		.returning();
+
+	// Update experience status to in_progress
+	await db
+		.update(experience)
+		.set({ status: "in_progress" })
+		.where(eq(experience.id, options.experienceId));
+
+	return newFix;
+};
+
+export const getExperienceFixes = async (experienceId: string) => {
+	const fixes = await db.query.experienceFix.findMany({
+		where: (fix, { eq }) => eq(fix.experienceId, experienceId),
+		with: {
+			claimedBy: {
+				columns: {
+					id: true,
+					name: true,
+					email: true,
+					image: true,
+				},
+			},
+		},
+		orderBy: (fix, { desc }) => [desc(fix.claimedAt)],
+	});
+
+	return fixes;
+};
+
+export const getUserFixes = async (userId: string) => {
+	const fixes = await db.query.experienceFix.findMany({
+		where: (fix, { eq }) => eq(fix.claimedBy, userId),
+		with: {
+			experience: {
+				columns: {
+					id: true,
+					title: true,
+					description: true,
+					address: true,
+					status: true,
+					priority: true,
+					upvotes: true,
+				},
+				with: {
+					experienceImages: {
+						columns: {
+							id: true,
+							imageUrl: true,
+						},
+					},
+				},
+			},
+		},
+		orderBy: (fix, { desc }) => [desc(fix.claimedAt)],
+	});
+
+	return fixes;
+};
+
+export const updateFixStatus = async (options: {
+	fixId: string;
+	userId: string;
+	status: "in_progress" | "completed" | "abandoned";
+	fixNotes?: string;
+}) => {
+	// Verify user owns this fix
+	const existingFix = await db.query.experienceFix.findFirst({
+		where: (fix, { eq, and }) => 
+			and(
+				eq(fix.id, options.fixId),
+				eq(fix.claimedBy, options.userId)
+			),
+	});
+
+	if (!existingFix) {
+		throw new Error("Fix not found or you don't have permission");
+	}
+
+	// Update fix status and timestamp
+	const updates: any = {
+		status: options.status,
+		updatedAt: new Date(),
+	};
+
+	if (options.fixNotes) {
+		updates.fixNotes = options.fixNotes;
+	}
+
+	if (options.status === "in_progress") {
+		updates.startedAt = new Date();
+	} else if (options.status === "completed") {
+		updates.completedAt = new Date();
+	}
+
+	const [updatedFix] = await db
+		.update(experienceFix)
+		.set(updates)
+		.where(eq(experienceFix.id, options.fixId))
+		.returning();
+
+	// Update experience status based on fix status
+	let experienceStatus = existingFix.status === "abandoned" ? "pending" : "in_progress";
+	if (options.status === "completed") {
+		experienceStatus = "fixed";
+	} else if (options.status === "abandoned") {
+		experienceStatus = "pending";
+	}
+
+	await db
+		.update(experience)
+		.set({ 
+			status: experienceStatus as any,
+			updatedAt: new Date(),
+			...(options.status === "completed" && { resolvedAt: new Date() })
+		})
+		.where(eq(experience.id, existingFix.experienceId));
+
+	return updatedFix;
+};
+
+export const uploadFixProof = async (options: {
+	fixId: string;
+	userId: string;
+	imageUrls: string[];
+	notes?: string;
+}) => {
+	// Verify user owns this fix
+	const existingFix = await db.query.experienceFix.findFirst({
+		where: (fix, { eq, and }) => 
+			and(
+				eq(fix.id, options.fixId),
+				eq(fix.claimedBy, options.userId)
+			),
+	});
+
+	if (!existingFix) {
+		throw new Error("Fix not found or you don't have permission");
+	}
+
+	// Insert proof images
+	if (options.imageUrls.length > 0) {
+		const imagePromises = options.imageUrls.map(imageUrl => 
+			db.insert(experienceImage).values({
+				experienceId: existingFix.experienceId,
+				experienceFixId: options.fixId,
+				imageUrl,
+				uploadedBy: options.userId,
+			})
+		);
+		await Promise.all(imagePromises);
+	}
+
+	// Update fix to completed status
+	return updateFixStatus({
+		fixId: options.fixId,
+		userId: options.userId,
+		status: "completed",
+		fixNotes: options.notes,
+	});
+};
+
+// Community verification system
+export const verifyFix = async (options: {
+	experienceId: string;
+	userId: string;
+	verified: boolean;
+	notes?: string;
+}) => {
+	// Check if experience is in "fixed" state and can be verified
+	const existingExperience = await db.query.experience.findFirst({
+		where: (exp, { eq }) => eq(exp.id, options.experienceId),
+		with: {
+			fixes: {
+				where: (fix, { eq }) => eq(fix.status, "completed"),
+			},
+		},
+	});
+
+	if (!existingExperience) {
+		throw new Error("Experience not found");
+	}
+
+	if (existingExperience.status !== "fixed") {
+		throw new Error("Experience must be fixed before verification");
+	}
+
+	// Check if user has already verified this fix
+	const existingVerification = await db.query.vote.findFirst({
+		where: (vote, { eq, and }) => 
+			and(
+				eq(vote.experienceId, options.experienceId),
+				eq(vote.userId, options.userId)
+			),
+	});
+
+	if (existingVerification) {
+		throw new Error("You have already verified this fix");
+	}
+
+	// Create verification vote
+	await db.insert(vote).values({
+		experienceId: options.experienceId,
+		userId: options.userId,
+		vote: options.verified,
+	});
+
+	// Check if we have enough verifications to close the issue
+	const verifications = await db.query.vote.findMany({
+		where: (vote, { eq }) => eq(vote.experienceId, options.experienceId),
+	});
+
+	const positiveVerifications = verifications.filter(v => v.vote === true).length;
+	const negativeVerifications = verifications.filter(v => v.vote === false).length;
+
+	// Auto-close if we have 2+ positive verifications and no negative ones
+	if (positiveVerifications >= 2 && negativeVerifications === 0) {
+		await db
+			.update(experience)
+			.set({ 
+				status: "verified",
+				updatedAt: new Date(),
+			})
+			.where(eq(experience.id, options.experienceId));
+	}
+	// Dispute if we have negative verifications
+	else if (negativeVerifications > 0) {
+		await db
+			.update(experience)
+			.set({ 
+				status: "disputed",
+				updatedAt: new Date(),
+			})
+			.where(eq(experience.id, options.experienceId));
+	}
+
+	return {
+		verified: options.verified,
+		totalVerifications: verifications.length + 1,
+		positiveVerifications: options.verified ? positiveVerifications + 1 : positiveVerifications,
+		negativeVerifications: options.verified ? negativeVerifications : negativeVerifications + 1,
+	};
+};
+
+export const closeExperience = async (options: {
+	experienceId: string;
+	userId: string;
+}) => {
+	// Only allow closing if experience is verified
+	const existingExperience = await db.query.experience.findFirst({
+		where: (exp, { eq }) => eq(exp.id, options.experienceId),
+	});
+
+	if (!existingExperience) {
+		throw new Error("Experience not found");
+	}
+
+	if (existingExperience.status !== "verified") {
+		throw new Error("Experience must be verified before closing");
+	}
+
+	// Close the experience
+	const [closedExperience] = await db
+		.update(experience)
+		.set({ 
+			status: "closed",
+			updatedAt: new Date(),
+		})
+		.where(eq(experience.id, options.experienceId))
+		.returning();
+
+	return closedExperience;
 };

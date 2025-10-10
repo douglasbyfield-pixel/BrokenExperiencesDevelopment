@@ -8,6 +8,7 @@ import { Card, CardContent } from "@web/components/ui/card";
 import { eden } from "@web/lib/eden";
 import { createClient } from "@web/lib/supabase/client";
 import { getInitials } from "@web/lib/utils";
+import { useUserFixes } from "@web/hooks/use-fixes";
 import {
 	Bell,
 	BellOff,
@@ -15,6 +16,8 @@ import {
 	CheckCircle,
 	LogOut,
 	Settings,
+	Wrench,
+	ArrowRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -28,6 +31,9 @@ export default function ProfilePage() {
 	const [notificationStatus, setNotificationStatus] = useState<
 		"default" | "denied" | "granted"
 	>("default");
+
+	// Fetch user's claimed fixes
+	const { data: userFixes, isLoading: fixesLoading } = useUserFixes(user?.id);
 
 	useEffect(() => {
 		// Check notification permission status
@@ -343,7 +349,7 @@ export default function ProfilePage() {
 				</div>
 
 				{/* Stats */}
-				<div className="grid grid-cols-3 gap-6">
+				<div className="grid grid-cols-4 gap-6">
 					<div className="text-center">
 						<div className="font-medium text-2xl text-gray-900">
 							{loadingStats ? (
@@ -353,6 +359,16 @@ export default function ProfilePage() {
 							)}
 						</div>
 						<p className="mt-1 text-gray-500 text-sm">Reports</p>
+					</div>
+					<div className="text-center">
+						<div className="font-medium text-2xl text-gray-900">
+							{fixesLoading ? (
+								<div className="mx-auto h-8 w-16 animate-pulse rounded bg-gray-200" />
+							) : (
+								userFixes?.length || 0
+							)}
+						</div>
+						<p className="mt-1 text-gray-500 text-sm">Fixes</p>
 					</div>
 					<div className="text-center">
 						<div className="font-medium text-2xl text-gray-900">
@@ -375,6 +391,59 @@ export default function ProfilePage() {
 						<p className="mt-1 text-gray-500 text-sm">Impact Score</p>
 					</div>
 				</div>
+
+				{/* My Fixes Section */}
+				{userFixes && userFixes.length > 0 && (
+					<Card className="border-gray-200">
+						<CardContent className="p-6">
+							<div className="flex items-center justify-between mb-4">
+								<div className="flex items-center space-x-3">
+									<Wrench className="h-5 w-5 text-gray-600" />
+									<div>
+										<h3 className="font-medium text-gray-900">
+											My Fixes
+										</h3>
+										<p className="text-gray-500 text-sm">
+											{userFixes.length} issue{userFixes.length !== 1 ? 's' : ''} claimed
+										</p>
+									</div>
+								</div>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => router.push('/my-fixes')}
+									className="flex items-center gap-2"
+								>
+									View All
+									<ArrowRight className="h-3 w-3" />
+								</Button>
+							</div>
+							
+							{/* Preview of recent fixes */}
+							<div className="space-y-3">
+								{userFixes.slice(0, 2).map((fix: any) => (
+									<div
+										key={fix.id}
+										className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+										onClick={() => router.push(`/experience/${fix.experienceId}/claim-fix`)}
+									>
+										<div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
+											<Wrench className="h-4 w-4 text-gray-500" />
+										</div>
+										<div className="flex-1 min-w-0">
+											<p className="font-medium text-gray-900 text-sm truncate">
+												{fix.experience?.title || "Issue Report"}
+											</p>
+											<p className="text-gray-600 text-xs">
+												Status: {fix.status.replace('_', ' ')}
+											</p>
+										</div>
+									</div>
+								))}
+							</div>
+						</CardContent>
+					</Card>
+				)}
 
 				{/* Notifications */}
 				<Card className="border-gray-200">
