@@ -28,14 +28,16 @@ interface VerifyFixDialogProps {
     longitude: number;
   };
   onVerify: (data: {
+    verified: boolean;
+    notes?: string;
     verificationType: "original_reporter" | "community_member";
     verificationStatus: "resolved" | "still_there" | "incomplete";
-    verificationNotes?: string;
     location: {
       latitude: number;
       longitude: number;
     };
   }) => Promise<void>;
+  isInline?: boolean;
 }
 
 export function VerifyFixDialog({ 
@@ -44,7 +46,8 @@ export function VerifyFixDialog({
   fixerName,
   isOriginalReporter,
   experienceLocation,
-  onVerify
+  onVerify,
+  isInline = false
 }: VerifyFixDialogProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -70,7 +73,7 @@ export function VerifyFixDialog({
 
   // Get current location
   useEffect(() => {
-    if (open && !currentLocation) {
+    if ((open || isInline) && !currentLocation) {
       setLocationError(null);
       
       if ("geolocation" in navigator) {
@@ -101,18 +104,18 @@ export function VerifyFixDialog({
         setLocationError("Geolocation is not supported by this browser.");
       }
     }
-  }, [open, currentLocation, experienceLocation]);
+  }, [open, isInline, currentLocation, experienceLocation]);
 
-  const getDistanceColor = (distance: number) => {
-    if (distance <= 100) return "text-green-600";
-    if (distance <= 500) return "text-yellow-600";
-    return "text-red-600";
+  const MAX_VERIFICATION_DISTANCE = 200; // 200 meters
+
+  const isWithinVerificationRange = (distance: number) => {
+    return distance <= MAX_VERIFICATION_DISTANCE;
   };
 
-  const getDistanceMessage = (distance: number) => {
-    if (distance <= 100) return "Perfect! You're at the location.";
-    if (distance <= 500) return "You're close to the location.";
-    return "You're quite far from the original location.";
+  const getDistanceStatus = (distance: number) => {
+    if (distance <= 50) return { color: "text-green-600", message: "At location" };
+    if (distance <= MAX_VERIFICATION_DISTANCE) return { color: "text-black", message: "Close enough to verify" };
+    return { color: "text-red-600", message: "Too far to verify" };
   };
 
   const handleSubmit = async () => {
@@ -121,12 +124,18 @@ export function VerifyFixDialog({
       return;
     }
 
+    if (distance !== null && !isWithinVerificationRange(distance)) {
+      setLocationError("You must be within 200m of the issue to verify.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       await onVerify({
+        verified: verificationStatus === "resolved",
+        notes: verificationNotes.trim() || undefined,
         verificationType: isOriginalReporter ? "original_reporter" : "community_member",
         verificationStatus,
-        verificationNotes: verificationNotes.trim() || undefined,
         location: currentLocation
       });
       
@@ -137,13 +146,19 @@ export function VerifyFixDialog({
       setDistance(null);
     } catch (error) {
       console.error("Failed to submit verification:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to submit verification";
+      setLocationError(errorMessage);
     } finally {
       setSubmitting(false);
     }
   };
 
   if (!user) {
-    return (
+    return isInline ? (
+      <div className="text-center text-gray-600 p-4">
+        Sign in to verify fixes
+      </div>
+    ) : (
       <Button variant="outline" disabled>
         <Shield className="mr-2 h-4 w-4" />
         Sign in to Verify
@@ -151,11 +166,140 @@ export function VerifyFixDialog({
     );
   }
 
+  // Inline form content
+  const formContent = (
+    <div className="space-y-6">
+      <div className="border-b border-gray-200 pb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-6 h-6 rounded-full border-2 border-black flex items-center justify-center">
+            <div className="w-2 h-2 bg-black rounded-full" />
+          </div>
+          <span className="font-medium text-black">Verify Fix</span>
+          {isOriginalReporter && (
+            <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+              Reporter
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-gray-600">
+          Fix by {fixerName} for: {experienceTitle}
+        </p>
+      </div>
+    
+      {/* Location */}
+      <div className="border border-gray-200 rounded p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <MapPin className="h-4 w-4 text-black" />
+          <span className="text-sm font-medium text-black">Location</span>
+        </div>
+        
+        {locationError ? (
+          <div className="text-sm text-red-600">
+            {locationError}
+          </div>
+        ) : currentLocation && distance !== null ? (
+          <div className="space-y-1">
+            <div className={`text-sm font-medium ${getDistanceStatus(distance).color}`}>
+              {Math.round(distance)}m from original location
+            </div>
+            <div className="text-xs text-gray-600">
+              {getDistanceStatus(distance).message}
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-gray-600">Getting location...</div>
+        )}
+      </div>
+
+      {/* Status */}
+      <div>
+        <Label className="text-sm font-medium text-black mb-3 block">Status</Label>
+        <RadioGroup 
+          value={verificationStatus} 
+          onValueChange={(value) => setVerificationStatus(value as any)}
+          className="space-y-3"
+        >
+          <div className="flex items-center space-x-3">
+            <RadioGroupItem value="resolved" id="resolved" />
+            <Label htmlFor="resolved" className="text-sm text-black">
+              Fixed
+            </Label>
+          </div>
+          <div className="flex items-center space-x-3">
+            <RadioGroupItem value="incomplete" id="incomplete" />
+            <Label htmlFor="incomplete" className="text-sm text-black">
+              Partially Fixed
+            </Label>
+          </div>
+          <div className="flex items-center space-x-3">
+            <RadioGroupItem value="still_there" id="still_there" />
+            <Label htmlFor="still_there" className="text-sm text-black">
+              Not Fixed
+            </Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      {/* Notes */}
+      <div>
+        <Label htmlFor="verification-notes" className="text-sm font-medium text-black mb-2 block">
+          Notes (Optional)
+        </Label>
+        <Textarea
+          id="verification-notes"
+          placeholder="Additional details..."
+          value={verificationNotes}
+          onChange={(e) => setVerificationNotes(e.target.value)}
+          className="min-h-[60px] border-gray-200 focus:border-black focus:ring-black"
+        />
+      </div>
+      
+      <div className="flex gap-3 pt-4 border-t border-gray-200">
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            if (isInline) {
+              // For inline mode, we don't have setOpen, so just reset form
+              setVerificationStatus("resolved");
+              setVerificationNotes("");
+              setCurrentLocation(null);
+              setDistance(null);
+            } else {
+              setOpen(false);
+            }
+          }}
+          className="flex-1 border-gray-200 text-gray-700 hover:bg-gray-50"
+        >
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleSubmit}
+          disabled={
+            !currentLocation || 
+            submitting || 
+            (distance !== null && !isWithinVerificationRange(distance))
+          }
+          className="flex-1 bg-black text-white hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          {submitting ? "Submitting..." : 
+           (distance !== null && !isWithinVerificationRange(distance)) ? "Too Far to Verify" : 
+           "Submit"}
+        </Button>
+      </div>
+    </div>
+  );
+
+  // Return inline version if requested
+  if (isInline) {
+    return formContent;
+  }
+
+  // Return modal version by default
   return (
     <>
       <Button 
         variant="outline" 
-        className="border-green-600 text-green-700 hover:bg-green-50"
+        className="border-black text-black hover:bg-black hover:text-white transition-colors font-medium"
         onClick={() => setOpen(true)}
       >
         <Shield className="mr-2 h-4 w-4" />
@@ -167,121 +311,7 @@ export function VerifyFixDialog({
         onOpenChange={setOpen}
         title="Verify Fix"
       >
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Shield className="h-5 w-5 text-green-600" />
-            <span className="font-semibold">Verify Fix</span>
-            {isOriginalReporter && (
-              <Badge className="bg-blue-100 text-blue-800">
-                <Star className="mr-1 h-3 w-3" />
-                Original Reporter
-              </Badge>
-            )}
-          </div>
-          <p className="text-sm text-gray-600 mb-4">
-            Verifying fix by <strong>{fixerName}</strong> for: <strong>{experienceTitle}</strong>
-          </p>
-        
-          {/* Location Status */}
-          <div className="border rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <MapPin className="h-4 w-4 text-gray-600" />
-              <span className="font-medium text-sm">Location Verification</span>
-            </div>
-            
-            {locationError ? (
-              <div className="flex items-center gap-2 text-red-600 text-sm">
-                <AlertTriangle className="h-4 w-4" />
-                {locationError}
-              </div>
-            ) : currentLocation && distance !== null ? (
-              <div className="space-y-1">
-                <div className={`text-sm font-medium ${getDistanceColor(distance)}`}>
-                  {Math.round(distance)}m from original location
-                </div>
-                <div className="text-xs text-gray-600">
-                  {getDistanceMessage(distance)}
-                </div>
-              </div>
-            ) : (
-              <div className="text-sm text-gray-600">Getting your location...</div>
-            )}
-          </div>
-
-          {/* Verification Status */}
-          <div>
-            <Label className="text-base font-medium">What did you find?</Label>
-            <RadioGroup 
-              value={verificationStatus} 
-              onValueChange={(value) => setVerificationStatus(value as any)}
-              className="mt-2"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="resolved" id="resolved" />
-                <Label htmlFor="resolved" className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  Fixed - Issue is completely resolved
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="incomplete" id="incomplete" />
-                <Label htmlFor="incomplete" className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  Partially Fixed - Some improvement but not complete
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="still_there" id="still_there" />
-                <Label htmlFor="still_there" className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
-                  Not Fixed - Issue is still there
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {/* Verification Notes */}
-          <div>
-            <Label htmlFor="verification-notes">Additional Notes (Optional)</Label>
-            <Textarea
-              id="verification-notes"
-              placeholder="Any additional details about the current state..."
-              value={verificationNotes}
-              onChange={(e) => setVerificationNotes(e.target.value)}
-              className="min-h-[60px] mt-1"
-            />
-          </div>
-
-          {/* Verification Impact */}
-          <div className="bg-blue-50 p-3 rounded-md">
-            <div className="flex items-start gap-2">
-              <User className="h-4 w-4 text-blue-600 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-blue-900">Your verification helps:</p>
-                <ul className="text-blue-700 mt-1 space-y-1">
-                  <li>• Confirm the fix worked</li>
-                  <li>• Give credit to the fixer</li>
-                  <li>• Build community trust</li>
-                  {isOriginalReporter && (
-                    <li>• <strong>Your verification carries extra weight!</strong></li>
-                  )}
-                </ul>
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2 pt-4">
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSubmit}
-              disabled={!currentLocation || submitting}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {submitting ? "Submitting..." : "Submit Verification"}
-            </Button>
-          </div>
-        </div>
+        {formContent}
       </Dialog>
     </>
   );

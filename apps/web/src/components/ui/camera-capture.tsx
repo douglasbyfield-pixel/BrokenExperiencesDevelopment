@@ -122,12 +122,12 @@ export function CameraCapture({
 	return (
 		<div className="fixed inset-0 z-50 flex flex-col bg-black text-white">
 			{/* Header */}
-			<div className="flex items-center justify-between bg-black/50 p-4">
+			<div className="flex items-center justify-between bg-black/90 p-4">
 				<div className="flex items-center gap-3">
-					<h2 className="font-semibold text-lg">Take Photo</h2>
+					<h2 className="font-semibold text-lg text-white">Take Photo</h2>
 					{capturedImages.length > 0 && (
-						<div className="flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-sm text-white backdrop-blur-sm">
-							<div className="h-2 w-2 rounded-full bg-green-400" />
+						<div className="flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/20 px-3 py-1.5 text-sm text-white backdrop-blur-sm">
+							<div className="h-2 w-2 rounded-full bg-white" />
 							<span className="font-medium">{capturedImages.length}</span>
 						</div>
 					)}
@@ -149,7 +149,7 @@ export function CameraCapture({
 							<p className="mb-4 text-gray-300">{error}</p>
 							<button
 								onClick={startCamera}
-								className="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+								className="rounded-lg bg-white px-4 py-2 text-black transition-colors hover:bg-gray-200"
 							>
 								Try Again
 							</button>
@@ -199,12 +199,12 @@ export function CameraCapture({
 			</div>
 
 			{/* Camera controls */}
-			<div className="bg-gradient-to-t from-black/80 to-transparent p-6">
+			<div className="bg-gradient-to-t from-black/90 to-transparent p-6">
 				<div className="flex items-center justify-center">
 					<button
 						onClick={capturePhoto}
 						disabled={!!error}
-						className="flex h-16 w-16 items-center justify-center rounded-full bg-white transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+						className="flex h-16 w-16 items-center justify-center rounded-full bg-white transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						<Camera className="h-8 w-8 text-black" />
 					</button>

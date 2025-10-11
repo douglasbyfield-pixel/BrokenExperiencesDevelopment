@@ -14,7 +14,7 @@ export const getStats = async () => {
 	const [resolvedExperiences] = await db
 		.select({ count: count() })
 		.from(experience)
-		.where(eq(experience.status, ExperienceStatusEnum.resolved));
+		.where(eq(experience.status, ExperienceStatusEnum.fixed));
 	const [activeUsers] = await db.select({ count: count() }).from(user);
 
 	return {
@@ -35,7 +35,7 @@ export const getUserStats = async (userId: string) => {
 		.where(
 			and(
 				eq(experience.reportedBy, userId),
-				eq(experience.status, ExperienceStatusEnum.resolved),
+				eq(experience.status, ExperienceStatusEnum.fixed),
 			),
 		);
 	const [userInProgressExperiences] = await db

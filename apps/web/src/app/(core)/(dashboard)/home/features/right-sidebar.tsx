@@ -98,7 +98,7 @@ export default function RightSidebar({
 
 		// Count by status
 		const resolved = thisWeekExperiences.filter(
-			(exp) => exp.status === "resolved",
+			(exp) => exp.status === "fixed",
 		).length;
 		const inProgress = thisWeekExperiences.filter(
 			(exp) => exp.status === "in_progress",
@@ -340,13 +340,13 @@ export default function RightSidebar({
 										}
 
 										const statusColor =
-											experience.status === "resolved"
+											experience.status === "fixed"
 												? "bg-gray-400"
 												: experience.status === "in_progress"
 													? "bg-gray-500"
 													: "bg-gray-400";
 										const actionText =
-											experience.status === "resolved"
+											experience.status === "fixed"
 												? "resolved"
 												: "reported";
 
@@ -424,20 +424,17 @@ export default function RightSidebar({
 												}}
 											>
 												<button
-													className="w-full rounded-lg border border-gray-200 p-2 text-left transition-colors hover:bg-white"
+													className="w-full rounded p-1.5 text-left transition-colors hover:bg-gray-100"
 													onClick={() => onCategoryFilter(category.name)}
 												>
 													<div className="flex items-center justify-between">
 														<p className="font-medium text-black text-sm">
 															#{category.name}
 														</p>
-														<span className="rounded-full bg-gray-600 px-2 py-1 text-white text-xs">
+														<span className="rounded bg-black px-1.5 py-0.5 text-white text-xs">
 															{category.count}
 														</span>
 													</div>
-													<p className="mt-1 text-gray-600 text-xs">
-														Click to filter by this category
-													</p>
 												</button>
 											</div>
 										);

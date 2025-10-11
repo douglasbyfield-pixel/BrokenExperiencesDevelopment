@@ -51,10 +51,12 @@ const mockFixData = {
   experienceId: "exp-1",
   claimedBy: "user-2",
   claimerName: "John the Electrician",
-  status: "in_progress" as const,
+  status: "in_progress" as "in_progress" | "claimed" | "completed" | "abandoned",
   claimedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
   startedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+  completedAt: undefined as string | undefined,
   claimNotes: "I have the tools and experience to fix this streetlight. Will coordinate with the city for power shutoff and replace the burnt-out bulb and damaged wiring.",
+  fixNotes: undefined as string | undefined,
   progressImages: [
     {
       id: "prog-1",
@@ -302,12 +304,12 @@ export default function FixDemoPage() {
                             <span className="font-medium text-sm">{verification.verifierName}</span>
                             <Badge 
                               className={
-                                verification.verificationType === "original_reporter" 
-                                  ? "bg-blue-100 text-blue-800" 
-                                  : "bg-gray-100 text-gray-800"
+                                verification.verificationType === "community_member" 
+                                  ? "bg-gray-100 text-gray-800"
+                                  : "bg-blue-100 text-blue-800"
                               }
                             >
-                              {verification.verificationType === "original_reporter" ? "Original Reporter" : "Community"}
+                              {verification.verificationType === "community_member" ? "Community" : "Original Reporter"}
                             </Badge>
                             <Badge 
                               className={

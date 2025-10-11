@@ -32,7 +32,7 @@ export function useExperiences(userId?: string) {
 
 			try {
 				const apiUrl =
-					process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
+					process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
 
 				// Add authorization header if user is logged in
 				const headers: Record<string, string> = {
@@ -74,8 +74,10 @@ export function useExperiences(userId?: string) {
 		staleTime: 5 * 60 * 1000,
 		// Keep in cache for 10 minutes
 		gcTime: 10 * 60 * 1000,
-		// Only refetch on window focus if data is stale
-		refetchOnWindowFocus: "always",
+		// Reduce aggressive refetching that can disrupt optimistic updates
+		refetchOnWindowFocus: false,
+		refetchOnMount: false,
+		refetchOnReconnect: false,
 	});
 }
 
@@ -90,7 +92,7 @@ export function useMapMarkers() {
 			try {
 				// Try the lightweight markers endpoint first
 				const apiUrl =
-					process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
+					process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
 				const response = await fetch(`${apiUrl}/experience/markers`, {
 					method: "GET",
 					headers: {
@@ -154,7 +156,7 @@ export function useExperience(id: string) {
 
 			try {
 				const apiUrl =
-					process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
+					process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
 				const response = await fetch(`${apiUrl}/experience`, {
 					method: "GET",
 					headers: {
@@ -203,7 +205,7 @@ export function useSearchExperiences(searchTerm: string, userId?: string) {
 
 			try {
 				const apiUrl =
-					process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
+					process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
 				const response = await fetch(
 					`${apiUrl}/experience/search?q=${encodeURIComponent(searchTerm)}`,
 					{
@@ -239,7 +241,7 @@ export function useSearchExperiences(searchTerm: string, userId?: string) {
 	});
 }
 
-// Vote on experience with optimistic updates
+// Vote on experience with simple, reliable updates
 export function useVoteExperience() {
 	const queryClient = useQueryClient();
 
@@ -247,11 +249,13 @@ export function useVoteExperience() {
 		mutationFn: async ({
 			experienceId,
 			vote,
+			currentUserVote,
 		}: {
 			experienceId: string;
 			vote: "up" | "down";
+			currentUserVote: boolean | null;
 		}) => {
-			console.log("🗳️ Voting on experience...");
+			console.log("🗳️ Voting on experience:", { experienceId, vote, currentUserVote });
 
 			const supabase = createClient();
 			const {
@@ -263,14 +267,21 @@ export function useVoteExperience() {
 				throw new Error("You must be logged in to endorse");
 			}
 
-			console.log("✅ User authenticated:", session.user.id);
+			// Determine what vote to send based on current state
+			let voteValue: boolean;
+			if (vote === "up") {
+				// If currently endorsed (true), toggle off (false)
+				// If not endorsed (null/false), vote up (true)
+				voteValue = currentUserVote !== true;
+			} else {
+				// Down vote logic (if needed later)
+				voteValue = false;
+			}
+
+			console.log("📤 Sending vote value:", voteValue, "for action:", vote);
 
 			const apiUrl =
-				process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
-			console.log(
-				"📤 Sending vote to:",
-				`${apiUrl}/experience/${experienceId}/vote`,
-			);
+				process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
 
 			const response = await fetch(
 				`${apiUrl}/experience/${experienceId}/vote`,
@@ -280,11 +291,9 @@ export function useVoteExperience() {
 						"Content-Type": "application/json",
 						Authorization: `Bearer ${session.access_token}`,
 					},
-					body: JSON.stringify({ vote: vote === "up" }),
+					body: JSON.stringify({ vote: voteValue }),
 				},
 			);
-
-			console.log("📥 Response status:", response.status, response.statusText);
 
 			if (!response.ok) {
 				const errorText = await response.text();
@@ -295,65 +304,41 @@ export function useVoteExperience() {
 			}
 
 			const result = await response.json();
-			console.log("✅ Server response:", result);
-			return result;
+			console.log("✅ Vote successful, server response:", result);
+			return { ...result, experienceId };
 		},
-		onMutate: async ({ experienceId, vote }) => {
-			// Cancel any outgoing refetches
-			await queryClient.cancelQueries({ queryKey: experienceKeys.all });
-
-			// Snapshot the previous value
-			const previousExperiences = queryClient.getQueriesData({
-				queryKey: experienceKeys.all,
-			});
-
-			// Optimistically update the cache
+		// Simple success-only approach - no optimistic updates to avoid race conditions
+		onSuccess: (data) => {
+			console.log("🔄 Updating cache with server data:", data);
+			
+			// Update ALL relevant caches with the server response
 			queryClient.setQueriesData(
 				{ queryKey: experienceKeys.all },
 				(old: Experience[] | undefined) => {
 					if (!old) return old;
 
 					return old.map((exp) => {
-						if (exp.id === experienceId) {
-							const currentVote = exp.userVote;
-							const currentUpvotes = exp.upvotes || 0;
-
-							// Simple toggle logic: true = endorsed, null = not endorsed
-							if (currentVote === true) {
-								// User is removing their endorsement
-								return {
-									...exp,
-									upvotes: Math.max(0, currentUpvotes - 1),
-									userVote: null,
-								};
-							}
-							// User is adding their endorsement (from null or false)
+						if (exp.id === data.experienceId) {
+							console.log("📝 Updating experience in cache:", {
+								id: exp.id,
+								oldUpvotes: exp.upvotes,
+								newUpvotes: data.upvotes,
+								oldUserVote: exp.userVote,
+								newUserVote: data.userVote
+							});
+							
 							return {
 								...exp,
-								upvotes: currentUpvotes + 1,
-								userVote: true,
+								upvotes: data.upvotes,
+								userVote: data.userVote,
 							};
 						}
 						return exp;
 					});
 				},
 			);
-
-			// Return a context object with the snapshotted value
-			return { previousExperiences };
 		},
-		onError: (_err, _variables, context) => {
-			// If the mutation fails, use the context returned from onMutate to roll back
-			if (context?.previousExperiences) {
-				context.previousExperiences.forEach(([queryKey, data]) => {
-					queryClient.setQueryData(queryKey, data);
-				});
-			}
-		},
-		onSettled: () => {
-			// Always refetch after error or success
-			queryClient.invalidateQueries({ queryKey: experienceKeys.all });
-		},
+		// No cache invalidation - let the success handler manage everything
 	});
 }
 
@@ -378,7 +363,7 @@ export function useCreateExperience() {
 			console.log("✅ User authenticated:", session.user.id);
 
 			const apiUrl =
-				process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
+				process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
 			console.log("📤 Sending POST to:", `${apiUrl}/experience`);
 
 			const response = await fetch(`${apiUrl}/experience`, {

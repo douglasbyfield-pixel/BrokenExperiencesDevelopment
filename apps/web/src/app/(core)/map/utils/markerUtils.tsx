@@ -22,3 +22,4 @@ export const createReactCluster = (
 	root.render(<MapCluster cluster={cluster} onClick={onClick} />);
 	return markerEl;
 };
+

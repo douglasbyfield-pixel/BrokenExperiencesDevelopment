@@ -50,6 +50,8 @@ export const experienceFix = p.pgTable(
 		statusIdx: p.index("idx_experience_fix_status").on(table.status),
 		claimedAtIdx: p.index("idx_experience_fix_claimed_at").on(table.claimedAt),
 		createdAtIdx: p.index("idx_experience_fix_created_at").on(table.createdAt),
+		// Unique constraint to prevent duplicate claims by the same user for the same experience
+		uniqueUserExperience: p.unique("unique_user_experience_fix").on(table.experienceId, table.claimedBy),
 	}),
 );
 

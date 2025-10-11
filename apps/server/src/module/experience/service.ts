@@ -539,23 +539,36 @@ export const claimExperienceFix = async (options: {
 	}
 
 	// Create the fix claim
-	const [newFix] = await db
-		.insert(experienceFix)
-		.values({
-			experienceId: options.experienceId,
-			claimedBy: options.userId,
-			claimNotes: options.claimNotes,
-			status: "claimed",
-		})
-		.returning();
+	try {
+		const [newFix] = await db
+			.insert(experienceFix)
+			.values({
+				experienceId: options.experienceId,
+				claimedBy: options.userId,
+				claimNotes: options.claimNotes,
+				status: "claimed",
+			})
+			.returning();
 
-	// Update experience status to in_progress
-	await db
-		.update(experience)
-		.set({ status: "in_progress" })
-		.where(eq(experience.id, options.experienceId));
+		// Update experience status to in_progress
+		await db
+			.update(experience)
+			.set({ status: "in_progress" })
+			.where(eq(experience.id, options.experienceId));
 
-	return newFix;
+		return newFix;
+	} catch (error) {
+		// Handle duplicate constraint error
+		if (error instanceof Error && (
+			error.message.includes("duplicate") || 
+			error.message.includes("unique_user_experience_fix") ||
+			error.message.includes("already exists")
+		)) {
+			throw new Error("You have already claimed this experience");
+		}
+		console.error("❌ Error inserting experience fix:", error);
+		throw error;
+	}
 };
 
 export const getExperienceFixes = async (experienceId: string) => {
@@ -575,6 +588,103 @@ export const getExperienceFixes = async (experienceId: string) => {
 	});
 
 	return fixes;
+};
+
+export const getNearbyCompletedFixes = async (options: {
+	latitude: number;
+	longitude: number;
+	radius: number;
+	userId?: string;
+}) => {
+	// Get completed fixes within radius that need verification
+	const completedFixes = await db.query.experienceFix.findMany({
+		where: (fix, { eq }) => eq(fix.status, "completed"),
+		with: {
+			experience: {
+				with: {
+					reportedBy: {
+						columns: {
+							id: true,
+							name: true,
+							email: true,
+						},
+					},
+					category: true,
+					experienceImages: {
+						where: (img, { isNull }) => isNull(img.experienceFixId),
+					},
+				},
+			},
+			claimedBy: {
+				columns: {
+					id: true,
+					name: true,
+					email: true,
+				},
+			},
+			images: true,
+		},
+		orderBy: (fix, { desc }) => [desc(fix.completedAt)],
+	});
+
+	// Calculate distances and filter by radius
+	const nearbyFixes = completedFixes
+		.map((fix) => {
+			const experienceLat = parseFloat(fix.experience.latitude);
+			const experienceLng = parseFloat(fix.experience.longitude);
+			
+			// Calculate distance using Haversine formula
+			const R = 6371000; // Earth's radius in meters
+			const dLat = (experienceLat - options.latitude) * Math.PI / 180;
+			const dLng = (experienceLng - options.longitude) * Math.PI / 180;
+			const a = 
+				Math.sin(dLat/2) * Math.sin(dLat/2) +
+				Math.cos(options.latitude * Math.PI / 180) * Math.cos(experienceLat * Math.PI / 180) * 
+				Math.sin(dLng/2) * Math.sin(dLng/2);
+			const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+			const distance = R * c;
+
+			return {
+				...fix,
+				distance,
+			};
+		})
+		.filter((fix) => fix.distance <= options.radius)
+		.sort((a, b) => a.distance - b.distance);
+
+	// Get verification counts for each fix
+	const fixesWithVerifications = await Promise.all(
+		nearbyFixes.map(async (fix) => {
+			const verifications = await db.query.experienceVerification.findMany({
+				where: (verification, { eq }) => eq(verification.experienceId, fix.experienceId),
+			});
+
+			const isOriginalReporter = options.userId === fix.experience.reportedBy;
+
+			return {
+				id: fix.id,
+				experienceId: fix.experienceId,
+				experienceTitle: fix.experience.title,
+				experienceDescription: fix.experience.description,
+				fixerName: fix.claimedBy?.name || fix.claimedBy?.email?.split('@')[0] || 'Anonymous',
+				fixerId: fix.claimedBy?.id,
+				completedAt: fix.completedAt,
+				proofImages: fix.images?.map(img => img.imageUrl) || [],
+				fixNotes: fix.fixNotes,
+				location: {
+					latitude: parseFloat(fix.experience.latitude),
+					longitude: parseFloat(fix.experience.longitude),
+					address: fix.experience.address,
+				},
+				distance: Math.round(fix.distance),
+				isOriginalReporter,
+				verificationCount: verifications.length,
+				requiredVerifications: fix.experience.requiredVerifications || 2,
+			};
+		})
+	);
+
+	return fixesWithVerifications;
 };
 
 export const getUserFixes = async (userId: string) => {

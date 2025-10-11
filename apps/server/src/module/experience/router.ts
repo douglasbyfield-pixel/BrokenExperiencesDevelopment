@@ -11,6 +11,7 @@ import {
 	getExperienceFixes,
 	getExperiences,
 	getMapMarkers,
+	getNearbyCompletedFixes,
 	getNearbyExperiences,
 	getUserFixes,
 	searchExperiences,
@@ -317,6 +318,16 @@ export const experienceRouter = new Elysia({
 				return result;
 			} catch (error) {
 				console.error("❌ Error in POST /experience/:experienceId/claim-fix:", error);
+				
+				// Handle duplicate claim errors with 400 status
+				if (error instanceof Error && error.message.includes("already claimed")) {
+					ctx.set.status = 400;
+					return {
+						error: "Already claimed",
+						message: error.message,
+					};
+				}
+				
 				ctx.set.status = 500;
 				return {
 					error: "Server error",
@@ -520,6 +531,49 @@ export const experienceRouter = new Elysia({
 			detail: {
 				summary: "Close an experience",
 				description: "Closes a verified experience.",
+			},
+		},
+	)
+	.get(
+		"/fixes/completed-nearby",
+		async (ctx: any) => {
+			try {
+				const { lat, lng, radius = 5000 } = ctx.query;
+				
+				if (!lat || !lng) {
+					ctx.set.status = 400;
+					return {
+						error: "Missing parameters",
+						message: "Latitude and longitude are required",
+					};
+				}
+
+				// Get user from auth header (optional for this endpoint)
+				const authHeader =
+					ctx.request.headers.get("authorization") ||
+					ctx.request.headers.get("Authorization");
+				const user = authHeader ? await verifySupabaseToken(authHeader) : null;
+
+				const result = await getNearbyCompletedFixes({
+					latitude: parseFloat(lat),
+					longitude: parseFloat(lng),
+					radius: parseInt(radius),
+					userId: user?.id,
+				});
+				return result;
+			} catch (error) {
+				console.error("❌ Error in GET /fixes/completed-nearby:", error);
+				ctx.set.status = 500;
+				return {
+					error: "Server error",
+					message: error instanceof Error ? error.message : "Unknown error",
+				};
+			}
+		},
+		{
+			detail: {
+				summary: "Get nearby completed fixes",
+				description: "Returns completed fixes near a location for verification.",
 			},
 		},
 	);

@@ -124,8 +124,8 @@ export function FixStatusIndicator({
   const IconComponent = config.icon;
 
   // For completed fixes, always show verify button unless verified by reporter
-  if (overallStatus === "completed" || overallStatus === "verified_by_community") {
-    config.showVerifyButton = overallStatus !== "verified_by_reporter";
+  if (overallStatus === "verified_by_community") {
+    config.showVerifyButton = true;
   }
 
   return (

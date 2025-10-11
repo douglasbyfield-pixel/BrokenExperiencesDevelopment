@@ -150,17 +150,20 @@ export default function HomePage() {
 		selectedCategory,
 	);
 
-	// Sort by community engagement (endorsements) to prioritize validated concerns
+	// Sort primarily by recency to maintain stable feed order
 	const displayExperiences = filteredExperiences.sort((a, b) => {
 		const aUpvotes = a.upvotes || 0;
 		const bUpvotes = b.upvotes || 0;
-
-		// Prioritize posts with high engagement first
-		if (aUpvotes !== bUpvotes) {
-			return bUpvotes - aUpvotes;
-		}
-
-		// Then by recency
+		
+		// Only prioritize posts with significantly high engagement (10+ upvotes)
+		const aIsHighEngagement = aUpvotes >= 10;
+		const bIsHighEngagement = bUpvotes >= 10;
+		
+		// High engagement posts go first
+		if (aIsHighEngagement && !bIsHighEngagement) return -1;
+		if (bIsHighEngagement && !aIsHighEngagement) return 1;
+		
+		// Within same engagement tier, sort by recency
 		return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 	});
 
@@ -182,23 +185,21 @@ export default function HomePage() {
 						{searchTerm ? (
 							<div>
 								{/* Search Results Header */}
-								<div className="border-gray-200 border-b bg-gray-50 p-4">
+								<div className="border-gray-200 border-b bg-white px-4 py-2">
 									<div className="flex items-center justify-between">
-										<div>
-											<h3 className="font-semibold text-black text-lg">
-												Search Results
-											</h3>
-											<p className="text-gray-600 text-sm">
-												{displayExperiences.length === 0
-													? `No experiences found for "${searchTerm}"`
-													: `Found ${displayExperiences.length} experience${displayExperiences.length === 1 ? "" : "s"} for "${searchTerm}"`}
-											</p>
+										<div className="flex items-center gap-2">
+											<span className="font-medium text-black text-sm">
+												"{searchTerm}"
+											</span>
+											<span className="text-gray-500 text-xs">
+												{displayExperiences.length} result{displayExperiences.length === 1 ? "" : "s"}
+											</span>
 										</div>
 										<button
 											onClick={clearSearch}
-											className="text-gray-500 text-sm underline hover:text-gray-700"
+											className="text-gray-500 text-xs hover:text-black"
 										>
-											Clear search
+											Clear
 										</button>
 									</div>
 								</div>
@@ -208,23 +209,21 @@ export default function HomePage() {
 						) : selectedCategory ? (
 							<div>
 								{/* Category Filter Results Header */}
-								<div className="border-gray-200 border-b bg-gray-50 p-4">
+								<div className="border-gray-200 border-b bg-white px-4 py-2">
 									<div className="flex items-center justify-between">
-										<div>
-											<h3 className="font-semibold text-black text-lg">
-												Category: {selectedCategory}
-											</h3>
-											<p className="text-gray-600 text-sm">
-												{displayExperiences.length === 0
-													? `No experiences found in "${selectedCategory}"`
-													: `Found ${displayExperiences.length} experience${displayExperiences.length === 1 ? "" : "s"} in "${selectedCategory}"`}
-											</p>
+										<div className="flex items-center gap-2">
+											<span className="font-medium text-black text-sm">
+												#{selectedCategory}
+											</span>
+											<span className="text-gray-500 text-xs">
+												{displayExperiences.length} result{displayExperiences.length === 1 ? "" : "s"}
+											</span>
 										</div>
 										<button
 											onClick={clearCategoryFilter}
-											className="text-gray-500 text-sm underline hover:text-gray-700"
+											className="text-gray-500 text-xs hover:text-black"
 										>
-											Clear filter
+											Clear
 										</button>
 									</div>
 								</div>

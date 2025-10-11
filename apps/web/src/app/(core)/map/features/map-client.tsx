@@ -45,16 +45,13 @@ import {
 	MapPin,
 	MessageCircle,
 	Navigation,
-	Route,
+	Plus,
 	Search,
-	Share,
 	Share2,
 	Shield,
-	ThumbsUp,
 	Timer,
 	Trash2,
 	TreePine,
-	Twitter,
 	X,
 	Zap,
 } from "lucide-react";
@@ -62,7 +59,10 @@ import { MAP_CONFIG } from "../constants/mapConstants";
 import { applyFilters } from "../utils/filterUtils";
 import { locationActions } from "../utils/locationActions";
 import { mapOperations } from "../utils/mapOperations";
-import { createReactCluster, createReactMarker } from "../utils/markerUtils";
+import { createReactMarker } from "../utils/markerUtils";
+import { EnhancedSearchPanel } from "../components/EnhancedSearchPanel";
+import { MapOnboarding } from "../components/MapOnboarding";
+import { GestureHandler } from "../components/GestureHandler";
 
 // Using Elysia API backend (which connects to Supabase underneath)
 
@@ -90,54 +90,6 @@ const statusConfig = {
 	},
 };
 
-const priorityConfig = {
-	low: {
-		scale: 0.8,
-		zIndex: 1,
-		color: "#10b981",
-		bgColor: "bg-emerald-500",
-		textColor: "text-white",
-	},
-	medium: {
-		scale: 1.0,
-		zIndex: 2,
-		color: "#f59e0b",
-		bgColor: "bg-amber-500",
-		textColor: "text-white",
-	},
-	high: {
-		scale: 1.2,
-		zIndex: 3,
-		color: "#ef4444",
-		bgColor: "bg-red-500",
-		textColor: "text-white",
-	},
-	critical: {
-		scale: 1.4,
-		zIndex: 4,
-		color: "#dc2626",
-		bgColor: "bg-red-600",
-		textColor: "text-white",
-	},
-};
-
-const categoryConfig = {
-	infrastructure: {
-		icon: Construction,
-		color: "#8b5cf6",
-		label: "Infrastructure",
-	},
-	traffic: { icon: Car, color: "#ef4444", label: "Traffic" },
-	lighting: { icon: Lightbulb, color: "#f59e0b", label: "Lighting" },
-	environment: { icon: TreePine, color: "#10b981", label: "Environment" },
-	sanitation: { icon: Trash2, color: "#8b5cf6", label: "Sanitation" },
-	utilities: { icon: Zap, color: "#06b6d4", label: "Utilities" },
-	water: { icon: Droplets, color: "#3b82f6", label: "Water" },
-	roads: { icon: Construction, color: "#f97316", label: "Roads" },
-	safety: { icon: Shield, color: "#dc2626", label: "Safety" },
-	"digital aids": { icon: Zap, color: "#9333ea", label: "Digital Aids" },
-	other: { icon: Building, color: "#64748b", label: "Other" },
-};
 
 interface MapClientProps {
 	experiences: Experience[];
@@ -171,7 +123,7 @@ export default function MapClient({ experiences }: MapClientProps) {
 	});
 	const [searchQuery, setSearchQuery] = useState("");
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-	const [showFilters, setShowFilters] = useState(false);
+	const [showFilters] = useState(false);
 	const [showLegend, setShowLegend] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
 	const [mapError, setMapError] = useState<string | null>(null);
@@ -195,6 +147,16 @@ export default function MapClient({ experiences }: MapClientProps) {
 	const [selectedCluster, setSelectedCluster] = useState<Experience[] | null>(
 		null,
 	);
+	const [is3D, setIs3D] = useState(false);
+	const [userMarker, setUserMarker] = useState<any>(null);
+	const [showOnboarding, setShowOnboarding] = useState(false);
+	const [userLevel] = useState(3);
+	const [userPoints] = useState(1250);
+	const [isLiked, setIsLiked] = useState(false);
+	const [likesCount, setLikesCount] = useState(12);
+	const [commentsCount] = useState(5);
+	const [currentActivity, setCurrentActivity] = useState<'exploring' | 'navigating' | 'reporting'>('exploring');
+	const [mapStyle, setMapStyle] = useState('mapbox://styles/mapbox/dark-v11');
 	const router = useRouter();
 	const {
 		copyToClipboard,
@@ -1020,6 +982,180 @@ export default function MapClient({ experiences }: MapClientProps) {
 		}
 	}, [watchId]);
 
+	// Handle 3D toggle
+	const handle3DToggle = useCallback((newIs3D: boolean) => {
+		setIs3D(newIs3D);
+		
+		if (map) {
+			// Update map pitch for 3D effect
+			map.easeTo({
+				pitch: newIs3D ? 68 : 0,
+				bearing: newIs3D ? 0 : map.getBearing(),
+				duration: 1000
+			});
+		}
+
+		// Update user marker if it exists
+		if (userMarker && userLocation) {
+			userMarker.remove();
+			
+			// Create new user marker with updated 3D state
+			import("mapbox-gl").then(({ default: mapboxgl }) => {
+				const newMarker = new mapboxgl.Marker()
+					.setLngLat([userLocation.lng, userLocation.lat])
+					.addTo(map);
+				setUserMarker(newMarker);
+			});
+		}
+	}, [map, userMarker, userLocation]);
+
+	// Create/update user marker when location changes
+	const updateUserMarker = useCallback(async (location: { lat: number; lng: number }) => {
+		if (!map) return;
+
+		// Remove existing user marker
+		if (userMarker) {
+			userMarker.remove();
+		}
+
+		// Create new user marker
+		const { default: mapboxgl } = await import("mapbox-gl");
+		const newMarker = new mapboxgl.Marker()
+			.setLngLat([location.lng, location.lat])
+			.addTo(map);
+		
+		setUserMarker(newMarker);
+	}, [map, userMarker, is3D]);
+
+	// Update user marker when location changes
+	useEffect(() => {
+		if (userLocation && mapLoaded) {
+			updateUserMarker(userLocation);
+		}
+	}, [userLocation, mapLoaded, updateUserMarker]);
+
+	// Check for first-time user and show onboarding - DISABLED for now
+	useEffect(() => {
+		const hasSeenOnboarding = localStorage.getItem('map-onboarding-seen');
+		// Temporarily disable onboarding - we'll use subtle tooltips instead
+		// if (!hasSeenOnboarding && mapLoaded && userLocation) {
+		// 	setShowOnboarding(true);
+		// }
+	}, [mapLoaded, userLocation]);
+
+	// Handle onboarding completion
+	const handleOnboardingComplete = () => {
+		localStorage.setItem('map-onboarding-seen', 'true');
+		setShowOnboarding(false);
+	};
+
+	const handleOnboardingSkip = () => {
+		localStorage.setItem('map-onboarding-seen', 'true');
+		setShowOnboarding(false);
+	};
+
+	// Immersive interface handlers
+	const handleQuickReport = () => {
+		if (userLocation) {
+			router.push(`/experience/create?lat=${userLocation.lat}&lng=${userLocation.lng}` as any);
+		} else {
+			router.push('/experience/create' as any);
+		}
+	};
+
+	const handleLocationCenter = () => {
+		if (userLocation && map) {
+			mapOperations.flyToLocation(map, userLocation, 16.5);
+			setIsLiveTracking(!isLiveTracking);
+		}
+	};
+
+	const handleLayersToggle = () => {
+		setShowLegend(!showLegend);
+	};
+
+	const handleIssueNavigation = () => {
+		if (selectedExperience && userLocation) {
+			showRoute(userLocation, {
+				lat: Number(selectedExperience.latitude),
+				lng: Number(selectedExperience.longitude),
+			});
+		}
+	};
+
+	const handleIssueLike = () => {
+		setIsLiked(!isLiked);
+		setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
+	};
+
+	const handleIssueComment = () => {
+		// Navigate to detailed view with comments
+		if (selectedExperience) {
+			router.push(`/experience/${selectedExperience.id}` as any);
+		}
+	};
+
+	// Gesture handlers for enhanced mobile experience
+	const handleSwipeUp = () => {
+		if (selectedExperience) {
+			// Swipe up on selected issue to see more details
+			router.push(`/experience/${selectedExperience.id}` as any);
+		} else if (selectedCluster) {
+			// Swipe up to expand cluster
+			setSelectedCluster(null);
+		}
+	};
+
+	const handleSwipeDown = () => {
+		// Swipe down to close panels
+		if (selectedExperience) {
+			setSelectedExperience(null);
+		} else if (selectedCluster) {
+			setSelectedCluster(null);
+		} else if (showSearchPanel) {
+			setShowSearchPanel(false);
+		}
+	};
+
+	const handleLongPress = (x: number, y: number) => {
+		// Long press to report issue at location
+		if (map && userLocation) {
+			const point = map.unproject([x, y]);
+			router.push(`/experience/create?lat=${point.lat}&lng=${point.lng}` as any);
+		}
+	};
+
+	const handleDoubleTap = (x: number, y: number) => {
+		// Double tap to zoom and center
+		if (map) {
+			const point = map.unproject([x, y]);
+			map.flyTo({
+				center: [point.lng, point.lat],
+				zoom: Math.min(map.getZoom() + 2, 18),
+				duration: 500
+			});
+		}
+	};
+
+	// Handle theme changes
+	const handleThemeChange = (newStyle: string) => {
+		if (map && newStyle !== mapStyle) {
+			setMapStyle(newStyle);
+			map.setStyle(newStyle);
+		}
+	};
+
+	// Update activity based on user actions
+	useEffect(() => {
+		if (isNavigating) {
+			setCurrentActivity('navigating');
+		} else if (showSearchPanel) {
+			setCurrentActivity('exploring');
+		} else {
+			setCurrentActivity('exploring');
+		}
+	}, [isNavigating, showSearchPanel]);
+
 	// Toggle live tracking
 	useEffect(() => {
 		if (isLiveTracking) {
@@ -1134,83 +1270,111 @@ export default function MapClient({ experiences }: MapClientProps) {
 	}
 
 	return (
-		<div
-			className={`mobile-map-page fixed inset-0 h-screen w-full ${showSearchPanel ? "search-visible" : ""}`}
-		>
-			{/* Loading Overlay - only show for initial load */}
+		<div className="fixed inset-0 h-screen w-full overflow-hidden bg-gray-900">
+			{/* Onboarding */}
+			<MapOnboarding 
+				isVisible={showOnboarding}
+				onComplete={handleOnboardingComplete}
+				onSkip={handleOnboardingSkip}
+			/>
+
+			{/* Loading Overlay - Enhanced */}
 			{isLoading && (
-				<div className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-					<div className="flex flex-col items-center gap-4 rounded-xl bg-white p-8 shadow-2xl">
-						<div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+				<div className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
+					<div className="flex flex-col items-center gap-6 text-white">
+						<div className="relative">
+							<div className="h-16 w-16 animate-spin rounded-full border-4 border-white/20 border-t-white" />
+							<div className="absolute inset-0 h-16 w-16 animate-pulse rounded-full bg-white/10" />
+						</div>
 						<div className="text-center">
-							<h3 className="font-semibold text-gray-900 text-lg">
-								Loading Map
+							<h3 className="font-bold text-white text-xl mb-2">
+								✨ Loading Your Community Map
 							</h3>
-							<p className="text-gray-600 text-sm">
-								Preparing your local experience...
+							<p className="text-white/80 text-sm">
+								Discovering issues and opportunities around you...
 							</p>
 						</div>
 					</div>
 				</div>
 			)}
 
-			{/* Map Container */}
-			<div ref={mapContainerRef} className="h-full w-full" />
+			{/* Map Container with gesture handling and enhanced styling */}
+			<GestureHandler
+				onSwipeUp={handleSwipeUp}
+				onSwipeDown={handleSwipeDown}
+				onLongPress={handleLongPress}
+				onDoubleTap={handleDoubleTap}
+			>
+				<div ref={mapContainerRef} className="h-full w-full relative" />
+			</GestureHandler>
 
-			{/* Search & Quick Actions Buttons */}
-			{!showSearchPanel && !showQuickActions && (
-				<div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-					<BackButton
-						fallbackUrl="/home"
-						variant="default"
-						size="icon"
-						className="shadow-lg backdrop-blur-sm"
-					/>
+			{/* Simplified Map Controls */}
+			{!showOnboarding && (
+				<div className="absolute top-4 left-4 z-40 flex flex-col gap-2">
 					<Button
 						size="icon"
-						variant="default"
-						className="shadow-lg"
+						variant="outline"
+						className="bg-white/90 backdrop-blur-sm shadow-lg"
 						onClick={() => setShowSearchPanel(true)}
-						data-search-button
 					>
-						<Search className="h-4 w-4" />
+						<Search size={20} />
 					</Button>
 					<Button
 						size="icon"
 						variant="outline"
-						className="bg-white shadow-lg"
-						onClick={() => setShowQuickActions(true)}
+						className={`bg-white/90 backdrop-blur-sm shadow-lg ${isLiveTracking ? 'ring-2 ring-blue-500' : ''}`}
+						onClick={handleLocationCenter}
 					>
-						<Compass className="h-4 w-4" />
+						<Navigation size={20} className={isLiveTracking ? 'text-blue-600' : ''} />
 					</Button>
 				</div>
 			)}
 
-			{/* Live Tracking Button */}
-			<div className="absolute top-4 right-20 z-10">
+			{/* Simple FAB for reporting */}
+			<div className="fixed bottom-6 right-6 z-50">
 				<Button
-					size="icon"
-					variant={isLiveTracking ? "default" : "outline"}
-					className="bg-white shadow-lg"
-					onClick={() => setIsLiveTracking(!isLiveTracking)}
+					size="lg"
+					className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 shadow-lg"
+					onClick={handleQuickReport}
 				>
-					<Navigation
-						className={`h-4 w-4 ${isLiveTracking ? "text-blue-600" : ""}`}
-					/>
+					<Plus size={24} className="text-white" />
 				</Button>
 			</div>
 
-			{/* Location Accuracy Indicator */}
-			{locationAccuracy && (
-				<div className="absolute top-16 right-20 z-10">
-					<Badge variant="secondary" className="text-xs">
-						±{Math.round(locationAccuracy)}m
-					</Badge>
-				</div>
-			)}
+			{/* Enhanced Search Panel */}
+			<EnhancedSearchPanel
+				isOpen={showSearchPanel}
+				onClose={() => setShowSearchPanel(false)}
+				searchQuery={searchQuery}
+				onSearchChange={setSearchQuery}
+				filteredExperiences={filteredExperiences}
+				onExperienceSelect={(experience) => {
+					setSelectedExperience(experience);
+					if (map) {
+						map.flyTo({
+							center: [Number(experience.longitude), Number(experience.latitude)],
+							zoom: 17,
+							duration: 1000,
+						});
+					}
+				}}
+				categories={categories}
+				activeFilters={activeFilters}
+				onFilterToggle={toggleFilter}
+			/>
 
-			{/* Quick Actions Panel */}
-			{showQuickActions && (
+			{/* Back Button */}
+			<div className="absolute top-4 right-4 z-40">
+				<BackButton
+					fallbackUrl="/home"
+					variant="outline"
+					size="icon"
+					className="bg-white/90 backdrop-blur-sm shadow-lg"
+				/>
+			</div>
+
+			{/* Legacy Quick Actions Panel - Hidden in favor of immersive interface */}
+			{false && showQuickActions && (
 				<div
 					className="absolute top-4 right-4 left-4 z-20 max-w-sm rounded-lg bg-white p-4 shadow-lg dark:bg-gray-900"
 					data-quick-actions-panel
@@ -1375,8 +1539,8 @@ export default function MapClient({ experiences }: MapClientProps) {
 				</div>
 			)}
 
-			{/* Search Panel */}
-			{showSearchPanel && (
+			{/* Legacy Search Panel - Hidden in favor of enhanced search */}
+			{false && showSearchPanel && (
 				<div
 					className="absolute top-4 right-4 left-4 z-20 max-w-md rounded-lg bg-white p-4 shadow-lg dark:bg-gray-900"
 					data-search-panel
@@ -1585,15 +1749,15 @@ export default function MapClient({ experiences }: MapClientProps) {
 				</div>
 			)}
 
-			{/* Issue Details Panel */}
+			{/* Simple Issue Details Panel */}
 			{selectedExperience && (
-				<div className="absolute right-4 bottom-4 left-4 z-20 mx-auto max-w-md rounded-lg bg-white p-4 shadow-lg dark:bg-gray-900">
-					<div className="mb-3 flex items-start justify-between">
+				<div className="absolute bottom-4 left-4 right-4 z-50 bg-white rounded-lg shadow-lg p-4 max-w-md mx-auto">
+					<div className="flex items-start justify-between mb-3">
 						<div className="flex-1">
-							<h3 className="mb-1 font-semibold text-lg">
+							<h3 className="font-semibold text-lg text-gray-900">
 								{selectedExperience.title}
 							</h3>
-							<p className="mb-2 text-gray-600 text-sm dark:text-gray-400">
+							<p className="text-gray-600 text-sm mt-1">
 								{selectedExperience.description}
 							</p>
 						</div>
@@ -1603,88 +1767,36 @@ export default function MapClient({ experiences }: MapClientProps) {
 							onClick={() => setSelectedExperience(null)}
 							className="shrink-0"
 						>
-							<X className="h-4 w-4" />
+							<X size={16} />
 						</Button>
 					</div>
-					{/* 
-					<div className="mb-3 flex items-center gap-2">
-						<Badge
-							variant={
-								selectedExperience.priority === "high"
-									? "destructive"
-									: selectedExperience.priority === "medium"
-										? "default"
-										: "secondary"
-							}
-						>
-							{selectedExperience.priority}
-						</Badge>
-						<Badge
-							variant="outline"
-							className={statusConfig[selectedExperience.status].textColor}
-						>
-							{statusConfig[selectedExperience.status].label}
-						</Badge>
-						{selectedExperience.category && (
-							<Badge variant="secondary">
-								{selectedExperience.category.name || "Other"}
-							</Badge>
-						)}
-					</div> */}
-
+					
 					{selectedExperience.address && (
-						<p className="mb-3 flex items-center gap-1 text-gray-500 text-xs">
-							<MapPin className="h-3 w-3" />
+						<p className="flex items-center gap-1 text-gray-500 text-xs mb-3">
+							<MapPin size={12} />
 							{selectedExperience.address}
 						</p>
 					)}
 
-					<div className="flex items-center justify-between">
-						{/* Removed voting from map - users can vote from feed/details pages */}
-						<div />
-
-						<div className="flex items-center gap-2">
-							<Button
-								size="sm"
-								variant={isNavigating ? "default" : "outline"}
-								onClick={() => {
-									if (userLocation && selectedExperience) {
-										if (isNavigating) {
-											clearRoute();
-										} else {
-											showRoute(userLocation, {
-												lat: Number(selectedExperience.latitude),
-												lng: Number(selectedExperience.longitude),
-											});
-										}
-									}
-								}}
-							>
-								<Route className="mr-1 h-3 w-3" />
-								{isNavigating ? "Clear Route" : "Get Directions"}
-							</Button>
-							<Button size="sm" variant="outline" onClick={handleCopyLink}>
-								<Share2 className="mr-1 h-3 w-3" />
-								Share
-							</Button>
-						</div>
-					</div>
-
-					<div className="mt-2 border-t pt-2 text-gray-500 text-xs">
-						Reported {(() => {
-							try {
-								const date = new Date(selectedExperience.createdAt);
-								if (isNaN(date.getTime())) {
-									return "Unknown date";
-								}
-								return date.toLocaleDateString();
-							} catch (error) {
-								return "Unknown date";
-							}
-						})()}
-						{selectedExperience.status === "resolved" && (
-							<span className="ml-2">• Resolved</span>
-						)}
+					<div className="flex items-center gap-2">
+						<Button
+							size="sm"
+							variant="outline"
+							onClick={handleIssueNavigation}
+							className="flex items-center gap-1"
+						>
+							<Navigation size={14} />
+							Directions
+						</Button>
+						<Button
+							size="sm"
+							variant="outline"
+							onClick={handleCopyLink}
+							className="flex items-center gap-1"
+						>
+							<Share2 size={14} />
+							Share
+						</Button>
 					</div>
 				</div>
 			)}
@@ -1804,58 +1916,59 @@ export default function MapClient({ experiences }: MapClientProps) {
 			)}
 
 			<style jsx>{`
-				.mobile-map-page {
-					position: fixed;
-					top: 0;
-					left: 0;
-					right: 0;
-					bottom: 0;
-					z-index: 1000;
-					width: 100vw;
-					height: 100vh;
-					overflow: hidden;
-				}
-
-				.mobile-map-page.search-visible {
-					/* Adjust when search panel is visible */
-				}
-
+				/* Enhanced mobile map styling */
 				.custom-marker, .cluster-marker {
 					cursor: pointer;
-					transition: transform 0.2s ease;
+					transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+					will-change: transform;
 				}
 
 				.custom-marker:hover, .cluster-marker:hover {
-					transform: scale(1.1);
+					transform: scale(1.15) translateZ(0);
 					z-index: 1000;
 				}
 
+				.custom-marker:active, .cluster-marker:active {
+					transform: scale(0.95) translateZ(0);
+				}
 
-				/* Mapbox popup styling */
+				/* Enhanced Mapbox popup styling */
 				.mapboxgl-popup-content {
-					border-radius: 8px;
-					box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+					border-radius: 16px;
+					box-shadow: 0 20px 40px rgba(0,0,0,0.15), 0 8px 16px rgba(0,0,0,0.1);
+					backdrop-filter: blur(20px);
+					border: 1px solid rgba(255,255,255,0.2);
 				}
 
 				.mapboxgl-popup-close-button {
-					color: #374151;
-					font-size: 20px;
+					color: #6b7280;
+					font-size: 22px;
+					font-weight: 700;
+					border-radius: 50%;
+					width: 32px;
+					height: 32px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					background: rgba(255,255,255,0.9);
+					backdrop-filter: blur(10px);
 				}
 
-				/* Panel animations */
-				.mobile-map-page [data-search-panel],
-				.mobile-map-page [data-quick-actions-panel] {
-					animation: slideInFromTop 0.3s ease-out;
+				/* Smooth animations for all elements */
+				* {
+					scroll-behavior: smooth;
 				}
 
-				@keyframes slideInFromTop {
-					from {
-						opacity: 0;
-						transform: translateY(-10px);
-					}
-					to {
-						opacity: 1;
-						transform: translateY(0);
+				/* Enhanced glassmorphism effects */
+				.backdrop-blur-md {
+					backdrop-filter: blur(16px) saturate(180%);
+				}
+
+				/* Mobile-optimized touch targets */
+				@media (max-width: 768px) {
+					button, [role="button"] {
+						min-height: 44px;
+						min-width: 44px;
 					}
 				}
 			`}</style>

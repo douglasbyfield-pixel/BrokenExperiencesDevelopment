@@ -99,7 +99,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 	const router = useRouter();
 	// Use the actual experience data instead of local state for better sync
 	const isLiked = experience.userVote === true;
-	const likeCount = experience.upvotes || 0;
+	const likeCount = Math.max(0, experience.upvotes || 0); // Prevent negative values
 
 	// Check if user has already claimed this issue
 	const { data: userFixes } = useUserFixes(user?.id);
@@ -122,6 +122,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		isLiked,
 		upvotes: experience.upvotes,
 		likeCount,
+		title: experience.title?.substring(0, 30)
 	});
 	const [showDropdown, setShowDropdown] = useState(false);
 	const [isEditingStatus, setIsEditingStatus] = useState(false);
@@ -165,13 +166,9 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		};
 	}, [showDropdown]);
 
-	// Use TanStack Query for optimistic voting
+	// Use TanStack Query for voting
 	const { mutate: voteOnExperience, isPending: isExecuting } =
 		useVoteExperience();
-
-	// Debounce state for vote handling
-	const [isVoteDebouncing, setIsVoteDebouncing] = useState(false);
-	const voteTimeoutRef = useRef<NodeJS.Timeout>();
 
 	const { execute: deleteExperience, isExecuting: isDeleting } = useAction(
 		deleteExperienceAction,
@@ -190,44 +187,22 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 		},
 	);
 
-	// Debounced vote handler to prevent rapid clicking
+	// Simple vote handler without aggressive debouncing
 	const handleVote = useCallback(() => {
-		// Prevent multiple rapid clicks
-		if (isVoteDebouncing || isExecuting) {
-			console.log("🚫 Vote debounced - please wait");
+		// Prevent multiple rapid clicks - but allow retry if previous failed
+		if (isExecuting) {
+			console.log("🚫 Vote in progress - please wait");
 			return;
 		}
 
-		// Set debouncing state
-		setIsVoteDebouncing(true);
-
-		// Clear any existing timeout
-		if (voteTimeoutRef.current) {
-			clearTimeout(voteTimeoutRef.current);
-		}
-
-		// Execute vote immediately for good UX (optimistic update)
-		console.log("🗳️ Processing endorse vote...");
+		console.log("🗳️ Processing endorse vote for:", experience.id, "current state:", isLiked);
 		voteOnExperience({
 			experienceId: experience.id,
-			vote: "up", // Always send 'up' - the hook handles the toggle logic
+			vote: "up",
+			currentUserVote: experience.userVote, // Pass current vote state
 		});
+	}, [voteOnExperience, experience.id, experience.userVote, isExecuting]);
 
-		// Reset debouncing after 1 second
-		voteTimeoutRef.current = setTimeout(() => {
-			setIsVoteDebouncing(false);
-			console.log("✅ Vote debouncing reset");
-		}, 1000);
-	}, [voteOnExperience, experience.id, isLiked, isVoteDebouncing, isExecuting]);
-
-	// Cleanup timeout on unmount
-	useEffect(() => {
-		return () => {
-			if (voteTimeoutRef.current) {
-				clearTimeout(voteTimeoutRef.current);
-			}
-		};
-	}, []);
 
 	const handleImageClick = (e: React.MouseEvent, index: number) => {
 		e.stopPropagation();
@@ -360,7 +335,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 				throw new Error("No authentication token found");
 			}
 
-			const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:4000";
+			const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
 			
 			const response = await fetch(`${apiUrl}/experience/${experience.id}/verify`, {
 				method: "POST",
@@ -466,6 +441,27 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 								<span className="font-medium text-gray-900 text-sm">
 									{displayName}
 								</span>
+								{/* Status badge for various states */}
+								{experience.status === "verified" && (
+									<Badge className="bg-green-100 text-green-700 border-green-200 text-xs px-1.5 py-0">
+										Fixed ✓
+									</Badge>
+								)}
+								{experience.status === "fixed" && (
+									<Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs px-1.5 py-0">
+										Pending Verification
+									</Badge>
+								)}
+								{experience.status === "in_progress" && (
+									<Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs px-1.5 py-0">
+										In Progress
+									</Badge>
+								)}
+								{experience.status === "claimed" && (
+									<Badge className="bg-gray-100 text-gray-700 border-gray-200 text-xs px-1.5 py-0">
+										Claimed
+									</Badge>
+								)}
 								{/* Subtle status indicator */}
 								{likeCount >= 5 && (
 									<span className="text-blue-600 text-xs">📢</span>
@@ -759,28 +755,36 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 											e.stopPropagation();
 											handleVote();
 										}}
-										disabled={isExecuting || isVoteDebouncing}
-										className={`action-button flex items-center gap-1.5 ${
+										disabled={isExecuting}
+										className={`action-button flex items-center gap-1.5 transition-colors duration-200 ${
 											isLiked
-												? "text-green-600"
+												? "text-green-600 hover:text-green-700"
 												: "text-gray-600 hover:text-green-600"
-										} ${isExecuting || isVoteDebouncing ? "cursor-not-allowed opacity-70" : ""}`}
+										} ${isExecuting ? "cursor-not-allowed opacity-70" : ""}`}
 									>
 										<CheckCircle
-											className={`h-5 w-5 transition-all duration-200 ${isLiked ? "text-green-600" : "text-gray-600"}`}
+											className={`h-5 w-5 transition-all duration-200 ${
+												isLiked 
+													? "text-green-600 fill-green-100" 
+													: "text-gray-600 hover:text-green-600"
+											}`}
 										/>
 										{likeCount > 0 && (
-											<span className="font-medium text-sm">{likeCount}</span>
+											<span className={`font-medium text-sm transition-colors duration-200 ${
+												isLiked ? "text-green-600" : "text-gray-600"
+											}`}>
+												{likeCount}
+											</span>
 										)}
 									</TooltipTrigger>
 									<TooltipPanel className="animate-tooltip-bounce rounded-md border border-gray-700 bg-black px-3 py-2 text-white text-xs shadow-xl">
-										{isVoteDebouncing
-											? "Processing..."
-											: isExecuting
-												? "Saving..."
-												: isLiked
-													? "Endorsed ✓"
-													: "Endorse"}
+										{isExecuting
+											? "Saving..."
+											: isLiked
+												? `Endorsed by ${likeCount} ${likeCount === 1 ? 'person' : 'people'} ✓`
+												: likeCount > 0 
+													? `${likeCount} ${likeCount === 1 ? 'endorsement' : 'endorsements'} - Click to endorse`
+													: "Click to endorse"}
 									</TooltipPanel>
 								</Tooltip>
 
