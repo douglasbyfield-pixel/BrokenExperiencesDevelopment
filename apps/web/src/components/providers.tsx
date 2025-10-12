@@ -6,6 +6,8 @@ import { SettingsProvider } from "@web/context/SettingsContext";
 import { useState } from "react";
 import { AuthProvider } from "./auth-provider";
 import { OfflineNotification } from "./offline-notification";
+import { OfflineQueueProvider } from "./offline-queue-provider";
+import { OfflineStatus } from "./offline-status";
 import { SettingsNotifications } from "./settings-notifications";
 import { ThemeProvider } from "./theme-provider";
 import { Toaster } from "./ui/sonner";
@@ -45,11 +47,14 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 			>
 				<AuthProvider>
 					<SettingsProvider>
-						{children}
-						<Toaster richColors />
-						<SettingsNotifications />
-						<OfflineNotification />
-						<ReactQueryDevtools initialIsOpen={false} />
+						<OfflineQueueProvider>
+							{children}
+							<Toaster richColors />
+							<SettingsNotifications />
+							<OfflineNotification />
+							<OfflineStatus />
+							<ReactQueryDevtools initialIsOpen={false} />
+						</OfflineQueueProvider>
 					</SettingsProvider>
 				</AuthProvider>
 			</ThemeProvider>

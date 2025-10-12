@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@web/lib/supabase/client";
 import type { Experience } from "@web/types";
 import { awardPoints } from "./use-leaderboard";
+import { useOfflineQueue } from "@web/components/offline-queue-provider";
+import { useOfflineDetection } from "@web/hooks/use-offline-detection";
 
 // Query keys for consistent caching
 export const experienceKeys = {
@@ -244,6 +246,8 @@ export function useSearchExperiences(searchTerm: string, userId?: string) {
 // Vote on experience with simple, reliable updates
 export function useVoteExperience() {
 	const queryClient = useQueryClient();
+	const { queueAction } = useOfflineQueue();
+	const { isOnline } = useOfflineDetection();
 
 	return useMutation({
 		mutationFn: async ({
@@ -279,6 +283,23 @@ export function useVoteExperience() {
 			}
 
 			console.log("📤 Sending vote value:", voteValue, "for action:", vote);
+
+			// If offline, queue the action for later
+			if (!isOnline) {
+				queueAction({
+					type: 'vote',
+					data: { experienceId, vote: voteValue },
+					description: `${voteValue ? 'Endorse' : 'Remove endorsement from'} issue`
+				});
+				
+				// Return a mock successful response for offline mode
+				// The UI will be updated optimistically
+				return { 
+					experienceId, 
+					userVote: voteValue,
+					offline: true 
+				};
+			}
 
 			const apiUrl =
 				process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";

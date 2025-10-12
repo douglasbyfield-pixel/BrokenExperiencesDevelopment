@@ -143,8 +143,7 @@ export default function ClaimFixPage() {
   };
 
   const handleUploadBeforePhoto = () => {
-    // TODO: Navigate to camera/photo upload
-    router.push(`/camera?for=before-photo&fixId=${experienceId}` as any);
+    router.push(`/camera?for=before-photo&fixId=${experienceId}&experienceId=${experienceId}`);
   };
 
   const handleViewMyFixes = () => {
@@ -463,6 +462,8 @@ export default function ClaimFixPage() {
           onClose={() => setShowProofDialog(false)}
           onSubmit={handleUploadProof}
           issueTitle={experience?.title || "Issue"}
+          fixId={currentUserFix?.id}
+          experienceId={experienceId}
         />
       </div>
     );
@@ -618,6 +619,8 @@ export default function ClaimFixPage() {
         onClose={() => setShowProofDialog(false)}
         onSubmit={handleUploadProof}
         issueTitle={experience?.title || "Issue"}
+        fixId={uniqueFixes.find(fix => fix.claimedBy?.id === user?.id)?.id}
+        experienceId={experienceId}
       />
     </div>
   );

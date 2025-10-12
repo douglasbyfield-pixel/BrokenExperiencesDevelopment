@@ -4,15 +4,19 @@ import { useState } from "react";
 import { Button } from "@web/components/ui/button";
 import { CameraCapture } from "@web/components/ui/camera-capture";
 import { X, Camera, Upload, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface UploadProofDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (images: File[], notes: string) => Promise<void>;
   issueTitle: string;
+  fixId?: string;
+  experienceId?: string;
 }
 
-export function UploadProofDialog({ isOpen, onClose, onSubmit, issueTitle }: UploadProofDialogProps) {
+export function UploadProofDialog({ isOpen, onClose, onSubmit, issueTitle, fixId, experienceId }: UploadProofDialogProps) {
+  const router = useRouter();
   const [capturedImages, setCapturedImages] = useState<File[]>([]);
   const [notes, setNotes] = useState("");
   const [showCamera, setShowCamera] = useState(false);
@@ -117,16 +121,32 @@ export function UploadProofDialog({ isOpen, onClose, onSubmit, issueTitle }: Upl
                   </div>
                 )}
 
-                {/* Camera Button */}
-                <Button
-                  onClick={() => setShowCamera(true)}
-                  variant="outline"
-                  className="w-full border-black text-black hover:bg-black hover:text-white transition-colors"
-                  disabled={isSubmitting}
-                >
-                  <Camera className="h-4 w-4 mr-2" />
-                  {capturedImages.length === 0 ? "Take Photo" : "Add Another Photo"}
-                </Button>
+                {/* Camera Buttons */}
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => setShowCamera(true)}
+                    variant="outline"
+                    className="w-full border-black text-black hover:bg-black hover:text-white transition-colors"
+                    disabled={isSubmitting}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    {capturedImages.length === 0 ? "Take Photo (Inline)" : "Add Photo (Inline)"}
+                  </Button>
+                  
+                  {fixId && experienceId && (
+                    <Button
+                      onClick={() => {
+                        onClose();
+                        router.push(`/camera?for=proof&fixId=${fixId}&experienceId=${experienceId}`);
+                      }}
+                      className="w-full bg-black text-white hover:bg-gray-800 transition-colors"
+                      disabled={isSubmitting}
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Use Full Camera
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Notes Section */}
