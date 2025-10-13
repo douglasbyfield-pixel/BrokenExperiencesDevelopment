@@ -45,6 +45,7 @@ export const frontendSettingsSchema = z.object({
 		push: z.boolean(),
 		issueUpdates: z.boolean(),
 		weeklyReport: z.boolean(),
+		proximity: z.boolean().optional(),
 	}),
 	privacy: z.object({
 		showProfile: z.boolean(),
@@ -59,6 +60,10 @@ export const frontendSettingsSchema = z.object({
 	app: z.object({
 		pwaInstallPromptSeen: z.boolean(),
 	}),
+	proximity: z.object({
+		enabled: z.boolean().optional(),
+		radius: z.number().optional(),
+	}).optional(),
 });
 
 export type UserSettings = typeof userSettings.$inferSelect;
@@ -73,6 +78,7 @@ export function dbToFrontendFormat(dbSettings: UserSettings): FrontendSettings {
 			push: dbSettings.pushNotifications ?? true,
 			issueUpdates: dbSettings.issueUpdates ?? true,
 			weeklyReport: dbSettings.weeklyReport ?? false,
+			proximity: dbSettings.proximityNotifications ?? true,
 		},
 		privacy: {
 			showProfile: dbSettings.showProfile ?? true,
@@ -86,6 +92,10 @@ export function dbToFrontendFormat(dbSettings: UserSettings): FrontendSettings {
 		},
 		app: {
 			pwaInstallPromptSeen: dbSettings.pwaInstallPromptSeen ?? false,
+		},
+		proximity: {
+			enabled: dbSettings.proximityNotifications ?? true,
+			radius: dbSettings.proximityRadius ? parseFloat(dbSettings.proximityRadius) : 5.0,
 		},
 	};
 }
@@ -111,6 +121,9 @@ export function frontendToDbFormat(
 		}
 		if (frontendSettings.notifications.weeklyReport !== undefined) {
 			dbUpdates.weeklyReport = frontendSettings.notifications.weeklyReport;
+		}
+		if (frontendSettings.notifications.proximity !== undefined) {
+			dbUpdates.proximityNotifications = frontendSettings.notifications.proximity;
 		}
 	}
 
@@ -142,6 +155,15 @@ export function frontendToDbFormat(
 		if (frontendSettings.app.pwaInstallPromptSeen !== undefined) {
 			dbUpdates.pwaInstallPromptSeen =
 				frontendSettings.app.pwaInstallPromptSeen;
+		}
+	}
+
+	if (frontendSettings.proximity) {
+		if (frontendSettings.proximity.enabled !== undefined) {
+			dbUpdates.proximityNotifications = frontendSettings.proximity.enabled;
+		}
+		if (frontendSettings.proximity.radius !== undefined) {
+			dbUpdates.proximityRadius = frontendSettings.proximity.radius.toString();
 		}
 	}
 
