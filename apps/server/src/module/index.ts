@@ -2,6 +2,7 @@ import Elysia from "elysia";
 import { badgesRouter } from "./badges/router";
 import { categoryRouter } from "./category/router";
 import { experienceRouter } from "./experience/router";
+import { geofencingRouter } from "./geofencing/router";
 import { miscRouter } from "./misc/router";
 import { reportRouter } from "./report/router";
 import { scoringRouter } from "./scoring/router";
@@ -11,6 +12,7 @@ import { statsRouter } from "./stats/router";
 export const appRouter = new Elysia()
 	.use(categoryRouter)
 	.use(experienceRouter)
+	.use(geofencingRouter)
 	.use(reportRouter)
 	.use(miscRouter)
 	.use(statsRouter)

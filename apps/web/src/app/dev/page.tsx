@@ -2,11 +2,22 @@ import { eden } from "@web/lib/eden";
 import Link from "next/link";
 import Response from "./feature/response";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export default async function DevPage() {
-	const experiences = await eden.experience.get({ $query: {} });
-	const createCategories = await eden.category.get({
-		$query: { limit: 10, offset: 0 },
-	});
+	let experiences = null;
+	let createCategories = null;
+	
+	try {
+		experiences = await eden.experience.get({ $query: {} });
+		createCategories = await eden.category.get({
+			$query: { limit: 10, offset: 0 },
+		});
+	} catch (error) {
+		console.warn("Failed to fetch dev data:", error);
+		// Continue with null data for build time
+	}
 
 	return (
 		<div className="flex min-h-dvh flex-col gap-y-4 bg-black py-10">

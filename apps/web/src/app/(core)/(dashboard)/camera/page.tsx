@@ -7,10 +7,13 @@ import { Button } from "@web/components/ui/button";
 import { ArrowLeft, X, Upload, Camera } from "lucide-react";
 import { uploadMultipleImages } from "@web/lib/supabase/storage";
 import { createClient } from "@web/lib/supabase/client";
+import { useNotifications } from "@web/components/notifications/notification-provider";
+import { notificationTemplates } from "@web/components/notifications/notification-system";
 
 export default function CameraPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { success, error: notifyError, warning } = useNotifications();
   
   // Get parameters from URL
   const purpose = searchParams.get("for"); // e.g., "before-photo", "proof", "issue-report"
@@ -59,7 +62,7 @@ export default function CameraPage() {
 
   const handleSubmit = async () => {
     if (capturedImages.length === 0) {
-      alert("Please take at least one photo");
+      warning("Please take at least one photo");
       return;
     }
 
@@ -98,16 +101,21 @@ export default function CameraPage() {
           throw new Error(`Failed to upload proof: ${errorData.message || response.statusText}`);
         }
 
+        success("Proof uploaded successfully!", "Upload Complete");
         // Navigate back to the fix page
         router.push(`/experience/${experienceId}/claim-fix`);
       } else {
+        success(`${capturedImages.length} photo${capturedImages.length > 1 ? 's' : ''} uploaded successfully!`, "Upload Complete");
         // For other purposes, just go back with the image URLs
         // Could extend this to pass back the images via state or URL params
         router.back();
       }
     } catch (error) {
       console.error("Failed to submit photos:", error);
-      alert(error instanceof Error ? error.message : "Failed to submit photos. Please try again.");
+      notifyError(
+        error instanceof Error ? error.message : "Failed to submit photos. Please try again.",
+        "Upload Failed"
+      );
     } finally {
       setIsSubmitting(false);
     }

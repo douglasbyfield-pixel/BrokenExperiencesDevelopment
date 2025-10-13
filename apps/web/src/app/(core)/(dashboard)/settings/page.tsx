@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@web/components/auth-provider";
+import { GeofencingControls } from "@web/components/geofencing/geofencing-controls";
 import { BackButton } from "@web/components/ui/back-button";
 import { Button } from "@web/components/ui/button";
 import {
@@ -15,7 +16,7 @@ import { useSettings } from "@web/context/SettingsContext";
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
+import { useNotifications } from "@web/components/notifications";
 
 interface UserSettings {
 	privacy: {
@@ -31,6 +32,7 @@ interface UserSettings {
 export default function SettingsPage() {
 	const { settings, updateSettings, loading } = useSettings();
 	const { user, session } = useAuth();
+	const { success, error } = useNotifications();
 	const [saving, setSaving] = useState(false);
 	const [confirmDelete, setConfirmDelete] = useState("");
 	const [showDeleteSection, setShowDeleteSection] = useState(false);
@@ -40,10 +42,10 @@ export default function SettingsPage() {
 		setSaving(true);
 		try {
 			// Settings are already updated via context
-			toast.success("Settings saved successfully!");
-		} catch (error) {
-			console.error("Failed to save settings:", error);
-			toast.error("Failed to save settings");
+			success("Settings saved successfully!");
+		} catch (err) {
+			console.error("Failed to save settings:", err);
+			error("Failed to save settings");
 		} finally {
 			setSaving(false);
 		}
@@ -51,12 +53,12 @@ export default function SettingsPage() {
 
 	const handleDeleteAccount = async () => {
 		if (!user || !session) {
-			toast.error("You must be logged in to delete your account");
+			error("You must be logged in to delete your account");
 			return;
 		}
 
 		if (confirmDelete.toLowerCase() !== "delete") {
-			toast.error("Please type 'DELETE' to confirm account deletion");
+			error("Please type 'DELETE' to confirm account deletion");
 			return;
 		}
 
@@ -82,17 +84,17 @@ export default function SettingsPage() {
 			);
 
 			if (response.ok) {
-				toast.success("Account deleted successfully");
+				success("Account deleted successfully");
 				router.push("/login");
 			} else {
 				const errorData = await response.json().catch(() => ({}));
-				toast.error(
+				error(
 					errorData.message || "Failed to delete account. Please try again.",
 				);
 			}
-		} catch (error) {
-			console.error("Failed to delete account:", error);
-			toast.error("An error occurred while deleting your account");
+		} catch (deleteError) {
+			console.error("Failed to delete account:", deleteError);
+			error("An error occurred while deleting your account");
 		}
 	};
 
@@ -114,13 +116,13 @@ export default function SettingsPage() {
 
 		// Show immediate feedback for certain settings
 		if (section === "display" && key === "theme") {
-			toast.success(`Theme changed to ${value}`);
+			success(`Theme changed to ${value}`);
 		} else if (typeof value === "boolean") {
 			const setting = key.replace(/([A-Z])/g, " $1").toLowerCase();
-			toast.success(`${setting} ${value ? "enabled" : "disabled"}`);
+			success(`${setting} ${value ? "enabled" : "disabled"}`);
 		} else {
 			const setting = key.replace(/([A-Z])/g, " $1").toLowerCase();
-			toast.success(`${setting} updated`);
+			success(`${setting} updated`);
 		}
 	};
 
@@ -162,6 +164,9 @@ export default function SettingsPage() {
 			<div className="bg-white">
 				<div className="container mx-auto max-w-4xl px-4 py-6">
 					<div className="space-y-6">
+						{/* Proximity Notifications */}
+						<GeofencingControls />
+						
 						{/* Danger Zone */}
 						<Card className="border border-red-200 bg-white">
 							<CardHeader>

@@ -5,12 +5,12 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { SettingsProvider } from "@web/context/SettingsContext";
 import { useState } from "react";
 import { AuthProvider } from "./auth-provider";
-import { OfflineNotification } from "./offline-notification";
+import { GeofencingProvider } from "./geofencing/geofencing-provider";
+import { NotificationProvider } from "./notifications/notification-provider";
+import { NotificationSystem } from "./notifications/notification-system";
 import { OfflineQueueProvider } from "./offline-queue-provider";
 import { OfflineStatus } from "./offline-status";
-import { SettingsNotifications } from "./settings-notifications";
 import { ThemeProvider } from "./theme-provider";
-import { Toaster } from "./ui/sonner";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
 	const [queryClient] = useState(
@@ -47,14 +47,16 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 			>
 				<AuthProvider>
 					<SettingsProvider>
-						<OfflineQueueProvider>
-							{children}
-							<Toaster richColors />
-							<SettingsNotifications />
-							<OfflineNotification />
-							<OfflineStatus />
-							<ReactQueryDevtools initialIsOpen={false} />
-						</OfflineQueueProvider>
+						<NotificationProvider>
+							<GeofencingProvider>
+								<OfflineQueueProvider>
+									{children}
+									<NotificationSystem />
+									<OfflineStatus />
+									<ReactQueryDevtools initialIsOpen={false} />
+								</OfflineQueueProvider>
+							</GeofencingProvider>
+						</NotificationProvider>
 					</SettingsProvider>
 				</AuthProvider>
 			</ThemeProvider>

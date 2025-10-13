@@ -23,7 +23,7 @@ import type { Category } from "@web/types";
 import { Camera, MapPin, Image as Picture, X } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useNotifications } from "@web/components/notifications";
 import z from "zod";
 
 interface PhotoFile {
@@ -39,6 +39,8 @@ interface CreateExperienceCardProps {
 export default function CreateExperienceCard({
 	categoryOptions,
 }: CreateExperienceCardProps) {
+	const { success, error: notifyError, info, warning } = useNotifications();
+	
 	const [location, setLocation] = useState<{
 		latitude: string;
 		longitude: string;
@@ -390,7 +392,7 @@ export default function CreateExperienceCard({
 		},
 		onSubmit: async ({ value }) => {
 			if (!location) {
-				toast.error("Location is required");
+				notifyError("Location is required");
 				return;
 			}
 
@@ -399,16 +401,16 @@ export default function CreateExperienceCard({
 			if (photos.length > 0) {
 				try {
 					console.log("📸 Starting image upload for", photos.length, "files");
-					toast.info("Uploading images...");
+					info("Uploading images...");
 					const { uploadMultipleImages } = await import(
 						"@web/lib/supabase/storage"
 					);
 					imageUrls = await uploadMultipleImages(photos.map((p) => p.file));
 					console.log("✅ Images uploaded successfully:", imageUrls);
-					toast.success(`${imageUrls.length} image(s) uploaded!`);
+					success(`${imageUrls.length} image(s) uploaded!`);
 				} catch (error) {
 					console.error("❌ Image upload failed:", error);
-					toast.error("Failed to upload images. Posting without images...");
+					notifyError("Failed to upload images. Posting without images...");
 				}
 			}
 
@@ -428,7 +430,7 @@ export default function CreateExperienceCard({
 			createExperience(submission, {
 				onSuccess: () => {
 					console.log("✅ Experience created successfully with TanStack Query");
-					toast.success("Experience posted successfully!");
+					success("Experience posted successfully!");
 					// Reset form on success
 					form.reset();
 					// Reset location and photos
@@ -440,7 +442,7 @@ export default function CreateExperienceCard({
 				},
 				onError: (error) => {
 					console.error("❌ Experience creation failed:", error);
-					toast.error("Failed to create experience. Please try again.");
+					notifyError("Failed to create experience. Please try again.");
 				},
 			});
 		},
@@ -468,14 +470,14 @@ export default function CreateExperienceCard({
 				if (data && typeof data === "object" && "error" in data) {
 					console.error("❌ Server returned error:", data);
 					const errorData = data as any;
-					toast.error(
+					notifyError(
 						`Failed: ${errorData.message || errorData.error || "Unknown error"}`,
 					);
 					return;
 				}
 
 				// Show success toast
-				toast.success("Experience posted successfully!");
+				success("Experience posted successfully!");
 
 				// Reset form on success
 				form.reset();

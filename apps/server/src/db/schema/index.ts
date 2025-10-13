@@ -5,6 +5,7 @@ export * from "./experience-fix";
 export * from "./experience-image";
 export * from "./experience-verification";
 export * from "./gamification";
+export * from "./geofencing";
 export * from "./notification-logs";
 export * from "./profile";
 export * from "./push-subscriptions";

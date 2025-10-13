@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useOfflineDetection } from "@web/hooks/use-offline-detection";
-import { toast } from "sonner";
+import { useNotifications } from "./notifications/notification-provider";
+import { notificationTemplates } from "./notifications/notification-system";
 
 // Offline Queue Context
 interface OfflineAction {
@@ -25,6 +26,7 @@ const OfflineContext = createContext<OfflineContextType | null>(null);
 export function OfflineQueueProvider({ children }: { children: ReactNode }) {
 	const [pendingActions, setPendingActions] = useState<OfflineAction[]>([]);
 	const { isOnline } = useOfflineDetection();
+	const { notify } = useNotifications();
 
 	// Load pending actions from localStorage on mount
 	useEffect(() => {
@@ -44,28 +46,73 @@ export function OfflineQueueProvider({ children }: { children: ReactNode }) {
 		localStorage.setItem('offline-queue', JSON.stringify(pendingActions));
 	}, [pendingActions]);
 
-	// Auto-retry when coming back online
-	useEffect(() => {
-		if (isOnline && pendingActions.length > 0) {
-			toast.info(`🔄 Syncing ${pendingActions.length} pending actions...`);
-			retryActions();
-		}
-	}, [isOnline]);
-
-	const queueAction = (action: Omit<OfflineAction, 'id' | 'timestamp'>) => {
-		const newAction: OfflineAction = {
-			...action,
-			id: Date.now().toString(),
-			timestamp: Date.now(),
+	const retryAction = async (action: OfflineAction) => {
+		// Get auth token if needed
+		const getAuthHeaders = async (): Promise<Record<string, string>> => {
+			const baseHeaders: Record<string, string> = {
+				'Content-Type': 'application/json'
+			};
+			
+			try {
+				const { createClient } = await import("@web/lib/supabase/client");
+				const supabase = createClient();
+				const { data: { session } } = await supabase.auth.getSession();
+				
+				if (session?.access_token) {
+					return {
+						...baseHeaders,
+						'Authorization': `Bearer ${session.access_token}`
+					};
+				}
+			} catch (error) {
+				console.error("Failed to get auth headers:", error);
+			}
+			
+			return baseHeaders;
 		};
+
+		const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
 		
-		setPendingActions(prev => [...prev, newAction]);
-		toast.info(`📝 Queued: ${action.description}`, {
-			description: "Will sync when back online"
-		});
+		switch (action.type) {
+			case 'vote': {
+				const headers = await getAuthHeaders();
+				const response = await fetch(`${apiUrl}/experience/${action.data.experienceId}/vote`, {
+					method: 'POST',
+					headers,
+					body: JSON.stringify({ vote: action.data.vote }),
+				});
+				if (!response.ok) throw new Error('Vote failed');
+				break;
+			}
+			
+			case 'create-experience': {
+				const createHeaders = await getAuthHeaders();
+				const createResponse = await fetch(`${apiUrl}/experience`, {
+					method: 'POST',
+					headers: createHeaders,
+					body: JSON.stringify(action.data),
+				});
+				if (!createResponse.ok) throw new Error('Create experience failed');
+				break;
+			}
+			
+			case 'claim-fix': {
+				const claimHeaders = await getAuthHeaders();
+				const claimResponse = await fetch(`${apiUrl}/experience/${action.data.experienceId}/claim-fix`, {
+					method: 'POST',
+					headers: claimHeaders,
+					body: JSON.stringify(action.data),
+				});
+				if (!claimResponse.ok) throw new Error('Claim fix failed');
+				break;
+			}
+			
+			default:
+				console.warn(`Unknown action type: ${action.type}`);
+		}
 	};
 
-	const retryActions = async () => {
+	const retryActions = useCallback(async () => {
 		const actions = [...pendingActions];
 		let successCount = 0;
 		
@@ -83,77 +130,45 @@ export function OfflineQueueProvider({ children }: { children: ReactNode }) {
 		}
 		
 		if (successCount > 0) {
-			toast.success(`✅ Synced ${successCount} actions successfully!`);
+			notify(notificationTemplates.syncComplete(successCount));
 		}
 		
 		if (successCount < actions.length) {
-			toast.error(`❌ ${actions.length - successCount} actions failed to sync`);
+			notify(notificationTemplates.syncFailed(actions.length - successCount));
 		}
-	};
+	}, [pendingActions, notify]);
 
-	const retryAction = async (action: OfflineAction) => {
-		// Get auth token if needed
-		const getAuthHeaders = async () => {
-			try {
-				const { createClient } = await import("@web/lib/supabase/client");
-				const supabase = createClient();
-				const { data: { session } } = await supabase.auth.getSession();
-				
-				if (session?.access_token) {
-					return {
-						'Content-Type': 'application/json',
-						'Authorization': `Bearer ${session.access_token}`
-					};
-				}
-			} catch (error) {
-				console.error("Failed to get auth headers:", error);
-			}
-			
-			return { 'Content-Type': 'application/json' };
+	const queueAction = (action: Omit<OfflineAction, 'id' | 'timestamp'>) => {
+		const newAction: OfflineAction = {
+			...action,
+			id: Date.now().toString(),
+			timestamp: Date.now(),
 		};
-
-		const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
 		
-		switch (action.type) {
-			case 'vote':
-				const headers = await getAuthHeaders();
-				const response = await fetch(`${apiUrl}/experience/${action.data.experienceId}/vote`, {
-					method: 'POST',
-					headers,
-					body: JSON.stringify({ vote: action.data.vote }),
-				});
-				if (!response.ok) throw new Error('Vote failed');
-				break;
-			
-			case 'create-experience':
-				const createHeaders = await getAuthHeaders();
-				const createResponse = await fetch(`${apiUrl}/experience`, {
-					method: 'POST',
-					headers: createHeaders,
-					body: JSON.stringify(action.data),
-				});
-				if (!createResponse.ok) throw new Error('Create experience failed');
-				break;
-			
-			case 'claim-fix':
-				const claimHeaders = await getAuthHeaders();
-				const claimResponse = await fetch(`${apiUrl}/experience/${action.data.experienceId}/claim-fix`, {
-					method: 'POST',
-					headers: claimHeaders,
-					body: JSON.stringify(action.data),
-				});
-				if (!claimResponse.ok) throw new Error('Claim fix failed');
-				break;
-			
-			default:
-				console.warn(`Unknown action type: ${action.type}`);
-		}
+		setPendingActions(prev => [...prev, newAction]);
+		notify(notificationTemplates.actionQueued(action.description));
 	};
+
+	// Auto-retry when coming back online
+	useEffect(() => {
+		if (isOnline && pendingActions.length > 0) {
+			notify({
+				title: "Syncing Actions",
+				message: `Processing ${pendingActions.length} pending actions...`,
+				type: "info"
+			});
+			retryActions();
+		}
+	}, [isOnline, pendingActions.length, notify, retryActions]);
 
 	const clearQueue = () => {
 		setPendingActions([]);
 		localStorage.removeItem('offline-queue');
-		toast.success("Offline queue cleared");
+		notify({
+			title: "Queue Cleared",
+			message: "All pending actions have been removed",
+			type: "success"
+		});
 	};
 
 	const value = {
